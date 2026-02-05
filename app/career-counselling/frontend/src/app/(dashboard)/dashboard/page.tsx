@@ -2,6 +2,7 @@
 
 import { RelevantBlogs } from "@/components/dashboard/relevant-blogs";
 import UpcomingMeetings from "@/components/dashboard/user/upcoming-meetings";
+import { DiscussionFeed } from "@/components/dashboard/discussion-feed";
 import { Compass, FileText, Search, GraduationCap, Calendar } from "lucide-react";
 import {
   Card,
@@ -47,6 +48,9 @@ export default function UserDashboard() {
       {/* Dashboard content */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
+          {/* Community Feed */}
+          <DiscussionFeed />
+
           {/* Upcoming Meetings */}
           <UpcomingMeetings />
           

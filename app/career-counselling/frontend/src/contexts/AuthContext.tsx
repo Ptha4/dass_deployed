@@ -123,9 +123,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         } catch (error) {
           console.error("Error parsing JWT token:", error);
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error("Auth check error:", error);
-        logout();
+        // Only logout automatically on explicit 401 Unauthorized responses.
+        // Network errors, timeouts, or aborted requests should not force a logout
+        // so the user is not bounced back to the login page unnecessarily.
+        if (error?.response?.status === 401) {
+          logout();
+        }
       } finally {
         setLoading(false);
       }

@@ -1,0 +1,3 @@
+[console_scripts]
+rnbip = rnbip_emulator:main
+
