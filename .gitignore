@@ -1,0 +1,59 @@
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+
+# Virtualenvs
+venv/
+.venv/
+env/
+ENV/
+
+# Backend specific (project local venv)
+app/career-counselling/backend/.venv/
+
+# Environment / secrets
+.env
+.env.*
+.env.local
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Next.js
+.next/
+out/
+
+# Frontend specific
+app/career-counselling/frontend/node_modules/
+app/career-counselling/frontend/.next/
+
+# Build / distribution
+dist/
+build/
+
+# Editors
+.vscode/
+.idea/
+*.sublime-workspace
+*.sublime-project
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Pytest cache
+.pytest_cache/
+
+# macOS
+*.DS_Store
+
+# JetBrains
+*.iml
