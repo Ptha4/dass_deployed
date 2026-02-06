@@ -191,19 +191,15 @@ export default function SearchBar() {
   }, []);
 
   return (
-    <div
-      className={`relative ${
-        isMobile ? "w-full" : "w-44"
-      } max-w-full sm:max-w-lg`}
-    >
+    <div className="relative w-full">
       <Button
         variant="outline"
-        className="relative w-full bg-gray-100 border-none rounded-full hover:bg-gray-200 text-sm text-gray-600 font-normal h-9 px-4 focus:ring-2 focus:ring-blue-100 transition-all"
+        className="relative h-11 w-full justify-start rounded-full bg-gray-50 px-5 text-sm text-muted-foreground shadow-sm hover:bg-gray-100 border-gray-200"
         onClick={() => setOpen(true)}
       >
-        <Search className="mr-2 h-4 w-4 text-gray-500" />
-        <span className="truncate w-full text-left">Search...</span>
-        <kbd className="pointer-events-none absolute right-2 hidden h-5 select-none items-center gap-1 rounded bg-white px-1.5 font-mono text-[10px] font-medium opacity-70 sm:flex border border-gray-200">
+        <Search className="mr-3 h-5 w-5 text-gray-400" />
+        <span className="truncate w-full text-left text-gray-500">Search colleges, experts, videos, blogs...</span>
+        <kbd className="pointer-events-none absolute right-4 hidden h-6 select-none items-center gap-1 rounded-md bg-white px-2 font-mono text-xs font-medium text-gray-400 sm:flex border border-gray-200">
           {isMac ? (
             <span className="text-xs">⌘</span>
           ) : (

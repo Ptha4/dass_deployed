@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import Navbar from "@/components/shared/navbar";
+import Sidebar from "@/components/shared/sidebar";
 import Footer from "@/components/shared/footer";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { Toaster } from "@/components/ui/toaster";
@@ -54,11 +55,22 @@ export default function RootLayout({
       </head>
       <body className={inter.className}>
         <AuthProvider>
+          {/* Sidebar - Fixed Left */}
+          <Sidebar />
+          
+          {/* Top Navbar */}
           <Navbar />
-          <main className="min-h-screen pt-20">
+          
+          {/* Main Content Area - Offset by sidebar width */}
+          <main className="min-h-screen pt-[80px] md:ml-64 transition-all duration-300 bg-gray-50">
             {children}
           </main>
-          <Footer />
+          
+          {/* Footer - Also offset by sidebar */}
+          <div className="md:ml-64 bg-gray-50">
+            <Footer />
+          </div>
+          
           <Toaster />
           <Analytics />
           <SpeedInsights />

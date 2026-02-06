@@ -76,68 +76,46 @@ export default function Navbar() {
 
   return (
     <>
-      {/* Premium Glassmorphic Navbar */}
-      <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100 transition-all duration-300">
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="flex items-center justify-between h-20">
-            {/* Logo */}
-            <Link href="/" className="flex items-center space-x-2 group">
-              <Image
-                src="/logo.png"
-                alt="AlumNiti Logo"
-                width={44}
-                height={44}
-                priority
-                className="transition-transform group-hover:scale-105"
-              />
-              <span className="text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+      {/* Top Header Bar - Horizontal Layout with Clean White Background */}
+      <nav className="sticky top-0 z-50 bg-white border-b border-gray-100 shadow-sm transition-all duration-300">
+        <div className="w-full px-8">
+          <div className="flex items-center justify-between h-[80px] gap-8">
+            {/* Left - Logo and Brand Name */}
+            <Link href="/" className="flex items-center space-x-3 group min-w-fit flex-shrink-0">
+              <div className="p-2 rounded-xl transition-all">
+                <Image
+                  src="/logo.png"
+                  alt="AlumNiti Logo"
+                  width={42}
+                  height={42}
+                  priority
+                  className="transition-transform group-hover:scale-110"
+                />
+              </div>
+              <span className="text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent hidden lg:inline tracking-tight">
                 AlumNiti
               </span>
             </Link>
 
-            {/* Desktop Navigation */}
-            <div className="hidden md:flex items-center space-x-1">
-              <NavLinks />
+            {/* Center - Large Prominent Search Bar (50%+ width) */}
+            <div className="flex-1 max-w-3xl mx-auto">
+              <SearchBar />
             </div>
 
-            {/* Action Area - Right Side */}
-            <div className="hidden md:flex items-center space-x-3">
-              {/* Search Bar */}
-              <div className="mr-2">
-                <SearchBar />
-              </div>
-
-              {/* Experts Button - Ghost Style */}
-              <Link href="/experts">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-full px-4 h-9 font-medium"
-                >
-                  <GraduationCap className="h-4 w-4 mr-2" />
-                  Experts
-                </Button>
-              </Link>
-
-              {/* AI Chat Button - Primary CTA */}
-              <Button
-                onClick={() => setIsChatbotOpen(!isChatbotOpen)}
-                size="sm"
-                className="bg-indigo-600 text-white hover:bg-indigo-700 shadow-md shadow-indigo-200 rounded-full px-4 h-9 font-medium transition-all hover:shadow-lg hover:shadow-indigo-300"
-              >
-                <Sparkles className="h-4 w-4 mr-2" />
-                AI Chat
-              </Button>
-
-              {/* Divider */}
-              <div className="h-6 w-px bg-gray-200 mx-2" />
-
+            {/* Right - User Controls */}
+            <div className="flex items-center space-x-4 flex-shrink-0">
               {/* Authentication Controls */}
               {isAuthenticated && user ? (
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center space-x-3">
                   {/* Notifications with Badge */}
                   <div className="relative">
-                    <NotificationsDropdown />
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="relative h-11 w-11 rounded-full hover:bg-gray-100 text-gray-700 transition-all"
+                    >
+                      <Bell className="h-5 w-5" />
+                    </Button>
                   </div>
 
                   {/* User Profile Dropdown */}
@@ -146,9 +124,9 @@ export default function Navbar() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="relative h-9 w-9 rounded-full hover:ring-2 hover:ring-gray-200 transition-all"
+                        className="relative h-11 w-11 rounded-full hover:ring-2 hover:ring-blue-200 transition-all"
                       >
-                        <Avatar className="h-9 w-9 ring-2 ring-white">
+                        <Avatar className="h-11 w-11 ring-2 ring-gray-200 shadow-sm">
                           <AvatarImage
                             src={
                               typeof user.profileImage === "string"
@@ -247,45 +225,18 @@ export default function Navbar() {
                 <div className="flex items-center space-x-2">
                   <Link
                     href="/login"
-                    className="text-gray-600 hover:text-gray-900 transition-colors px-4 py-2 rounded-full hover:bg-gray-50 font-medium text-sm"
+                    className="text-gray-700 hover:text-gray-900 transition-colors px-4 py-2 rounded-full hover:bg-gray-100 font-medium text-sm"
                   >
                     Login
                   </Link>
                   <Link
                     href="/register"
-                    className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-5 py-2 rounded-full hover:from-blue-700 hover:to-indigo-700 transition-all shadow-md hover:shadow-lg font-medium text-sm"
+                    className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-5 py-2 rounded-full hover:from-blue-700 hover:to-indigo-700 transition-all shadow-sm hover:shadow-md font-medium text-sm"
                   >
                     Sign Up
                   </Link>
                 </div>
               )}
-            </div>
-
-            {/* Mobile Navigation */}
-            <div className="md:hidden flex items-center space-x-2">
-              {isAuthenticated && <NotificationsDropdown />}
-
-              <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
-                <SheetTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-9 w-9">
-                    <Menu className="h-5 w-5" />
-                  </Button>
-                </SheetTrigger>
-                <SheetContent
-                  side="right"
-                  className="w-[300px] sm:w-[350px] p-0"
-                >
-                  <SheetTitle className="sr-only" />
-                  <MobileNav
-                    onClose={() => setIsMobileMenuOpen(false)}
-                    isLoggedIn={isAuthenticated}
-                    handleLogout={logout}
-                    isAdmin={user?.isAdmin}
-                    isExpert={user?.isExpert}
-                    expertId={user?.expertId}
-                  />
-                </SheetContent>
-              </Sheet>
             </div>
           </div>
         </div>

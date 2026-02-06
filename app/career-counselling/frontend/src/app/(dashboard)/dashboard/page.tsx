@@ -63,7 +63,7 @@ export default function UserDashboard() {
 
   const dashboardContent = (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
+      <div className="w-full pb-10 max-w-[1800px]">
         {/* Welcome Header */}
         <WelcomeHeader
           userName={user?.firstName}
@@ -72,27 +72,29 @@ export default function UserDashboard() {
         />
 
         {/* Main Grid: 2 columns */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-10 px-6 sm:px-8 lg:px-12">
           {/* Left Column - Discussion Feed (65-70%) */}
           <div className="lg:col-span-2">
-            {/* Discussion Feed - Clean Layout Without Card */}
-            <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
-              <div className="px-6 py-5 border-b border-gray-100">
-                <div className="flex items-center gap-2">
+            {/* Discussion Feed - Clean Layout Without Nested Borders */}
+            <div className="mb-8">
+              <div className="mb-5">
+                <div className="flex items-center gap-2.5">
                   <MessageSquare className="h-5 w-5 text-blue-500" />
-                  <h2 className="text-lg font-semibold text-gray-900">
+                  <h2 className="text-xl font-bold text-gray-900">
                     Discussion Feed
                   </h2>
                 </div>
               </div>
-              <div className="px-6">
-                <DiscussionFeed />
+              <div className="bg-white rounded-xl overflow-hidden shadow-sm">
+                <div className="px-8">
+                  <DiscussionFeed />
+                </div>
               </div>
             </div>
           </div>
 
           {/* Right Column - Sidebar Widgets (30-35%) */}
-          <div className="lg:col-span-1 space-y-6 sticky top-20 h-fit self-start">
+          <div className="lg:col-span-1 space-y-6 sticky top-28 h-fit self-start">
             {/* Profile Strength Widget */}
             {stats && <ProfileStrengthWidget strength={stats.profileStrength} />}
 

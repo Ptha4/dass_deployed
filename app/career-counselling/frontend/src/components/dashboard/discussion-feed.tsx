@@ -132,22 +132,22 @@ export function DiscussionFeed() {
             onClick={() => navigateToPost(post.postId)}
           >
             {/* Post Header */}
-            <div className="flex items-start gap-4 mb-4">
-              <Avatar className="h-10 w-10 ring-2 ring-white dark:ring-gray-800">
-                <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-500 text-white">
+            <div className="flex items-start gap-3 mb-4">
+              <Avatar className="h-10 w-10 ring-1 ring-gray-200">
+                <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-500 text-white text-sm">
                   {post.expertDetails.initials}
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1 flex-wrap">
+                <div className="flex items-center gap-2 mb-0.5 flex-wrap">
                   <span className="font-semibold text-sm text-gray-900 dark:text-gray-100">
                     {post.expertDetails.name}
                   </span>
-                  <Badge variant="secondary" className="text-xs">
+                  <Badge variant="secondary" className="text-xs px-2 py-0">
                     Expert
                   </Badge>
                   <span className="text-xs text-muted-foreground">·</span>
-                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
                     <Clock className="h-3 w-3" />
                     {formatDistanceToNow(new Date(post.createdAt), {
                       addSuffix: true,
@@ -158,19 +158,19 @@ export function DiscussionFeed() {
             </div>
 
             {/* Post Content */}
-            <div className="ml-14">
+            <div className="ml-13">
               <p className="text-sm text-gray-700 dark:text-gray-300 mb-3 whitespace-pre-wrap line-clamp-3 leading-relaxed">
                 {post.content}
               </p>
 
               {/* Tags */}
               {post.tags && post.tags.length > 0 && (
-                <div className="flex flex-wrap gap-2 mb-3">
+                <div className="flex flex-wrap gap-1.5 mb-3">
                   {post.tags.map((tag, index) => (
                     <Badge
                       key={index}
                       variant="outline"
-                      className={`text-xs ${
+                      className={`text-xs px-2 py-0.5 ${
                         tag.toLowerCase().includes("startup")
                           ? "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-300"
                           : tag.toLowerCase().includes("master")
@@ -203,13 +203,13 @@ export function DiscussionFeed() {
                         : "text-gray-500"
                     }`}
                   />
-                  <span className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                  <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
                     {post.likes}
                   </span>
                 </Button>
                 <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
                   <MessageSquare className="h-4 w-4 text-gray-500" />
-                  <span className="text-xs font-medium">
+                  <span className="text-sm font-medium">
                     {post.commentsCount || 0}
                   </span>
                 </div>
@@ -217,7 +217,7 @@ export function DiscussionFeed() {
             </div>
           </div>
 
-          {/* Divider between posts */}
+          {/* Subtle Divider between posts */}
           {index < posts.length - 1 && (
             <div className="border-b border-gray-100 dark:border-gray-800" />
           )}
