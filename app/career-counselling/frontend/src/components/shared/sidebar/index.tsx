@@ -18,6 +18,7 @@ import {
   ShieldCheck,
   Menu,
   X,
+  MessageSquare,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
@@ -126,6 +127,11 @@ export default function Sidebar() {
       icon: <BookOpen className="h-5 w-5" />,
       subItems: [
         {
+          title: "Posts",
+          href: "/posts",
+          icon: <MessageSquare className="h-5 w-5" />,
+        },
+        {
           title: "Blogs",
           href: "/blogs",
           icon: <BookOpen className="h-5 w-5" />,
@@ -166,8 +172,8 @@ export default function Sidebar() {
   const renderSidebarContent = () => (
     <div className="flex flex-col h-full">
       {/* Navigation Items */}
-      <nav className="flex-1 overflow-y-auto px-4 py-8">
-        <div className="space-y-2 w-full">
+      <nav className="flex-1 overflow-y-auto px-3 py-4">
+        <div className="space-y-1">
           {sidebarItems.map((item) => {
             const hasSubItems = item.subItems && item.subItems.length > 0;
             const isItemActive = isActive(item.href);
@@ -180,62 +186,60 @@ export default function Sidebar() {
                   <button
                     onClick={() => toggleCollapsible(item.title)}
                     className={cn(
-                      "w-full flex items-center justify-between px-5 py-4 rounded-xl transition-all group",
+                      "w-full flex items-center justify-between px-3 py-2 rounded-lg transition-colors group",
                       hasActiveSub
-                        ? "bg-blue-50"
+                        ? "bg-blue-50 text-blue-600"
                         : "hover:bg-gray-50"
                     )}
                   >
-                    <span className="flex items-center space-x-4">
+                    <span className="flex items-center space-x-3">
                       <span
                         className={cn(
-                          "transition-colors text-xl",
+                          "transition-colors",
                           hasActiveSub
                             ? "text-blue-600"
-                            : "text-gray-600"
+                            : "text-gray-400 group-hover:text-gray-600"
                         )}
                       >
                         {item.icon}
                       </span>
-                      <span className={cn(
-                        "text-base",
-                        hasActiveSub ? "font-semibold text-gray-900" : "font-medium text-gray-700"
-                      )}>{item.title}</span>
+                      <span className="text-sm font-medium text-gray-700">
+                        {item.title}
+                      </span>
                     </span>
                     <ChevronDown
                       className={cn(
-                        "h-5 w-5 text-gray-500 transition-transform",
+                        "h-4 w-4 text-gray-400 transition-transform",
                         (isOpen || hasActiveSub) && "rotate-180"
                       )}
                     />
                   </button>
                   {(isOpen || hasActiveSub) && (
-                    <div className="mt-1.5 mb-1.5">
-                      <div className="space-y-1.5 ml-5 pl-6 border-l-2 border-gray-200">
-                        {item.subItems?.map((subItem) => (
-                          <Link
-                            key={subItem.href}
-                            href={subItem.href}
-                            onClick={() => setIsMobileOpen(false)}
+                    <div className="mt-1 space-y-1 border-l-2 border-blue-100 ml-6 pl-4">
+                      {item.subItems?.map((subItem) => (
+                        <Link
+                          key={subItem.href}
+                          href={subItem.href}
+                          onClick={() => setIsMobileOpen(false)}
+                          className={cn(
+                            "flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors text-sm",
+                            isActive(subItem.href)
+                              ? "bg-blue-50 text-blue-600 font-medium"
+                              : "text-gray-600 hover:bg-gray-50"
+                          )}
+                        >
+                          <span
                             className={cn(
-                              "flex items-center space-x-4 px-4 py-3.5 rounded-xl transition-all text-base",
                               isActive(subItem.href)
-                                ? "bg-blue-50 font-semibold text-blue-600"
-                                : "font-normal text-gray-700 hover:bg-gray-50"
+                                ? "text-blue-600"
+                                : "text-gray-400"
                             )}
                           >
-                            <span
-                              className={cn(
-                                "text-gray-500 w-5 h-5 flex items-center justify-center text-lg",
-                                isActive(subItem.href) && "text-blue-600"
-                              )}
-                            >
-                              {subItem.icon}
-                            </span>
-                            <span>{subItem.title}</span>
-                          </Link>
-                        ))}
-                      </div>
+                            {subItem.icon}
+                          </span>
+                          <span>{subItem.title}</span>
+                        </Link>
+                      ))}
                     </div>
                   )}
                 </div>
@@ -249,32 +253,32 @@ export default function Sidebar() {
                 href={item.href!}
                 onClick={() => setIsMobileOpen(false)}
                 className={cn(
-                  "flex items-center space-x-4 px-5 py-4 rounded-xl transition-all group",
+                  "flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors group",
                   isItemActive
-                    ? "bg-blue-50 font-semibold text-blue-600"
-                    : "font-medium text-gray-700 hover:bg-gray-50"
+                    ? "bg-blue-50 text-blue-600 font-medium"
+                    : "text-gray-700 hover:bg-gray-50"
                 )}
               >
                 <span
                   className={cn(
-                    "transition-colors text-xl",
+                    "transition-colors",
                     isItemActive
                       ? "text-blue-600"
-                      : "text-gray-600"
+                      : "text-gray-400 group-hover:text-gray-600"
                   )}
                 >
                   {item.icon}
                 </span>
-                <span className="text-base">{item.title}</span>
+                <span className="text-sm font-medium">{item.title}</span>
               </Link>
             );
           })}
         </div>
       </nav>
 
-      {/* Footer - Optional */}
-      <div className="px-6 py-5 mt-auto">
-        <div className="text-sm text-gray-400">
+      {/* Footer */}
+      <div className="px-6 py-4 mt-auto">
+        <div className="text-xs text-gray-400">
           © 2026 AlumNiti
         </div>
       </div>

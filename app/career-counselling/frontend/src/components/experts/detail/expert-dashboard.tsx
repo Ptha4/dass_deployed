@@ -138,6 +138,7 @@ export default function ExpertDashboard({
   const [isSubmittingBlog, setIsSubmittingBlog] = useState(false);
   const [blogError, setBlogError] = useState<string | null>(null);
   const [showBlogDialog, setShowBlogDialog] = useState(false);
+  const [showPostDialog, setShowPostDialog] = useState(false);
   // Track refund requests to accurately calculate earnings
   const [refundRequests, setRefundRequests] = useState<Record<string, string>>(
     {}
@@ -421,8 +422,9 @@ export default function ExpertDashboard({
 
   return (
     <div className="space-y-8 pb-8">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-gray-900">Expert Dashboard</h2>
+      {/* Header with consistent left margin - shifted upward */}
+      <div className="flex justify-between items-center px-6 mt-8">
+        <h2 className="text-4xl font-bold text-gray-900">Expert Dashboard</h2>
         {!isEditingProfile ? (
           <Button
             onClick={() => setIsEditingProfile(true)}
@@ -557,96 +559,94 @@ export default function ExpertDashboard({
         </Card>
       )}
 
-      {/* Quick Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="bg-white shadow-sm">
+      {/* Quick Stats - Big Number, Small Label format */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 px-6">
+        <Card className="bg-white shadow-sm hover:shadow-md transition-shadow">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
+                <h3 className="text-4xl font-bold text-gray-900 mb-1">
+                  {analytics.performance.followersCount}
+                </h3>
                 <p className="text-sm font-medium text-gray-500">
                   Total Followers
                 </p>
-                <h3 className="text-3xl font-bold mt-1">
-                  {analytics.performance.followersCount}
-                </h3>
-                <p className="text-sm text-green-500 mt-0.5">+14% this month</p>
+                <p className="text-xs text-green-600 mt-1 font-medium">+14% this month</p>
               </div>
-              <div className="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center">
-                <Users className="h-6 w-6 text-blue-600" />
+              <div className="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+                <Users className="h-6 w-6 text-blue-600 stroke-[2]" />
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-white shadow-sm">
+        <Card className="bg-white shadow-sm hover:shadow-md transition-shadow">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
+                <h3 className="text-4xl font-bold text-gray-900 mb-1">
+                  {analytics.views.totalEngagement.toLocaleString()}
+                </h3>
                 <p className="text-sm font-medium text-gray-500">
                   Total Engagement
                 </p>
-                <h3 className="text-3xl font-bold mt-1">
-                  {analytics.views.totalEngagement.toLocaleString()}
-                </h3>
-                <p className="text-sm text-green-500 mt-0.5">
+                <p className="text-xs text-green-600 mt-1 font-medium">
                   +8.2% this month
                 </p>
               </div>
-              <div className="h-12 w-12 rounded-full bg-green-100 flex items-center justify-center">
-                <Eye className="h-6 w-6 text-green-600" />
+              <div className="h-12 w-12 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
+                <Eye className="h-6 w-6 text-green-600 stroke-[2]" />
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-white shadow-sm">
+        <Card className="bg-white shadow-sm hover:shadow-md transition-shadow">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-500">
-                  Sessions Completed
-                </p>
-                <h3 className="text-3xl font-bold mt-1">
+                <h3 className="text-4xl font-bold text-gray-900 mb-1">
                   {actualEarnings.completedSessions > 0
                     ? actualEarnings.completedSessions
                     : analytics.performance.meetings.completed}
                 </h3>
+                <p className="text-sm font-medium text-gray-500">
+                  Sessions Completed
+                </p>
                 {actualEarnings.completedSessions <
                   analytics.performance.meetings.completed && (
-                  <p className="text-xs text-red-500 mt-0.5">
+                  <p className="text-xs text-red-600 mt-1 font-medium">
                     {analytics.performance.meetings.completed -
                       actualEarnings.completedSessions}{" "}
                     refunded
                   </p>
                 )}
-                <p className="text-sm text-amber-500 mt-0.5">
+                <p className="text-xs text-amber-600 mt-1 font-medium">
                   {analytics.performance.meetings.upcoming} upcoming
                 </p>
               </div>
-              <div className="h-12 w-12 rounded-full bg-amber-100 flex items-center justify-center">
-                <Calendar className="h-6 w-6 text-amber-600" />
+              <div className="h-12 w-12 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
+                <Calendar className="h-6 w-6 text-amber-600 stroke-[2]" />
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-white shadow-sm">
+        <Card className="bg-white shadow-sm hover:shadow-md transition-shadow">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-500">
-                  Total Earnings
-                </p>
-                <h3 className="text-3xl font-bold mt-1">
+                <h3 className="text-4xl font-bold text-gray-900 mb-1">
                   {actualEarnings.total > 0
                     ? actualEarnings.total.toLocaleString()
-                    : analytics.performance.earnings.total.toLocaleString()}{" "}
-                  coins
+                    : analytics.performance.earnings.total.toLocaleString()}
                 </h3>
+                <p className="text-sm font-medium text-gray-500">
+                  Total Earnings (coins)
+                </p>
                 {actualEarnings.total <
                   analytics.performance.earnings.total && (
-                  <p className="text-xs text-red-500 mt-0.5">
-                    ₹
+                  <p className="text-xs text-red-600 mt-1 font-medium">
                     {(
                       analytics.performance.earnings.total -
                       actualEarnings.total
@@ -654,29 +654,29 @@ export default function ExpertDashboard({
                     refunded
                   </p>
                 )}
-                <p className="text-sm text-green-500 mt-0.5">
+                <p className="text-xs text-green-600 mt-1 font-medium">
                   +{analytics.performance.earnings.growth}% growth
                 </p>
               </div>
-              <div className="h-12 w-12 rounded-full bg-purple-100 flex items-center justify-center">
-                <DollarSign className="h-6 w-6 text-purple-600" />
+              <div className="h-12 w-12 rounded-full bg-purple-100 flex items-center justify-center flex-shrink-0">
+                <DollarSign className="h-6 w-6 text-purple-600 stroke-[2]" />
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 px-6">
         {/* Main Analytics Area */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="lg:col-span-2 space-y-8">
           {/* Upcoming Meetings */}
           <UpcomingMeetings expertId={expert.expertID} />
 
-          {/* Views Chart */}
+          {/* Views Chart with increased padding */}
           <Card className="bg-white shadow-sm">
-            <CardHeader className="pb-2">
+            <CardHeader className="pb-4">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-lg font-medium">
+                <CardTitle className="text-2xl font-semibold text-gray-900">
                   Profile Engagement
                 </CardTitle>
                 <div className="flex items-center gap-2">
@@ -685,8 +685,8 @@ export default function ExpertDashboard({
                 </div>
               </div>
             </CardHeader>
-            <CardContent>
-              <div className="h-[300px]">
+            <CardContent className="pt-4">
+              <div className="h-[300px] flex items-center justify-center">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={analytics.performance.monthlyViews}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
@@ -712,11 +712,11 @@ export default function ExpertDashboard({
             </CardContent>
           </Card>
 
-          {/* Content Stats */}
+          {/* Content Stats with increased padding */}
           <Card className="bg-white shadow-sm">
-            <CardHeader className="pb-2">
+            <CardHeader className="pb-4">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-lg font-medium">
+                <CardTitle className="text-2xl font-semibold text-gray-900">
                   Content Performance
                 </CardTitle>
                 <div className="flex items-center gap-1">
@@ -730,7 +730,7 @@ export default function ExpertDashboard({
                 </div>
               </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="h-[250px]">
                   <ResponsiveContainer width="100%" height="100%">
@@ -758,53 +758,47 @@ export default function ExpertDashboard({
                 </div>
 
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between p-4 border rounded-lg">
-                    <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
-                        <Video className="h-5 w-5 text-blue-600" />
+                  <div className="flex items-center justify-between p-5 border rounded-lg hover:border-blue-300 transition-colors">
+                    <div className="flex items-center gap-4">
+                      <div className="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+                        <Video className="h-6 w-6 text-blue-600 stroke-[2]" />
                       </div>
                       <div>
-                        <p className="font-medium">Videos</p>
-                        <p className="text-sm text-gray-500">
-                          {analytics.content.videosCount} published
-                        </p>
+                        <h4 className="text-2xl font-bold text-gray-900">{analytics.content.videosCount}</h4>
+                        <p className="text-sm font-medium text-gray-500">Videos</p>
                       </div>
                     </div>
-                    <Badge variant="outline" className="text-sm">
+                    <Badge variant="outline" className="text-sm font-medium">
                       {analytics.views.videoViews.toLocaleString()} views
                     </Badge>
                   </div>
 
-                  <div className="flex items-center justify-between p-4 border rounded-lg">
-                    <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 rounded-full bg-green-100 flex items-center justify-center">
-                        <FileText className="h-5 w-5 text-green-600" />
+                  <div className="flex items-center justify-between p-5 border rounded-lg hover:border-green-300 transition-colors">
+                    <div className="flex items-center gap-4">
+                      <div className="h-12 w-12 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
+                        <FileText className="h-6 w-6 text-green-600 stroke-[2]" />
                       </div>
                       <div>
-                        <p className="font-medium">Blogs</p>
-                        <p className="text-sm text-gray-500">
-                          {analytics.content.blogsCount} published
-                        </p>
+                        <h4 className="text-2xl font-bold text-gray-900">{analytics.content.blogsCount}</h4>
+                        <p className="text-sm font-medium text-gray-500">Blogs</p>
                       </div>
                     </div>
-                    <Badge variant="outline" className="text-sm">
+                    <Badge variant="outline" className="text-sm font-medium">
                       {analytics.views.blogReads.toLocaleString()} reads
                     </Badge>
                   </div>
 
-                  <div className="flex items-center justify-between p-4 border rounded-lg">
-                    <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 rounded-full bg-amber-100 flex items-center justify-center">
-                        <MessageSquare className="h-5 w-5 text-amber-600" />
+                  <div className="flex items-center justify-between p-5 border rounded-lg hover:border-amber-300 transition-colors">
+                    <div className="flex items-center gap-4">
+                      <div className="h-12 w-12 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
+                        <MessageSquare className="h-6 w-6 text-amber-600 stroke-[2]" />
                       </div>
                       <div>
-                        <p className="font-medium">Posts</p>
-                        <p className="text-sm text-gray-500">
-                          {analytics.content.postsCount} published
-                        </p>
+                        <h4 className="text-2xl font-bold text-gray-900">{analytics.content.postsCount}</h4>
+                        <p className="text-sm font-medium text-gray-500">Posts</p>
                       </div>
                     </div>
-                    <Badge variant="outline" className="text-sm">
+                    <Badge variant="outline" className="text-sm font-medium">
                       {analytics.views.postViews.toLocaleString()} views
                     </Badge>
                   </div>
@@ -812,20 +806,50 @@ export default function ExpertDashboard({
               </div>
             </CardContent>
           </Card>
+
+          {/* Your Posts Feed - Moved up */}
+          <Card className="bg-white shadow-sm">
+            <CardHeader className="pb-4">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-2xl font-semibold text-gray-900">Your Posts</CardTitle>
+                <Badge variant="outline" className="text-xs font-normal">
+                  {analytics.content.postsCount} published
+                </Badge>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-4">
+              <ExpertPosts
+                key={postRefreshTrigger}
+                expertId={expert.expertID}
+                expertName={`${expert.userDetails.firstName} ${expert.userDetails.lastName}`}
+                expertInitials={expertInitials}
+                isExpertLoggedIn={true}
+              />
+            </CardContent>
+          </Card>
         </div>
 
         {/* Side Analytics */}
-        <div className="space-y-6">
+        <div className="space-y-8">
           {/* Content Creation Actions */}
           <Card className="bg-white shadow-sm">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-lg font-medium">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-2xl font-semibold text-gray-900">
                 Quick Actions
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               <Button
-                className="w-full justify-start"
+                className="w-full justify-start hover:bg-blue-50"
+                variant="outline"
+                onClick={() => setShowPostDialog(true)}
+              >
+                <MessageSquare className="h-4 w-4 mr-2" />
+                Create New Post
+              </Button>
+              
+              <Button
+                className="w-full justify-start hover:bg-blue-50"
                 variant="outline"
                 onClick={() => (window.location.href = "/blogs/create")}
               >
@@ -834,7 +858,7 @@ export default function ExpertDashboard({
               </Button>
 
               <Button
-                className="w-full justify-start"
+                className="w-full justify-start hover:bg-blue-50"
                 variant="outline"
                 onClick={() => (window.location.href = "/videos/create")}
               >
@@ -842,7 +866,7 @@ export default function ExpertDashboard({
                 Upload New Video
               </Button>
               <Button
-                className="w-full justify-start"
+                className="w-full justify-start hover:bg-blue-50"
                 variant="outline"
                 onClick={() =>
                   (window.location.href = "https://calendar.google.com/")
@@ -851,18 +875,14 @@ export default function ExpertDashboard({
                 <Calendar className="h-4 w-4 mr-2" />
                 Manage Schedule
               </Button>
-              {/* <Button className="w-full justify-start" variant="outline">
-                <Settings className="h-4 w-4 mr-2" />
-                Account Settings
-              </Button> */}
             </CardContent>
           </Card>
 
           {/* Ratings Overview */}
           <Card className="bg-white shadow-sm">
-            <CardHeader className="pb-2">
+            <CardHeader className="pb-4">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-lg font-medium">
+                <CardTitle className="text-xl font-semibold text-gray-900">
                   Ratings Overview
                 </CardTitle>
                 <div className="flex items-center gap-1">
@@ -873,7 +893,7 @@ export default function ExpertDashboard({
                 </div>
               </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-4">
               <div className="h-[300px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
@@ -923,38 +943,27 @@ export default function ExpertDashboard({
         </div>
       </div>
 
-      {/* Posts Management Section */}
-      <Card className="bg-white shadow-sm">
-        <CardHeader className="pb-2">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-lg font-medium">
-              Create & Manage Posts
-            </CardTitle>
-            <Badge variant="outline" className="text-xs font-normal">
-              {analytics.content.postsCount} published
-            </Badge>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-6">
+      {/* Create Post Modal */}
+      <Dialog open={showPostDialog} onOpenChange={setShowPostDialog}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Create New Post</DialogTitle>
+            <DialogDescription>
+              Share your insights and expertise with your followers
+            </DialogDescription>
+          </DialogHeader>
+          <div className="mt-4">
             <CreatePost
               expertId={expert.expertID}
               expertInitials={expertInitials}
-              onPostCreated={handlePostCreated}
+              onPostCreated={() => {
+                handlePostCreated();
+                setShowPostDialog(false);
+              }}
             />
-            <div className="mt-4">
-              <h3 className="text-lg font-medium mb-4">Your Posts</h3>
-              <ExpertPosts
-                key={postRefreshTrigger}
-                expertId={expert.expertID}
-                expertName={`${expert.userDetails.firstName} ${expert.userDetails.lastName}`}
-                expertInitials={expertInitials}
-                isExpertLoggedIn={true}
-              />
-            </div>
           </div>
-        </CardContent>
-      </Card>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -25,13 +25,13 @@ export function WelcomeHeader({
         {/* Left Side - Text & Actions */}
         <div className="flex-1">
           {/* Heading with Emoji */}
-          <h1 className="text-3xl font-bold text-gray-900 mb-2 flex items-center gap-3">
+          <h1 className="text-4xl font-bold text-gray-900 mb-2 flex items-center gap-3">
             Welcome back{userName ? `, ${userName}` : ""}! 
-            <span className="animate-wave inline-block origin-[70%_70%] text-3xl">👋</span>
+            <span className="animate-wave inline-block origin-[70%_70%] text-4xl">👋</span>
           </h1>
 
           {/* Subtitle with Dynamic Content */}
-          <p className="text-gray-500 text-sm mb-6">
+          <p className="text-gray-500 text-base mb-6">
             {unreadReplies > 0 || upcomingMeetingsToday > 0 ? (
               <>
                 You have{" "}

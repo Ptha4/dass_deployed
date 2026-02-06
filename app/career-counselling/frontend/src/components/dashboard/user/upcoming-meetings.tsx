@@ -276,7 +276,7 @@ export default function UpcomingMeetings() {
     <Card className="shadow-sm border">
       <CardHeader className="pb-3 flex flex-row justify-between">
         <div>
-          <CardTitle className="text-lg font-medium">Your Meetings</CardTitle>
+          <CardTitle className="text-xl font-semibold">Your Meetings</CardTitle>
         </div>
         <Button
           variant="ghost"

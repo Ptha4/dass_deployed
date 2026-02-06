@@ -34,8 +34,8 @@ export function ProfileStrengthWidget({ strength }: ProfileStrengthWidgetProps) 
   return (
     <Card className="overflow-hidden">
       <CardHeader className="pb-3">
-        <CardTitle className="text-base font-semibold flex items-center gap-2">
-          <User className="h-4 w-4" />
+        <CardTitle className="text-xl font-semibold flex items-center gap-2">
+          <User className="h-5 w-5" />
           Profile Strength
         </CardTitle>
       </CardHeader>

@@ -61,9 +61,11 @@ export default function RootLayout({
           {/* Top Navbar */}
           <Navbar />
           
-          {/* Main Content Area - Offset by sidebar width */}
+          {/* Main Content Area - Offset by sidebar width, no padding */}
           <main className="min-h-screen pt-[80px] md:ml-64 transition-all duration-300 bg-gray-50">
-            {children}
+            <div className="px-6">
+              {children}
+            </div>
           </main>
           
           {/* Footer - Also offset by sidebar */}

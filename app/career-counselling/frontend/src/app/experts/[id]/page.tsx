@@ -106,85 +106,84 @@ export default function ExpertDetailPage() {
 
   return (
     <div className="bg-gray-50 min-h-screen">
-      <div className="relative h-48 md:h-64 bg-gradient-to-r from-blue-600 to-blue-800">
-        <div className="absolute inset-0 bg-black/30" />
-      </div>
-      {/* Login Overlay - will appear when needed */}
-      {showLoginPrompt && !isAuthenticated && (
-        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg max-w-md w-full p-6 shadow-2xl animate-in fade-in slide-in-from-bottom-5 duration-300">
-            <div className="text-center">
-              <div className="mx-auto mb-6 bg-blue-100 w-20 h-20 rounded-full flex items-center justify-center">
-                <LogIn className="h-10 w-10 text-blue-600" />
-              </div>
-              <h2 className="text-2xl font-bold mb-2">Sign in required</h2>
-              <p className="text-gray-600 mb-6">
-                You need to be signed in to interact with experts, book
-                sessions, and use all the features available on this profile.
-              </p>
-              <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                <Link href="/login" passHref>
-                  <Button
-                    className="flex items-center gap-2 px-6 py-5"
-                    onClick={handleCloseLoginPrompt}
-                  >
-                    <LogIn className="h-5 w-5" />
-                    <span>Sign In</span>
-                  </Button>
-                </Link>
-                <Link href="/register" passHref>
-                  <Button
-                    variant="outline"
-                    className="flex items-center gap-2 px-6 py-5"
-                    onClick={handleCloseLoginPrompt}
-                  >
-                    <UserPlus className="h-5 w-5" />
-                    <span>Create Account</span>
-                  </Button>
-                </Link>
+      {/* Light blue to white gradient banner */}
+      <div className="relative bg-gradient-to-r from-blue-100 to-white py-12">
+        
+        {/* Login Overlay */}
+        {showLoginPrompt && !isAuthenticated && (
+          <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-lg max-w-md w-full p-6 shadow-2xl animate-in fade-in slide-in-from-bottom-5 duration-300">
+              <div className="text-center">
+                <div className="mx-auto mb-6 bg-blue-100 w-20 h-20 rounded-full flex items-center justify-center">
+                  <LogIn className="h-10 w-10 text-blue-600" />
+                </div>
+                <h2 className="text-2xl font-bold mb-2">Sign in required</h2>
+                <p className="text-gray-600 mb-6">
+                  You need to be signed in to interact with experts, book
+                  sessions, and use all the features available on this profile.
+                </p>
+                <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                  <Link href="/login" passHref>
+                    <Button
+                      className="flex items-center gap-2 px-6 py-5"
+                      onClick={handleCloseLoginPrompt}
+                    >
+                      <LogIn className="h-5 w-5" />
+                      <span>Sign In</span>
+                    </Button>
+                  </Link>
+                  <Link href="/register" passHref>
+                    <Button
+                      variant="outline"
+                      className="flex items-center gap-2 px-6 py-5"
+                      onClick={handleCloseLoginPrompt}
+                    >
+                      <UserPlus className="h-5 w-5" />
+                      <span>Create Account</span>
+                    </Button>
+                  </Link>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
-      <div className="container mx-auto px-4">
-        <div className="relative -mt-24 mb-8">
+        )}
+        
+        {/* Left-aligned Profile Card within Banner */}
+        <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <Card className="lg:col-span-2 p-8">
-              <div className="flex flex-col items-center text-center md:text-left md:flex-row gap-8">
-                <div className="relative">
-                  <Avatar className="h-36 w-36 ring-4 ring-blue-100 shadow-lg">
-                    <AvatarFallback className="text-4xl bg-blue-50 text-blue-700">
-                      {initials}
-                    </AvatarFallback>
-                  </Avatar>
-                  <Badge
-                    variant={expert.available ? "default" : "secondary"}
-                    className="absolute -top-2 -right-2 px-3 py-1"
-                  >
-                    {expert.available ? "Available" : "Unavailable"}
-                  </Badge>
-                </div>
+            <Card className="lg:col-span-2 shadow-xl border-0 bg-white">
+              <div className="p-8">
+                <div className="flex flex-col items-center text-center md:text-left md:flex-row gap-6">
+                  <div className="relative flex-shrink-0">
+                    <Avatar className="h-28 w-28 ring-4 ring-white shadow-xl">
+                      <AvatarFallback className="text-3xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white font-semibold">
+                        {initials}
+                      </AvatarFallback>
+                    </Avatar>
+                    <Badge
+                      variant={expert.available ? "default" : "secondary"}
+                      className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 px-3 py-1 shadow-md"
+                    >
+                      {expert.available ? "Available" : "Unavailable"}
+                    </Badge>
+                  </div>
 
-                <div className="flex-1 flex flex-col items-center md:items-start">
-                  <div className="space-y-4 w-full">
-                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
-                      <div className="flex items-center gap-2">
-                        <h1 className="text-3xl font-bold text-gray-900">
-                          {`${expert.userDetails.firstName} ${expert.userDetails.lastName}`}
-                        </h1>
-                        {isVerified && (
-                          <div
-                            className="flex-shrink-0"
-                            title="Verified Expert"
-                          >
+                  <div className="flex-1 flex flex-col items-center md:items-start">
+                    <div className="space-y-3 w-full">
+                      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                        <div className="flex items-center gap-2 justify-center md:justify-start">
+                          <h1 className="text-3xl font-bold text-gray-900">
+                            {`${expert.userDetails.firstName} ${expert.userDetails.lastName}`}
+                          </h1>
+                          {isVerified && (
+                            <div className="flex-shrink-0" title="Verified Expert">
                             <CheckCircle className="h-6 w-6 fill-blue-600 text-white" />
                           </div>
                         )}
                       </div>
 
                       {isExpertLoggedIn && (
-                        <div className="flex space-x-2">
+                        <div className="flex justify-center md:justify-start space-x-2">
                           <Button
                             variant={isDashboardActive ? "default" : "outline"}
                             size="sm"
@@ -205,40 +204,37 @@ export default function ExpertDetailPage() {
                       )}
                     </div>
 
-                    <div className="space-y-2">
+                    <div className="space-y-1">
                       <div className="flex items-center gap-2 justify-center md:justify-start">
-                        <p className="text-lg text-blue-600 font-medium">
+                        <p className="text-lg text-blue-600 font-semibold">
                           {expert.currentPosition}
                         </p>
                         {isVerified && (
-                            <Badge
-                            className="bg-blue-100 text-blue-700 flex items-center gap-1 px-2 transition-colors duration-200 hover:bg-blue-200 hover:text-blue-900"
-                            title="Verified Expert"
-                            >
+                          <Badge className="bg-blue-100 text-blue-700 flex items-center gap-1 px-2">
                             <CheckCircle className="h-3 w-3 fill-blue-600 text-white" />
                             <span>Verified</span>
                           </Badge>
                         )}
                       </div>
-                      <p className="text-gray-600 flex items-center justify-center md:justify-start gap-2">
-                        <Building2 className="h-5 w-5 text-gray-500" />
+                      <p className="text-base text-gray-600 flex items-center justify-center md:justify-start gap-2">
+                        <Building2 className="h-4 w-4 text-gray-500" />
                         {expert.organization}
                       </p>
                     </div>
 
-                    <div className="flex items-center justify-center md:justify-start gap-4 pt-2">
+                    <div className="flex items-center justify-center md:justify-start gap-3">
                       <SocialLinksDrawer socialLinks={expert.socialLinks} />
+                      {!isExpertLoggedIn && (
+                        <FollowButton
+                          targetUserId={expert.userId}
+                          className="flex-1 md:flex-none"
+                        />
+                      )}
                     </div>
-
-                    {!isExpertLoggedIn && (
-                      <FollowButton
-                        targetUserId={expert.userId}
-                        className="w-1/2"
-                      />
-                    )}
                   </div>
                 </div>
               </div>
+            </div>
             </Card>
 
             {(!isExpertLoggedIn || !isDashboardActive) && (
@@ -297,12 +293,15 @@ export default function ExpertDetailPage() {
             )}
           </div>
         </div>
+      </div>
 
+      {/* Main Content - Positioned directly below banner with no gap */}
+      <div className="container mx-auto px-4 -mt-4">
         {isExpertLoggedIn && isDashboardActive ? (
           <ExpertDashboard expert={expert} expertInitials={initials} />
         ) : (
           <>
-            <div className="mb-8">
+            <div className="mb-6">
               <Card>
                 <CardContent className="pt-6">
                   <ExpertOverview expert={expert} />

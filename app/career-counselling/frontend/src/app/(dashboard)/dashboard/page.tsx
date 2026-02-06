@@ -79,8 +79,8 @@ export default function UserDashboard() {
             <div className="mb-8">
               <div className="mb-5">
                 <div className="flex items-center gap-2.5">
-                  <MessageSquare className="h-5 w-5 text-blue-500" />
-                  <h2 className="text-xl font-bold text-gray-900">
+                  <MessageSquare className="h-6 w-6 text-blue-500" />
+                  <h2 className="text-2xl font-bold text-gray-900">
                     Discussion Feed
                   </h2>
                 </div>
@@ -110,8 +110,8 @@ export default function UserDashboard() {
             <Card className="bg-white rounded-xl shadow-sm border-0 overflow-hidden">
               <CardHeader className="pb-3">
                 <div className="flex items-center gap-2">
-                  <FileText className="h-5 w-5 text-green-500" />
-                  <CardTitle className="text-lg font-semibold text-gray-900">
+                  <FileText className="h-6 w-6 text-green-500" />
+                  <CardTitle className="text-xl font-semibold text-gray-900">
                     Relevant Blogs
                   </CardTitle>
                 </div>
