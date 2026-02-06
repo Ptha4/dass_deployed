@@ -198,12 +198,12 @@ export default function SearchBar() {
     >
       <Button
         variant="outline"
-        className="relative w-full justify-start text-sm text-muted-foreground"
+        className="relative w-full bg-gray-100 border-none rounded-full hover:bg-gray-200 text-sm text-gray-600 font-normal h-9 px-4 focus:ring-2 focus:ring-blue-100 transition-all"
         onClick={() => setOpen(true)}
       >
-        <Search className="mr-2 h-4 w-4" />
-        <span className="truncate w-full text-left">Search</span>
-        <kbd className="pointer-events-none absolute right-1.5 top-1.5 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
+        <Search className="mr-2 h-4 w-4 text-gray-500" />
+        <span className="truncate w-full text-left">Search...</span>
+        <kbd className="pointer-events-none absolute right-2 hidden h-5 select-none items-center gap-1 rounded bg-white px-1.5 font-mono text-[10px] font-medium opacity-70 sm:flex border border-gray-200">
           {isMac ? (
             <span className="text-xs">⌘</span>
           ) : (

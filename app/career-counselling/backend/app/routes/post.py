@@ -1,14 +1,23 @@
 from fastapi import APIRouter, HTTPException, Depends
-from typing import List
+from typing import List, Optional
+from pydantic import BaseModel
 from app.models.post import Post, PostResponse, PostCreate, PostLike
+from app.models.comment import Comment, CommentCreate, CommentResponse
 from app.managers.post import PostManager
+from app.managers.comment import CommentManager
 from app.managers.expert import ExpertManager
 from app.core.auth_utils import get_current_user, require_user, require_expert
 from datetime import datetime
 
 router = APIRouter()
 post_manager = PostManager()
+comment_manager = CommentManager()
 expert_manager = ExpertManager()
+
+
+class PostCommentCreate(BaseModel):
+    content: str
+    parent_id: Optional[str] = None
 
 
 @router.post("/posts", response_model=PostResponse)
@@ -41,6 +50,43 @@ async def create_post(post_data: PostCreate, user_data: dict = Depends(require_e
         raise HTTPException(
             status_code=500,
             detail="Failed to create post"
+        )
+
+
+@router.get("/posts")
+async def get_all_posts(skip: int = 0, limit: int = 50):
+    """
+    Get all posts from all experts (public endpoint)
+    """
+    try:
+        posts = await post_manager.get_all_posts(skip=skip, limit=limit)
+        return posts
+    except Exception as e:
+        print(f"Error retrieving all posts: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to retrieve posts"
+        )
+
+
+@router.get("/posts/{post_id}", response_model=PostResponse)
+async def get_post(post_id: str):
+    """
+    Get a single post by ID
+    """
+    try:
+        post = await post_manager.get_post(post_id)
+        if not post:
+            raise HTTPException(
+                status_code=404,
+                detail="Post not found"
+            )
+        return post
+    except Exception as e:
+        print(f"Error retrieving post: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to retrieve post"
         )
 
 
@@ -78,6 +124,49 @@ async def like_post(post_id: str, user_data: dict = Depends(require_user)):
         raise HTTPException(
             status_code=500,
             detail="Failed to like post"
+        )
+
+
+@router.post("/posts/{post_id}/comment", response_model=CommentResponse)
+async def comment_on_post(post_id: str, comment_data: PostCommentCreate, user_data: dict = Depends(require_user)):
+    """
+    Add a comment to a post
+    """
+    try:
+        # Create comment with post type
+        comment = Comment(
+            content=comment_data.content,
+            type="post",
+            page_id=post_id,
+            parent_id=comment_data.parent_id,
+            userID=user_data["email"],  # CommentManager expects email
+            createdAt=datetime.utcnow(),
+            updatedAt=datetime.utcnow()
+        )
+        
+        created_comment = await comment_manager.create_comment(comment)
+        return created_comment
+    except Exception as e:
+        print(f"Error creating comment: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to create comment"
+        )
+
+
+@router.get("/posts/{post_id}/comments", response_model=List[CommentResponse])
+async def get_post_comments(post_id: str, skip: int = 0, limit: int = 50):
+    """
+    Get all comments for a post
+    """
+    try:
+        result = await comment_manager.get_comments(post_id, "post", skip, limit)
+        return result.get("comments", [])
+    except Exception as e:
+        print(f"Error retrieving comments: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to retrieve comments"
         )
 
 

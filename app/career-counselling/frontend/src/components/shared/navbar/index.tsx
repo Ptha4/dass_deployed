@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import Image from "next/image"; // Import the Image component
+import Image from "next/image";
 import {
   Menu,
   User,
@@ -10,9 +10,12 @@ import {
   ShieldCheck,
   GraduationCap,
   MessageCircle,
-  Crown,
   Settings,
   LogOut,
+  Bell,
+  LayoutDashboard,
+  Building2,
+  Sparkles,
 } from "lucide-react";
 import {
   Sheet,
@@ -73,168 +76,189 @@ export default function Navbar() {
 
   return (
     <>
-      <nav
-        className={`fixed top-0 w-full z-50 transition-all duration-300 ${
-          isScrolled ? "bg-white shadow-md" : "bg-white/95 backdrop-blur-sm"
-        }`}
-      >
-        <div className="container mx-auto px-4">
-          <div className="flex items-center justify-between h-16">
+      {/* Premium Glassmorphic Navbar */}
+      <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100 transition-all duration-300">
+        <div className="max-w-7xl mx-auto px-4">
+          <div className="flex items-center justify-between h-20">
             {/* Logo */}
-            <Link href="/" className="flex items-center space-x-2">
-              {/* Replace text logo with Image component */}
+            <Link href="/" className="flex items-center space-x-2 group">
               <Image
                 src="/logo.png"
                 alt="AlumNiti Logo"
-                width={40}
-                height={10}
+                width={44}
+                height={44}
                 priority
+                className="transition-transform group-hover:scale-105"
               />
-              <span className="text-xl font-bold text-primary-blue">
+              <span className="text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
                 AlumNiti
               </span>
             </Link>
 
             {/* Desktop Navigation */}
-            <div className="hidden md:flex items-center space-x-6">
+            <div className="hidden md:flex items-center space-x-1">
               <NavLinks />
-              <div className="ml-4">
+            </div>
+
+            {/* Action Area - Right Side */}
+            <div className="hidden md:flex items-center space-x-3">
+              {/* Search Bar */}
+              <div className="mr-2">
                 <SearchBar />
               </div>
 
-              {/* Chatbot Button - Desktop */}
+              {/* Experts Button - Ghost Style */}
+              <Link href="/experts">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-full px-4 h-9 font-medium"
+                >
+                  <GraduationCap className="h-4 w-4 mr-2" />
+                  Experts
+                </Button>
+              </Link>
+
+              {/* AI Chat Button - Primary CTA */}
               <Button
                 onClick={() => setIsChatbotOpen(!isChatbotOpen)}
                 size="sm"
-                className="group inline-flex h-9 w-max items-center justify-center rounded-md bg-gradient-to-r from-blue-100 to-purple-100 text-primary-blue hover:from-blue-200 hover:to-purple-200 transition-colors"
+                className="bg-indigo-600 text-white hover:bg-indigo-700 shadow-md shadow-indigo-200 rounded-full px-4 h-9 font-medium transition-all hover:shadow-lg hover:shadow-indigo-300"
               >
-                <MessageCircle className="h-4 w-4 mr-2" />
-                <span>AI Chat</span>
+                <Sparkles className="h-4 w-4 mr-2" />
+                AI Chat
               </Button>
 
+              {/* Divider */}
+              <div className="h-6 w-px bg-gray-200 mx-2" />
+
               {/* Authentication Controls */}
-              <div className="flex items-center space-x-4">
-                {isAuthenticated && user ? (
-                  <div className="flex items-center space-x-2">
+              {isAuthenticated && user ? (
+                <div className="flex items-center space-x-2">
+                  {/* Notifications with Badge */}
+                  <div className="relative">
                     <NotificationsDropdown />
+                  </div>
 
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="relative h-9 w-9 rounded-full"
-                        >
-                          <Avatar className="h-9 w-9">
-                            <AvatarImage
-                              src={
-                                typeof user.profileImage === "string"
-                                  ? user.profileImage
-                                  : ""
-                              }
-                              alt={`${user.firstName} ${user.lastName}`}
-                            />
-                            <AvatarFallback className="bg-primary-blue text-white">
-                              {getUserInitials()}
-                            </AvatarFallback>
-                          </Avatar>
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent
-                        className="w-56"
-                        align="end"
-                        forceMount
+                  {/* User Profile Dropdown */}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="relative h-9 w-9 rounded-full hover:ring-2 hover:ring-gray-200 transition-all"
                       >
-                        <div className="flex items-center justify-start gap-2 p-2">
-                          <div className="flex flex-col space-y-1 leading-none">
-                            <p className="font-medium text-sm">
-                              {user.firstName} {user.lastName}
-                            </p>
-                            <p className="w-[200px] truncate text-xs text-muted-foreground">
-                              {user.email}
-                            </p>
-                          </div>
+                        <Avatar className="h-9 w-9 ring-2 ring-white">
+                          <AvatarImage
+                            src={
+                              typeof user.profileImage === "string"
+                                ? user.profileImage
+                                : ""
+                            }
+                            alt={`${user.firstName} ${user.lastName}`}
+                          />
+                          <AvatarFallback className="bg-gradient-to-br from-blue-500 to-indigo-500 text-white font-semibold">
+                            {getUserInitials()}
+                          </AvatarFallback>
+                        </Avatar>
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent
+                      className="w-56"
+                      align="end"
+                      forceMount
+                    >
+                      <div className="flex items-center justify-start gap-2 p-2">
+                        <div className="flex flex-col space-y-1 leading-none">
+                          <p className="font-medium text-sm">
+                            {user.firstName} {user.lastName}
+                          </p>
+                          <p className="w-[200px] truncate text-xs text-muted-foreground">
+                            {user.email}
+                          </p>
                         </div>
+                      </div>
 
-                        <DropdownMenuSeparator />
-                        <DropdownMenuGroup>
-                          <DropdownMenuItem asChild>
-                            <Link href="/profile" className="cursor-pointer">
-                              <User className="mr-2 h-4 w-4" />
-                              <span>Profile</span>
-                            </Link>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem asChild>
-                            <Link href="/wallet" className="cursor-pointer">
-                              <Wallet className="mr-2 h-4 w-4" />
-                              <span>Wallet</span>
-                            </Link>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem asChild>
-                            <Link href="/dashboard" className="cursor-pointer">
-                              <Settings className="mr-2 h-4 w-4" />
-                              <span>Dashboard</span>
-                            </Link>
-                          </DropdownMenuItem>
-
-                          {user.isAdmin && (
-                            <DropdownMenuItem asChild>
-                              <Link href="/admin" className="cursor-pointer">
-                                <ShieldCheck className="mr-2 h-4 w-4" />
-                                <span>Admin Dashboard</span>
-                              </Link>
-                            </DropdownMenuItem>
-                          )}
-
-                          {user.isExpert && (
-                            <DropdownMenuItem asChild>
-                              <Link
-                                href={`/experts/${user.expertId}`}
-                                className="cursor-pointer"
-                              >
-                                <GraduationCap className="mr-2 h-4 w-4" />
-                                <span>Expert Dashboard</span>
-                              </Link>
-                            </DropdownMenuItem>
-                          )}
-                        </DropdownMenuGroup>
-                        <DropdownMenuItem 
-                          onClick={() => {
-                            // Close the dropdown when selecting subscribe button
-                            setIsMobileMenuOpen(false);
-                          }}
-                          className="p-0"
-                        >
-                          <SubscribeButton className="w-full justify-start cursor-pointer rounded px-2 py-1.5 text-sm" showIcon={true} />
+                      <DropdownMenuSeparator />
+                      <DropdownMenuGroup>
+                        <DropdownMenuItem asChild>
+                          <Link href="/profile" className="cursor-pointer">
+                            <User className="mr-2 h-4 w-4" />
+                            <span>Profile</span>
+                          </Link>
                         </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          onClick={logout}
-                          className="cursor-pointer text-red-600 focus:text-red-600"
-                        >
-                          <LogOut className="mr-2 h-4 w-4" />
-                          <span>Log out</span>
+                        <DropdownMenuItem asChild>
+                          <Link href="/wallet" className="cursor-pointer">
+                            <Wallet className="mr-2 h-4 w-4" />
+                            <span>Wallet</span>
+                          </Link>
                         </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                ) : (
-                  <div className="flex items-center space-x-2">
-                    <Link
-                      href="/login"
-                      className="text-secondary-darkGray hover:text-primary-blue transition-colors px-3 py-1.5 rounded-md hover:bg-slate-100"
-                    >
-                      Login
-                    </Link>
-                    <Link
-                      href="/register"
-                      className="bg-primary-blue text-white px-4 py-2 rounded-md hover:bg-primary-blue/90 transition-colors whitespace-nowrap"
-                    >
-                      Sign Up
-                    </Link>
-                  </div>
-                )}
-              </div>
+                        <DropdownMenuItem asChild>
+                          <Link href="/dashboard" className="cursor-pointer">
+                            <Settings className="mr-2 h-4 w-4" />
+                            <span>Dashboard</span>
+                          </Link>
+                        </DropdownMenuItem>
+
+                        {user.isAdmin && (
+                          <DropdownMenuItem asChild>
+                            <Link href="/admin" className="cursor-pointer">
+                              <ShieldCheck className="mr-2 h-4 w-4" />
+                              <span>Admin Dashboard</span>
+                            </Link>
+                          </DropdownMenuItem>
+                        )}
+
+                        {user.isExpert && (
+                          <DropdownMenuItem asChild>
+                            <Link
+                              href={`/experts/${user.expertId}`}
+                              className="cursor-pointer"
+                            >
+                              <GraduationCap className="mr-2 h-4 w-4" />
+                              <span>Expert Dashboard</span>
+                            </Link>
+                          </DropdownMenuItem>
+                        )}
+                      </DropdownMenuGroup>
+                      <DropdownMenuItem
+                        onClick={() => {
+                          setIsMobileMenuOpen(false);
+                        }}
+                        className="p-0"
+                      >
+                        <SubscribeButton
+                          className="w-full justify-start cursor-pointer rounded px-2 py-1.5 text-sm"
+                          showIcon={true}
+                        />
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        onClick={logout}
+                        className="cursor-pointer text-red-600 focus:text-red-600"
+                      >
+                        <LogOut className="mr-2 h-4 w-4" />
+                        <span>Log out</span>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              ) : (
+                <div className="flex items-center space-x-2">
+                  <Link
+                    href="/login"
+                    className="text-gray-600 hover:text-gray-900 transition-colors px-4 py-2 rounded-full hover:bg-gray-50 font-medium text-sm"
+                  >
+                    Login
+                  </Link>
+                  <Link
+                    href="/register"
+                    className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-5 py-2 rounded-full hover:from-blue-700 hover:to-indigo-700 transition-all shadow-md hover:shadow-lg font-medium text-sm"
+                  >
+                    Sign Up
+                  </Link>
+                </div>
+              )}
             </div>
 
             {/* Mobile Navigation */}

@@ -16,10 +16,13 @@ class Post(PostBase):
     likes: int = 0
     likedBy: List[str] = []  # List of user IDs who have liked the post
     views: int = 0  # Track the number of views for analytics
+    tags: List[str] = []  # Category tags for the post
 
 
 class PostResponse(Post):
     expertDetails: dict  # Will contain expert name and other details
+    commentsCount: Optional[int] = 0  # Number of comments on the post
+    tags: Optional[List[str]] = []  # Category tags for the post
 
 
 class PostCreate(PostBase):

@@ -56,9 +56,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     router.push("/login");
   }, [router]);
 
-  // Set up interceptor for 401 responses
+  // Set up interceptors for authentication
   useEffect(() => {
-    const interceptor = axios.interceptors.response.use(
+    // Request interceptor to add token to all requests
+    const requestInterceptor = axios.interceptors.request.use(
+      (config) => {
+        const token = localStorage.getItem("token");
+        if (token) {
+          config.headers.Authorization = `Bearer ${token}`;
+        }
+        return config;
+      },
+      (error) => {
+        return Promise.reject(error);
+      }
+    );
+
+    // Response interceptor for 401 responses
+    const responseInterceptor = axios.interceptors.response.use(
       (response) => response,
       (error) => {
         if (error.response && error.response.status === 401) {
@@ -123,14 +138,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         } catch (error) {
           console.error("Error parsing JWT token:", error);
         }
-      } catch (error: any) {
+      } catch (error) {
         console.error("Auth check error:", error);
-        // Only logout automatically on explicit 401 Unauthorized responses.
-        // Network errors, timeouts, or aborted requests should not force a logout
-        // so the user is not bounced back to the login page unnecessarily.
-        if (error?.response?.status === 401) {
-          logout();
-        }
+        logout();
       } finally {
         setLoading(false);
       }
@@ -146,7 +156,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     // Cleanup function
     return () => {
-      axios.interceptors.response.eject(interceptor);
+      axios.interceptors.request.eject(requestInterceptor);
+      axios.interceptors.response.eject(responseInterceptor);
       window.removeEventListener("user-authenticated", handleAuthEvent);
     };
   }, [logout]);

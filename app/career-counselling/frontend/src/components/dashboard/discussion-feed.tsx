@@ -1,21 +1,15 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import {
-  MessageSquare,
-  Heart,
-  Send,
-  Clock,
-  ChevronDown,
-  ChevronUp,
-} from "lucide-react";
+import { MessageSquare, Heart, Clock } from "lucide-react";
 import axios from "axios";
 import { formatDistanceToNow } from "date-fns";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface ExpertDetails {
   name: string;
@@ -32,23 +26,15 @@ interface Post {
   likes: number;
   likedBy: string[];
   views: number;
-}
-
-interface Comment {
-  commentID: string;
-  content: string;
-  userID: string;
-  createdAt: string;
-  parent_id?: string;
+  tags?: string[];
+  commentsCount?: number;
 }
 
 export function DiscussionFeed() {
+  const router = useRouter();
+  const { user } = useAuth();
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
-  const [expandedPost, setExpandedPost] = useState<string | null>(null);
-  const [comments, setComments] = useState<{ [key: string]: Comment[] }>({});
-  const [newComment, setNewComment] = useState<{ [key: string]: string }>({});
-  const [loadingComments, setLoadingComments] = useState<{ [key: string]: boolean }>({});
 
   useEffect(() => {
     fetchPosts();
@@ -67,64 +53,42 @@ export function DiscussionFeed() {
     }
   };
 
-  const fetchComments = async (postId: string) => {
-    if (comments[postId]) {
-      return; // Already loaded
-    }
-    
-    setLoadingComments({ ...loadingComments, [postId]: true });
-    try {
-      const response = await axios.get(
-        `${process.env.NEXT_PUBLIC_API_URL}/comments?page_id=${postId}&type=post&limit=20`
-      );
-      setComments({ ...comments, [postId]: response.data.comments || [] });
-    } catch (error) {
-      console.error("Error fetching comments:", error);
-      setComments({ ...comments, [postId]: [] });
-    } finally {
-      setLoadingComments({ ...loadingComments, [postId]: false });
-    }
-  };
+  const handleLike = async (e: React.MouseEvent, postId: string, currentLikes: number, likedBy: string[]) => {
+    // CRITICAL: Stop propagation to prevent card click
+    e.stopPropagation();
 
-  const handleLike = async (postId: string) => {
+    const userId = user?._id || "";
+    
+    // Optimistic UI update
+    const isLiked = likedBy.includes(userId);
+    const updatedPosts = posts.map((post) => {
+      if (post.postId === postId) {
+        return {
+          ...post,
+          likes: isLiked ? currentLikes - 1 : currentLikes + 1,
+          likedBy: isLiked
+            ? likedBy.filter((id) => id !== userId)
+            : [...likedBy, userId],
+        };
+      }
+      return post;
+    });
+    setPosts(updatedPosts);
+
+    // Send API request in background
     try {
       await axios.post(
         `${process.env.NEXT_PUBLIC_API_URL}/posts/${postId}/like`
       );
-      // Refresh posts to get updated like count
-      fetchPosts();
     } catch (error) {
       console.error("Error liking post:", error);
+      // Rollback on error
+      setPosts(posts);
     }
   };
 
-  const handleAddComment = async (postId: string) => {
-    if (!newComment[postId]?.trim()) return;
-
-    try {
-      await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/comments`, {
-        content: newComment[postId],
-        type: "post",
-        page_id: postId,
-        parent_id: null,
-      });
-      
-      setNewComment({ ...newComment, [postId]: "" });
-      // Refresh comments
-      setComments({ ...comments, [postId]: [] as Comment[] }); // Clear to force reload
-      await fetchComments(postId);
-    } catch (error) {
-      console.error("Error adding comment:", error);
-    }
-  };
-
-  const toggleComments = async (postId: string) => {
-    if (expandedPost === postId) {
-      setExpandedPost(null);
-    } else {
-      setExpandedPost(postId);
-      await fetchComments(postId);
-    }
+  const navigateToPost = (postId: string) => {
+    router.push(`/posts/${postId}`);
   };
 
   if (loading) {
@@ -150,148 +114,114 @@ export function DiscussionFeed() {
 
   if (posts.length === 0) {
     return (
-      <Card>
-        <CardContent className="p-8 text-center">
-          <MessageSquare className="h-12 w-12 mx-auto text-gray-400 mb-3" />
-          <p className="text-muted-foreground">
-            No discussions yet. Check back later!
-          </p>
-        </CardContent>
-      </Card>
+      <div className="py-12 text-center">
+        <MessageSquare className="h-12 w-12 mx-auto text-gray-400 mb-3" />
+        <p className="text-muted-foreground">
+          No discussions yet. Check back later!
+        </p>
+      </div>
     );
   }
 
   return (
-    <div className="space-y-4">
-      {posts.map((post) => (
-        <Card key={post.postId} className="overflow-hidden hover:shadow-md transition-shadow">
-          <CardContent className="p-6">
+    <div className="space-y-0">
+      {posts.map((post, index) => (
+        <div key={post.postId}>
+          <div
+            className="py-6 hover:bg-gray-50/50 dark:hover:bg-gray-900/50 transition-colors cursor-pointer group"
+            onClick={() => navigateToPost(post.postId)}
+          >
             {/* Post Header */}
             <div className="flex items-start gap-4 mb-4">
-              <Avatar className="h-10 w-10">
+              <Avatar className="h-10 w-10 ring-2 ring-white dark:ring-gray-800">
                 <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-500 text-white">
                   {post.expertDetails.initials}
                 </AvatarFallback>
               </Avatar>
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="font-semibold text-sm">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1 flex-wrap">
+                  <span className="font-semibold text-sm text-gray-900 dark:text-gray-100">
                     {post.expertDetails.name}
                   </span>
                   <Badge variant="secondary" className="text-xs">
                     Expert
                   </Badge>
-                </div>
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <Clock className="h-3 w-3" />
-                  {formatDistanceToNow(new Date(post.createdAt), {
-                    addSuffix: true,
-                  })}
+                  <span className="text-xs text-muted-foreground">·</span>
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <Clock className="h-3 w-3" />
+                    {formatDistanceToNow(new Date(post.createdAt), {
+                      addSuffix: true,
+                    })}
+                  </div>
                 </div>
               </div>
             </div>
 
             {/* Post Content */}
-            <p className="text-sm text-gray-700 dark:text-gray-300 mb-4 whitespace-pre-wrap">
-              {post.content}
-            </p>
+            <div className="ml-14">
+              <p className="text-sm text-gray-700 dark:text-gray-300 mb-3 whitespace-pre-wrap line-clamp-3 leading-relaxed">
+                {post.content}
+              </p>
 
-            {/* Post Actions */}
-            <div className="flex items-center gap-4 pt-3 border-t">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => handleLike(post.postId)}
-                className="gap-2"
-              >
-                <Heart
-                  className={`h-4 w-4 ${
-                    post.likedBy?.length > 0 ? "fill-red-500 text-red-500" : ""
-                  }`}
-                />
-                <span className="text-xs">{post.likes}</span>
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => toggleComments(post.postId)}
-                className="gap-2"
-              >
-                <MessageSquare className="h-4 w-4" />
-                <span className="text-xs">
-                  {comments[post.postId]?.length || 0} Comments
-                </span>
-                {expandedPost === post.postId ? (
-                  <ChevronUp className="h-3 w-3" />
-                ) : (
-                  <ChevronDown className="h-3 w-3" />
-                )}
-              </Button>
-            </div>
-
-            {/* Comments Section */}
-            {expandedPost === post.postId && (
-              <div className="mt-4 pt-4 border-t space-y-4">
-                {/* Add Comment */}
-                <div className="flex gap-2">
-                  <Textarea
-                    placeholder="Write a comment..."
-                    value={newComment[post.postId] || ""}
-                    onChange={(e) =>
-                      setNewComment({ ...newComment, [post.postId]: e.target.value })
-                    }
-                    className="min-h-[60px] resize-none"
-                  />
-                  <Button
-                    size="icon"
-                    onClick={() => handleAddComment(post.postId)}
-                    disabled={!newComment[post.postId]?.trim()}
-                  >
-                    <Send className="h-4 w-4" />
-                  </Button>
+              {/* Tags */}
+              {post.tags && post.tags.length > 0 && (
+                <div className="flex flex-wrap gap-2 mb-3">
+                  {post.tags.map((tag, index) => (
+                    <Badge
+                      key={index}
+                      variant="outline"
+                      className={`text-xs ${
+                        tag.toLowerCase().includes("startup")
+                          ? "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-300"
+                          : tag.toLowerCase().includes("master")
+                          ? "bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-900/20 dark:text-purple-300"
+                          : tag.toLowerCase().includes("interview")
+                          ? "bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-300"
+                          : tag.toLowerCase().includes("career")
+                          ? "bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-900/20 dark:text-orange-300"
+                          : "bg-gray-50 text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-300"
+                      }`}
+                    >
+                      {tag}
+                    </Badge>
+                  ))}
                 </div>
+              )}
 
-                {/* Comments List */}
-                {loadingComments[post.postId] ? (
-                  <div className="text-center py-4">
-                    <p className="text-sm text-muted-foreground">Loading comments...</p>
-                  </div>
-                ) : comments[post.postId]?.length > 0 ? (
-                  <div className="space-y-3">
-                    {comments[post.postId].map((comment) => (
-                      <div key={comment.commentID} className="flex gap-3 pl-2">
-                        <Avatar className="h-8 w-8">
-                          <AvatarFallback className="bg-gray-200 text-xs">
-                            {comment.userID.substring(0, 2).toUpperCase()}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1 bg-gray-50 dark:bg-gray-900 rounded-lg p-3">
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="font-medium text-xs">
-                              {comment.userID}
-                            </span>
-                            <span className="text-xs text-muted-foreground">
-                              {formatDistanceToNow(new Date(comment.createdAt), {
-                                addSuffix: true,
-                              })}
-                            </span>
-                          </div>
-                          <p className="text-sm text-gray-700 dark:text-gray-300">
-                            {comment.content}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground text-center py-4">
-                    No comments yet. Be the first to comment!
-                  </p>
-                )}
+              {/* Post Actions - Like and Comment Count ONLY */}
+              <div className="flex items-center gap-6">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={(e) => handleLike(e, post.postId, post.likes, post.likedBy)}
+                  className="gap-2 hover:bg-red-50 dark:hover:bg-red-900/20 h-8 px-2 -ml-2"
+                >
+                  <Heart
+                    className={`h-4 w-4 transition-colors ${
+                      post.likedBy?.includes(user?._id || "")
+                        ? "fill-red-500 text-red-500"
+                        : "text-gray-500"
+                    }`}
+                  />
+                  <span className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                    {post.likes}
+                  </span>
+                </Button>
+                <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+                  <MessageSquare className="h-4 w-4 text-gray-500" />
+                  <span className="text-xs font-medium">
+                    {post.commentsCount || 0}
+                  </span>
+                </div>
               </div>
-            )}
-          </CardContent>
-        </Card>
+            </div>
+          </div>
+
+          {/* Divider between posts */}
+          {index < posts.length - 1 && (
+            <div className="border-b border-gray-100 dark:border-gray-800" />
+          )}
+        </div>
       ))}
     </div>
   );

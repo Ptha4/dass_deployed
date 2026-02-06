@@ -372,6 +372,74 @@ class UserManager:
             "activities": recent_activities
         }
 
+    async def get_user_dashboard_stats(self, user_email: str) -> Dict:
+        """Calculate dashboard stats for a specific user"""
+        from datetime import datetime, timedelta
+        
+        # Get user to calculate profile strength
+        user = await self.get_user_by_email(user_email)
+        if not user:
+            return {
+                "profileStrength": 0,
+                "unreadReplies": 0,
+                "upcomingMeetingsToday": 0,
+                "weeklyGoals": []
+            }
+        
+        # Calculate profile strength (out of 100)
+        profile_fields = [
+            user.firstName,
+            user.lastName,
+            user.email,
+            user.gender,
+            user.category and user.category != "unspecified",
+            user.home_state,
+            user.mobileNo
+        ]
+        filled_fields = sum(1 for field in profile_fields if field)
+        profile_strength = int((filled_fields / len(profile_fields)) * 100)
+        
+        # Count unread notifications
+        user_id_str = str(user.id) if hasattr(user, 'id') else None
+        unread_count = 0
+        if user_id_str:
+            unread_count = await self.db.notifications.count_documents({
+                "targetUserId": user_id_str,
+                "read": False
+            })
+        
+        # Count meetings scheduled for today
+        today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+        today_end = today_start + timedelta(days=1)
+        meetings_today = 0
+        if user_id_str:
+            meetings_today = await self.db.meetings.count_documents({
+                "userId": user_id_str,
+                "status": "scheduled",
+                "startTime": {"$gte": today_start, "$lt": today_end}
+            })
+        
+        # Weekly goals (static for now, can be made dynamic later)
+        weekly_goals = [
+            {"id": 1, "title": "Connect with 1 Mentor", "completed": False},
+            {"id": 2, "title": "Read 2 Articles", "completed": False},
+            {"id": 3, "title": "Update Profile", "completed": profile_strength >= 80},
+            {"id": 4, "title": "Join a Discussion", "completed": False}
+        ]
+        
+        # Check if user has any posts (for "Join a Discussion" goal)
+        if user_id_str:
+            user_posts = await self.db.posts.count_documents({"userId": user_id_str})
+            if user_posts > 0:
+                weekly_goals[3]["completed"] = True
+        
+        return {
+            "profileStrength": profile_strength,
+            "unreadReplies": unread_count,
+            "upcomingMeetingsToday": meetings_today,
+            "weeklyGoals": weekly_goals
+        }
+
     async def get_recent_activities(self, limit: int = 5) -> List[Dict]:
         activities = await self.db.activities.find({}).sort("timestamp", -1).limit(limit).to_list(None)
         for activity in activities:

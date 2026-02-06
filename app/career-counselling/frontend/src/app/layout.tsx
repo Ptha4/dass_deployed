@@ -3,7 +3,6 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import Navbar from "@/components/shared/navbar";
 import Footer from "@/components/shared/footer";
-import SiteBreadcrumb from "@/components/shared/breadcrumb";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as SonnerToaster } from "sonner";
@@ -56,10 +55,7 @@ export default function RootLayout({
       <body className={inter.className}>
         <AuthProvider>
           <Navbar />
-          <main className="min-h-screen pt-16">
-            <div className="container mx-auto px-4">
-              <SiteBreadcrumb />
-            </div>
+          <main className="min-h-screen pt-20">
             {children}
           </main>
           <Footer />

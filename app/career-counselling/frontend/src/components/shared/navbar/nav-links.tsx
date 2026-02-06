@@ -12,6 +12,7 @@ import {
   GraduationCap,
   ShieldCheck,
   User,
+  Building2,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
@@ -30,11 +31,13 @@ const ListItem = React.forwardRef<
   Omit<React.ComponentPropsWithoutRef<"a">, "title"> & {
     title: React.ReactNode;
     children?: React.ReactNode;
+    href: string;
   }
->(({ className, title, children, ...props }, ref) => {
+>(({ className, title, children, href, ...props }, ref) => {
   return (
     <NavigationMenuLink asChild>
       <Link
+        href={href}
         ref={ref as any}
         className={cn(
           "block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground",
@@ -129,12 +132,12 @@ export default function NavLinks() {
 
   return (
     <NavigationMenu>
-      <NavigationMenuList>
+      <NavigationMenuList className="space-x-1">
         {isAuthenticated && (
           <NavigationMenuItem>
             {hasMultipleDashboards ? (
               <>
-                <NavigationMenuTrigger>
+                <NavigationMenuTrigger className="text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100/50 rounded-full transition-all">
                   <span className="flex items-center gap-2">
                     <LayoutDashboard className="h-4 w-4" />
                     Dashboards
@@ -164,11 +167,11 @@ export default function NavLinks() {
               <NavigationMenuLink asChild>
                 <Link
                   href="/dashboard"
-                  className={navigationMenuTriggerStyle()}
+                  className="inline-flex h-9 w-max items-center justify-center rounded-full px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100/50 transition-all focus:outline-none focus:ring-2 focus:ring-blue-100"
                 >
                   <span className="flex items-center gap-2">
                     <LayoutDashboard className="h-4 w-4" />
-                    User Dashboard
+                    Dashboard
                   </span>
                 </Link>
               </NavigationMenuLink>
@@ -177,7 +180,12 @@ export default function NavLinks() {
         )}
 
         <NavigationMenuItem>
-          <NavigationMenuTrigger>Colleges</NavigationMenuTrigger>
+          <NavigationMenuTrigger className="text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100/50 rounded-full transition-all">
+            <span className="flex items-center gap-2">
+              <Building2 className="h-4 w-4" />
+              Colleges
+            </span>
+          </NavigationMenuTrigger>
           <NavigationMenuContent>
             <div className="grid w-[400px] gap-3 p-4 md:w-[500px] md:grid-cols-2">
               {collegesItems.map((item) => (
@@ -200,7 +208,12 @@ export default function NavLinks() {
         </NavigationMenuItem>
 
         <NavigationMenuItem>
-          <NavigationMenuTrigger>Content</NavigationMenuTrigger>
+          <NavigationMenuTrigger className="text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100/50 rounded-full transition-all">
+            <span className="flex items-center gap-2">
+              <Book className="h-4 w-4" />
+              Content
+            </span>
+          </NavigationMenuTrigger>
           <NavigationMenuContent>
             <div className="grid w-[400px] gap-3 p-4 md:w-[500px] md:grid-cols-2">
               {contentItems.map((item) => (
@@ -220,28 +233,6 @@ export default function NavLinks() {
               ))}
             </div>
           </NavigationMenuContent>
-        </NavigationMenuItem>
-
-        <NavigationMenuItem>
-          <div
-            className={cn(
-              navigationMenuTriggerStyle(),
-              "bg-gradient-to-r from-blue-100 to-purple-100 text-primary-blue hover:from-blue-200 hover:to-purple-200"
-            )}
-            onClick={() => (window.location.href = "/experts")}
-            role="button"
-            tabIndex={0}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                window.location.href = "/experts";
-              }
-            }}
-          >
-            <span className="flex items-center gap-2">
-              <GraduationCap className="h-4 w-4" />
-              Experts
-            </span>
-          </div>
         </NavigationMenuItem>
       </NavigationMenuList>
     </NavigationMenu>

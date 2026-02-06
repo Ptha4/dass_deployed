@@ -128,3 +128,16 @@ class DashboardStats(BaseModel):
     totalVideos: int
     pendingExpertApprovals: int
     activities: List[ActivityResponse]
+
+
+class WeeklyGoal(BaseModel):
+    id: int
+    title: str
+    completed: bool
+
+
+class UserDashboardStats(BaseModel):
+    profileStrength: int  # Percentage 0-100
+    unreadReplies: int  # Count of unread notifications
+    upcomingMeetingsToday: int  # Count of meetings scheduled for today
+    weeklyGoals: List[WeeklyGoal]

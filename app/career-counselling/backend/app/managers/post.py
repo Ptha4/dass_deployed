@@ -201,6 +201,51 @@ class PostManager:
             print(f"Error deleting post: {e}")
             return False
 
+    async def get_all_posts(self, skip: int = 0, limit: int = 50) -> List[PostResponse]:
+        """
+        Get all posts with expert details and comment counts.
+
+        Args:
+            skip (int): Number of posts to skip for pagination
+            limit (int): Maximum number of posts to return
+
+        Returns:
+            List[PostResponse]: List of all posts with details
+        """
+        try:
+            # Get posts sorted by creation time
+            cursor = self.collection.find().sort("createdAt", -1).skip(skip).limit(limit)
+            
+            posts = []
+            async for post in cursor:
+                post["postId"] = str(post["_id"])
+                
+                # Get expert details
+                expert = await self.expert_manager.get_expert(post["expertId"])
+                if expert:
+                    user_data = {
+                        "name": f"{expert.userDetails.firstName} {expert.userDetails.lastName}".strip(),
+                        "initials": f"{expert.userDetails.firstName[0]}{expert.userDetails.lastName[0]}",
+                    }
+                    post["expertDetails"] = user_data
+                else:
+                    post["expertDetails"] = {"name": "Unknown Expert", "initials": "UE"}
+                
+                # Get comment count for this post
+                comments_collection = self.db.comments
+                comment_count = await comments_collection.count_documents({
+                    "page_id": post["postId"],
+                    "type": "post"
+                })
+                post["commentsCount"] = comment_count
+                
+                posts.append(PostResponse(**post))
+            
+            return posts
+        except Exception as e:
+            print(f"Error retrieving all posts: {e}")
+            return []
+
     async def increment_view(self, post_id: str) -> bool:
         """
         Increment the view count for a post.

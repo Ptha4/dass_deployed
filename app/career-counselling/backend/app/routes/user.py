@@ -182,6 +182,26 @@ async def get_profile_minimal(user_data: dict = Depends(require_user)):
     }
 
 
+@router.get("/dashboard-stats")
+async def get_user_dashboard_stats(user_data: dict = Depends(require_user)):
+    """
+    Get dashboard statistics for the current user including:
+    - Profile strength percentage
+    - Unread notifications count
+    - Upcoming meetings today count
+    - Weekly goals with completion status
+    """
+    try:
+        stats = await user_manager.get_user_dashboard_stats(user_data["email"])
+        return stats
+    except Exception as e:
+        print(f"Error fetching user dashboard stats: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to load dashboard stats: {str(e)}"
+        )
+
+
 @router.post("/admin/initialize-wallets", dependencies=[Depends(require_admin)])
 async def admin_initialize_wallets():
     """
