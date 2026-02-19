@@ -127,8 +127,8 @@ export default function Sidebar() {
       icon: <BookOpen className="h-5 w-5" />,
       subItems: [
         {
-          title: "Posts",
-          href: "/posts",
+          title: "Forums",
+          href: "/forums",
           icon: <MessageSquare className="h-5 w-5" />,
         },
         {

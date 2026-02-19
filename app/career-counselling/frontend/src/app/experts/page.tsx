@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/pagination";
 import { Expert } from "@/types";
 import ExpertFilters from "@/components/experts/expert-filters";
+import { ExpertsFilterSidebar } from "@/components/experts/experts-filter-sidebar";
 
 // Main Experts Page Component
 export default function ExpertsPage() {
@@ -23,11 +24,16 @@ export default function ExpertsPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [retries, setRetries] = useState(0);
+  const [savedPreferences, setSavedPreferences] = useState<any>(null);
+  const [isFilterCollapsed, setIsFilterCollapsed] = useState(false);
 
   // Simplified filters state
   const [filters, setFilters] = useState({
-    sortBy: "none",
-    availabilityFilter: "all",
+    fields: [],
+    goals: [],
+    educationLevel: "",
+    availability: "all",
+    sortBy: "rating",
   });
 
   // Pagination state
@@ -47,12 +53,27 @@ export default function ExpertsPage() {
       };
       
       // Add filters to query params
-      if (filters.availabilityFilter === "available") {
-        params.available = true;
+      if (filters.availability !== "all") {
+        params.availability = filters.availability;
       }
       
       if (filters.sortBy && filters.sortBy !== "none") {
         params.sortBy = filters.sortBy;
+      }
+
+      // Add field filters
+      if (filters.fields && filters.fields.length > 0) {
+        params.fields = filters.fields.join(',');
+      }
+
+      // Add goal filters
+      if (filters.goals && filters.goals.length > 0) {
+        params.goals = filters.goals.join(',');
+      }
+
+      // Add education level filter
+      if (filters.educationLevel) {
+        params.educationLevel = filters.educationLevel;
       }
       
       const response = await axios.get(`/api/experts`, { params });
@@ -96,11 +117,33 @@ export default function ExpertsPage() {
   // Reset filters function
   const resetFilters = () => {
     setFilters({
-      sortBy: "none",
-      availabilityFilter: "all",
+      fields: [],
+      goals: [],
+      educationLevel: "",
+      availability: "all",
+      sortBy: "rating",
     });
     setCurrentPage(1);
   };
+
+  const handleFiltersChange = (newFilters: any) => {
+    setFilters(newFilters);
+  };
+
+  // Load saved preferences
+  useEffect(() => {
+    const loadPreferences = () => {
+      try {
+        const saved = localStorage.getItem("mentorPreferences");
+        if (saved) {
+          setSavedPreferences(JSON.parse(saved));
+        }
+      } catch (error) {
+        console.error("Error loading preferences:", error);
+      }
+    };
+    loadPreferences();
+  }, []);
 
   // Retry handler
   const handleRetry = () => {
@@ -181,25 +224,32 @@ export default function ExpertsPage() {
     <div className="container mx-auto p-6">
       <h1 className="text-3xl font-bold mb-8">Our Experts</h1>
 
-      <div className="flex flex-col lg:flex-row gap-8">
-        <aside className="lg:w-1/4 overflow-y-auto pr-2">
-          <div className="pb-16 sticky top-4">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-lg font-semibold">Filters</h2>
-              <Button
-                variant="default"
-                size="sm"
-                onClick={resetFilters}
-                className="bg-black text-white hover:bg-gray-800 text-xs"
-              >
-                Reset All
-              </Button>
-            </div>
-            <ExpertFilters filters={filters} onChange={setFilters} />
-          </div>
-        </aside>
+      <div className={`grid grid-cols-1 gap-6 ${isFilterCollapsed ? 'lg:grid-cols-1' : 'lg:grid-cols-4'}`}>
+        {/* Left Sidebar - Filters (collapsible) */}
+        {!isFilterCollapsed && (
+          <aside className="lg:col-span-1">
+            <ExpertsFilterSidebar
+              onFiltersChange={handleFiltersChange}
+              savedPreferences={savedPreferences}
+              isCollapsed={isFilterCollapsed}
+              onToggleCollapse={() => setIsFilterCollapsed(!isFilterCollapsed)}
+            />
+          </aside>
+        )}
 
-        <main className="lg:w-3/4 relative">
+        <main className={isFilterCollapsed ? 'lg:col-span-1' : 'lg:col-span-3'}>
+          {/* Filter toggle button when collapsed */}
+          {isFilterCollapsed && (
+            <div className="mb-4">
+              <ExpertsFilterSidebar
+                onFiltersChange={handleFiltersChange}
+                savedPreferences={savedPreferences}
+                isCollapsed={isFilterCollapsed}
+                onToggleCollapse={() => setIsFilterCollapsed(!isFilterCollapsed)}
+              />
+            </div>
+          )}
+
           {loading && experts.length > 0 ? (
             <div className="absolute inset-0 flex justify-center items-center z-10 bg-white/80">
               <div className="w-full">

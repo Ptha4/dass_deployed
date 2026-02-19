@@ -69,6 +69,8 @@ import CreatePost from "@/components/experts/detail/create-post";
 import ExpertPosts from "@/components/experts/detail/expert-posts";
 import MarkdownViewer from "@/components/shared/markdown-viewer";
 import UpcomingMeetings from "@/components/experts/detail/upcoming-meetings";
+import { VideoManagement } from "@/components/experts/video-management";
+import { BlogManagement } from "@/components/experts/blog-management";
 
 interface ExpertDashboardProps {
   expert: Expert;
@@ -807,24 +809,55 @@ export default function ExpertDashboard({
             </CardContent>
           </Card>
 
-          {/* Your Posts Feed - Moved up */}
+          {/* Your Content - Posts, Videos, Blogs */}
           <Card className="bg-white shadow-sm">
             <CardHeader className="pb-4">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-2xl font-semibold text-gray-900">Your Posts</CardTitle>
-                <Badge variant="outline" className="text-xs font-normal">
-                  {analytics.content.postsCount} published
-                </Badge>
-              </div>
+              <CardTitle className="text-2xl font-semibold text-gray-900">Your Content</CardTitle>
             </CardHeader>
             <CardContent className="pt-4">
-              <ExpertPosts
-                key={postRefreshTrigger}
-                expertId={expert.expertID}
-                expertName={`${expert.userDetails.firstName} ${expert.userDetails.lastName}`}
-                expertInitials={expertInitials}
-                isExpertLoggedIn={true}
-              />
+              <Tabs defaultValue="posts" className="w-full">
+                <TabsList className="grid w-full grid-cols-3 mb-6">
+                  <TabsTrigger value="posts" className="gap-2">
+                    <MessageSquare className="h-4 w-4" />
+                    Posts
+                    <Badge variant="secondary" className="ml-1 text-xs">
+                      {analytics.content.postsCount}
+                    </Badge>
+                  </TabsTrigger>
+                  <TabsTrigger value="videos" className="gap-2">
+                    <Video className="h-4 w-4" />
+                    Videos
+                    <Badge variant="secondary" className="ml-1 text-xs">
+                      {analytics.content.videosCount}
+                    </Badge>
+                  </TabsTrigger>
+                  <TabsTrigger value="blogs" className="gap-2">
+                    <FileText className="h-4 w-4" />
+                    Blogs
+                    <Badge variant="secondary" className="ml-1 text-xs">
+                      {analytics.content.blogsCount}
+                    </Badge>
+                  </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="posts" className="space-y-4">
+                  <ExpertPosts
+                    key={postRefreshTrigger}
+                    expertId={expert.expertID}
+                    expertName={`${expert.userDetails.firstName} ${expert.userDetails.lastName}`}
+                    expertInitials={expertInitials}
+                    isExpertLoggedIn={true}
+                  />
+                </TabsContent>
+
+                <TabsContent value="videos" className="space-y-4">
+                  <VideoManagement />
+                </TabsContent>
+
+                <TabsContent value="blogs" className="space-y-4">
+                  <BlogManagement />
+                </TabsContent>
+              </Tabs>
             </CardContent>
           </Card>
         </div>

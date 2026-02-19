@@ -132,6 +132,13 @@ export default function MobileNav({
                     <span className="text-sm">Videos</span>
                   </Link>
                   <Link
+                    href="/forums"
+                    className="flex items-center gap-3 px-3 py-2 rounded-md transition-colors hover:bg-secondary/80"
+                    onClick={onClose}
+                   >
+                    <span className="text-sm">Forums</span>
+                  </Link>
+                  <Link
                     href="/resources"
                     className="flex items-center gap-3 px-3 py-2 rounded-md transition-colors hover:bg-secondary/80"
                     onClick={onClose}

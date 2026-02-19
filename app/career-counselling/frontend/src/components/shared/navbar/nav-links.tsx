@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import {
   Book,
   BookOpen,
@@ -13,6 +14,7 @@ import {
   ShieldCheck,
   User,
   Building2,
+  MessageSquare,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
@@ -34,6 +36,9 @@ const ListItem = React.forwardRef<
     href: string;
   }
 >(({ className, title, children, href, ...props }, ref) => {
+  const pathname = usePathname();
+  const isActive = pathname === href;
+  
   return (
     <NavigationMenuLink asChild>
       <Link
@@ -41,6 +46,7 @@ const ListItem = React.forwardRef<
         ref={ref as any}
         className={cn(
           "block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground",
+          isActive && "bg-accent text-accent-foreground",
           className
         )}
         {...props}
@@ -94,6 +100,12 @@ export default function NavLinks() {
       href: "/videos",
       description: "Watch educational and informative videos",
       icon: <Video className="h-4 w-4" />,
+    },
+    {
+      title: "Forums",
+      href: "/forums",
+      description: "Join discussions and connect with the community",
+      icon: <MessageSquare className="h-4 w-4" />,
     },
   ];
 

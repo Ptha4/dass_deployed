@@ -3,35 +3,38 @@
 import { Button } from "@/components/ui/button";
 import { Search, UserCircle, Calendar, Bell } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { UpcomingEventsWidget } from "./upcoming-events-widget";
 
 interface WelcomeHeaderProps {
   userName?: string;
   unreadReplies?: number;
   upcomingMeetingsToday?: number;
+  onFindMentor?: () => void;
 }
 
 export function WelcomeHeader({
   userName,
   unreadReplies = 0,
   upcomingMeetingsToday = 0,
+  onFindMentor,
 }: WelcomeHeaderProps) {
   const router = useRouter();
 
   return (
-    <div className="pb-8">
+    <div className="pb-10">
       <div className="px-6 sm:px-8 lg:px-12">
-        <div className="bg-gradient-to-r from-blue-50 via-white to-white rounded-2xl p-10 shadow-sm">
-          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-8">
+        <div className="bg-gradient-to-r from-blue-50 via-purple-50 to-pink-50 rounded-3xl p-12 shadow-lg">
+          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-10">
         {/* Left Side - Text & Actions */}
         <div className="flex-1">
           {/* Heading with Emoji */}
-          <h1 className="text-4xl font-bold text-gray-900 mb-2 flex items-center gap-3">
+          <h1 className="text-5xl font-bold text-gray-900 mb-3 flex items-center gap-4">
             Welcome back{userName ? `, ${userName}` : ""}! 
-            <span className="animate-wave inline-block origin-[70%_70%] text-4xl">👋</span>
+            <span className="animate-wave inline-block origin-[70%_70%] text-5xl">👋</span>
           </h1>
 
           {/* Subtitle with Dynamic Content */}
-          <p className="text-gray-500 text-base mb-6">
+          <p className="text-gray-600 text-lg mb-8">
             {unreadReplies > 0 || upcomingMeetingsToday > 0 ? (
               <>
                 You have{" "}
@@ -59,20 +62,26 @@ export function WelcomeHeader({
           </p>
 
           {/* Quick Action Pills */}
-          <div className="flex flex-wrap gap-4">
+          <div className="flex flex-wrap gap-5">
             <Button
               variant="outline"
-              size="default"
-              className="bg-white shadow-sm hover:shadow-md transition-shadow border-blue-200 text-gray-700 font-medium group h-11 px-5"
-              onClick={() => router.push("/experts")}
+              size="lg"
+              className="bg-white shadow-md hover:shadow-xl transition-all border-blue-200 text-gray-700 font-semibold group h-12 px-6"
+              onClick={() => {
+                if (onFindMentor) {
+                  onFindMentor();
+                } else {
+                  router.push("/experts");
+                }
+              }}
             >
               <Search className="h-5 w-5 mr-2 text-blue-600 group-hover:scale-110 transition-transform" />
               Find Mentor
             </Button>
             <Button
               variant="outline"
-              size="default"
-              className="bg-white shadow-sm hover:shadow-md transition-shadow border-purple-200 text-gray-700 font-medium group h-11 px-5"
+              size="lg"
+              className="bg-white shadow-md hover:shadow-xl transition-all border-purple-200 text-gray-700 font-semibold group h-12 px-6"
               onClick={() => router.push("/profile")}
             >
               <UserCircle className="h-5 w-5 mr-2 text-purple-600 group-hover:scale-110 transition-transform" />
@@ -81,41 +90,9 @@ export function WelcomeHeader({
           </div>
         </div>
 
-        {/* Right Side - Daily Insight Card */}
-        <div className="lg:min-w-[300px]">
-          <div className="bg-white/60 backdrop-blur-sm rounded-xl p-6 border border-indigo-100 shadow-sm">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="h-12 w-12 rounded-full bg-indigo-100 flex items-center justify-center">
-                <Calendar className="h-6 w-6 text-indigo-600" />
-              </div>
-              <div>
-                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
-                  Daily Insight
-                </p>
-                <p className="text-xl font-bold text-gray-800">
-                  {upcomingMeetingsToday > 0
-                    ? `${upcomingMeetingsToday} ${upcomingMeetingsToday === 1 ? "Event" : "Events"}`
-                    : "No Events"}
-                </p>
-              </div>
-            </div>
-            
-            {unreadReplies > 0 && (
-              <div className="flex items-center gap-2 pt-3 border-t border-gray-100">
-                <Bell className="h-4 w-4 text-orange-500" />
-                <p className="text-sm text-gray-600">
-                  <span className="font-semibold text-orange-600">{unreadReplies}</span> unread{" "}
-                  {unreadReplies === 1 ? "notification" : "notifications"}
-                </p>
-              </div>
-            )}
-
-            {upcomingMeetingsToday === 0 && unreadReplies === 0 && (
-              <p className="text-sm text-gray-500 pt-3 border-t border-gray-100">
-                You're all caught up! 🎉
-              </p>
-            )}
-          </div>
+        {/* Right Side - Upcoming Events Widget */}
+        <div className="lg:min-w-[400px] lg:max-w-[450px]">
+          <UpcomingEventsWidget />
         </div>
         </div>
       </div>
