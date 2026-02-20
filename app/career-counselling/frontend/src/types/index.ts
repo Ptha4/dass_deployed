@@ -126,17 +126,37 @@ export interface Video {
 
 export interface Post {
   postId: string;
+  title: string;
   content: string;
-  expertId: string;
-  createdAt: string; // ISO date string
-  updatedAt: string; // ISO date string
+  authorId: string;
+  authorName?: string;
+  authorInitials?: string;
+  communityId: string;
+  communityName?: string;
+  communityDisplayName?: string;
+  createdAt: string;
+  updatedAt: string;
   likes: number;
   likedBy: string[];
-  views?: number; // Adding this property
-  expertDetails: {
-    name: string;
-    initials: string;
-  };
+  views?: number;
+  tags?: string[];
+  commentsCount?: number;
+}
+
+export interface Community {
+  communityId: string;
+  name: string;
+  displayName: string;
+  description: string;
+  iconColor: string;
+  createdBy: string;
+  creatorName?: string;
+  memberCount: number;
+  postCount: number;
+  members: string[];
+  isJoined?: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 
 // Search specific types

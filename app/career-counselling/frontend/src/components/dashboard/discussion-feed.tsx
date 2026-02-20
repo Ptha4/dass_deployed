@@ -11,24 +11,16 @@ import axios from "axios";
 import { formatDistanceToNow } from "date-fns";
 import { useAuth } from "@/contexts/AuthContext";
 
-interface ExpertDetails {
-  name: string;
-  initials: string;
-}
-
-interface Comment {
-  commentId: string;
-  authorName: string;
-  authorInitials: string;
-  content: string;
-  createdAt: string;
-}
-
 interface Post {
   postId: string;
+  title?: string;
   content: string;
-  expertId: string;
-  expertDetails: ExpertDetails;
+  authorId?: string;
+  authorName?: string;
+  authorInitials?: string;
+  communityId?: string;
+  communityName?: string;
+  communityDisplayName?: string;
   createdAt: string;
   updatedAt: string;
   likes: number;
@@ -38,7 +30,15 @@ interface Post {
   commentsCount?: number;
   mediaType?: "image" | "video" | null;
   mediaUrl?: string;
-  topComment?: Comment;
+  topComment?: PostComment;
+}
+
+interface PostComment {
+  commentId: string;
+  authorName: string;
+  authorInitials: string;
+  content: string;
+  createdAt: string;
 }
 
 interface Filters {
@@ -74,7 +74,7 @@ export function DiscussionFeed({ filters }: DiscussionFeedProps = {}) {
 
       // Enhance posts with multimedia and mock comments.
       // Insert a media post after every 2 or 3 text posts (randomly choose 2 or 3 after each media insertion)
-      const mockComments: Comment[] = [
+      const mockComments: PostComment[] = [
         {
           commentId: "1",
           authorName: "Sarah Johnson",
@@ -126,8 +126,8 @@ export function DiscussionFeed({ filters }: DiscussionFeedProps = {}) {
         const mediaUrl = mediaType === "image"
           ? `https://picsum.photos/seed/${post.postId}/800/450`
           : mediaType === "video"
-          ? "https://www.w3schools.com/html/mov_bbb.mp4"
-          : undefined;
+            ? "https://www.w3schools.com/html/mov_bbb.mp4"
+            : undefined;
 
         enhancedPosts.push({
           ...post,
@@ -141,13 +141,13 @@ export function DiscussionFeed({ filters }: DiscussionFeedProps = {}) {
 
       // Apply filters if provided
       let filteredPosts = enhancedPosts;
-      
+
       if (filters) {
         // Filter by fields (tags)
         if (filters.fields && filters.fields.length > 0) {
-          filteredPosts = filteredPosts.filter(post => 
-            post.tags && post.tags.some(tag => 
-              filters.fields.some(field => 
+          filteredPosts = filteredPosts.filter(post =>
+            post.tags && post.tags.some(tag =>
+              filters.fields.some(field =>
                 tag.toLowerCase().includes(field.toLowerCase()) ||
                 field.toLowerCase().includes(tag.toLowerCase())
               )
@@ -159,7 +159,7 @@ export function DiscussionFeed({ filters }: DiscussionFeedProps = {}) {
         if (filters.goals && filters.goals.length > 0) {
           filteredPosts = filteredPosts.filter(post => {
             const searchText = `${post.content} ${(post.tags || []).join(' ')}`.toLowerCase();
-            return filters.goals.some(goal => 
+            return filters.goals.some(goal =>
               searchText.includes(goal.toLowerCase()) ||
               goal.toLowerCase().split(' ').some(word => searchText.includes(word))
             );
@@ -198,7 +198,7 @@ export function DiscussionFeed({ filters }: DiscussionFeedProps = {}) {
     e.stopPropagation();
 
     const userId = user?._id || "";
-    
+
     // Optimistic UI update
     const prevPosts = posts;
     const isLiked = likedBy.includes(userId);
@@ -281,17 +281,14 @@ export function DiscussionFeed({ filters }: DiscussionFeedProps = {}) {
             <div className="flex items-start gap-3 mb-4">
               <Avatar className="h-10 w-10 ring-1 ring-gray-200">
                 <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-500 text-white text-sm">
-                  {post.expertDetails.initials}
+                  {post.authorInitials || "U"}
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-0.5 flex-wrap">
                   <span className="font-semibold text-sm text-gray-900 dark:text-gray-100">
-                    {post.expertDetails.name}
+                    {post.authorName || "Anonymous"}
                   </span>
-                  <Badge variant="secondary" className="text-xs px-2 py-0">
-                    Expert
-                  </Badge>
                   <span className="text-xs text-muted-foreground">·</span>
                   <div className="flex items-center gap-1 text-xs text-muted-foreground">
                     <Clock className="h-3 w-3" />
@@ -340,17 +337,16 @@ export function DiscussionFeed({ filters }: DiscussionFeedProps = {}) {
                     <Badge
                       key={index}
                       variant="outline"
-                      className={`text-xs px-2 py-0.5 ${
-                        tag.toLowerCase().includes("startup")
-                          ? "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-300"
-                          : tag.toLowerCase().includes("master")
+                      className={`text-xs px-2 py-0.5 ${tag.toLowerCase().includes("startup")
+                        ? "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-300"
+                        : tag.toLowerCase().includes("master")
                           ? "bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-900/20 dark:text-purple-300"
                           : tag.toLowerCase().includes("interview")
-                          ? "bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-300"
-                          : tag.toLowerCase().includes("career")
-                          ? "bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-900/20 dark:text-orange-300"
-                          : "bg-gray-50 text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-300"
-                      }`}
+                            ? "bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-300"
+                            : tag.toLowerCase().includes("career")
+                              ? "bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-900/20 dark:text-orange-300"
+                              : "bg-gray-50 text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-300"
+                        }`}
                     >
                       {tag}
                     </Badge>
@@ -367,11 +363,10 @@ export function DiscussionFeed({ filters }: DiscussionFeedProps = {}) {
                   className="gap-2 hover:bg-red-50 dark:hover:bg-red-900/20 h-8 px-2 -ml-2"
                 >
                   <Heart
-                    className={`h-4 w-4 transition-colors ${
-                      post.likedBy?.includes(user?._id || "")
-                        ? "fill-red-500 text-red-500"
-                        : "text-gray-500"
-                    }`}
+                    className={`h-4 w-4 transition-colors ${post.likedBy?.includes(user?._id || "")
+                      ? "fill-red-500 text-red-500"
+                      : "text-gray-500"
+                      }`}
                   />
                   <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
                     {post.likes}

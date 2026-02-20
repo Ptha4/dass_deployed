@@ -237,7 +237,7 @@ export function UserPostsFeed() {
             <div className="flex items-start gap-3 mb-4">
               <Avatar className="h-10 w-10 ring-1 ring-gray-200">
                 <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-500 text-white text-sm">
-                  {post.expertDetails?.initials || 
+                  {post.authorInitials || 
                    post.userDetails?.initials || 
                    (typeof user?.name === 'string' ? user.name.slice(0, 2).toUpperCase() : "U")}
                 </AvatarFallback>
@@ -246,7 +246,7 @@ export function UserPostsFeed() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 mb-0.5 flex-wrap">
                     <span className="font-semibold text-sm text-gray-900">
-                      {post.expertDetails?.name || 
+                      {post.authorName || 
                        post.userDetails?.name || 
                        (typeof user?.name === 'string' ? user.name : "You")}
                     </span>

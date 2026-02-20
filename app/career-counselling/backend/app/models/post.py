@@ -1,12 +1,13 @@
 from typing import Optional, List
 from pydantic import BaseModel
 from datetime import datetime
-from app.models.user import UserSearchResponse
 
 
 class PostBase(BaseModel):
+    title: str
     content: str
-    expertId: str
+    communityId: str     # all posts now belong to a community
+    authorId: str        # userId of the post author (any user, not just experts)
 
 
 class Post(PostBase):
@@ -14,19 +15,24 @@ class Post(PostBase):
     createdAt: datetime
     updatedAt: datetime
     likes: int = 0
-    likedBy: List[str] = []  # List of user IDs who have liked the post
-    views: int = 0  # Track the number of views for analytics
-    tags: List[str] = []  # Category tags for the post
+    likedBy: List[str] = []
+    views: int = 0
+    tags: List[str] = []
 
 
 class PostResponse(Post):
-    expertDetails: dict  # Will contain expert name and other details
-    commentsCount: Optional[int] = 0  # Number of comments on the post
-    tags: Optional[List[str]] = []  # Category tags for the post
+    authorName: Optional[str] = None
+    authorInitials: Optional[str] = None
+    communityName: Optional[str] = None
+    communityDisplayName: Optional[str] = None
+    commentsCount: Optional[int] = 0
 
 
-class PostCreate(PostBase):
-    pass
+class PostCreate(BaseModel):
+    title: str
+    content: str
+    communityId: str
+    tags: Optional[List[str]] = []
 
 
 class PostLike(BaseModel):
