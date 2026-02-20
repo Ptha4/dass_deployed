@@ -140,6 +140,22 @@ class PostManager:
             print(f"delete_post error: {e}")
             return False
 
+    async def edit_post(self, post_id: str, author_id: str, updates: dict) -> Optional[PostResponse]:
+        """Edit a post's title, content, or tags. Only the author can edit."""
+        try:
+            doc = await self.collection.find_one({"_id": ObjectId(post_id)})
+            if not doc or doc.get("authorId") != author_id:
+                return None
+            updates["updatedAt"] = datetime.utcnow()
+            await self.collection.update_one(
+                {"_id": ObjectId(post_id)},
+                {"$set": updates},
+            )
+            return await self.get_post(post_id)
+        except Exception as e:
+            print(f"edit_post error: {e}")
+            return None
+
     # ── View ──────────────────────────────────────────────────────────────────
 
     async def increment_view(self, post_id: str) -> bool:

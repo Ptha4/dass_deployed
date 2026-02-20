@@ -64,86 +64,15 @@ export function DiscussionFeed({ filters }: DiscussionFeedProps = {}) {
 
   const fetchPosts = async () => {
     try {
-      // Use internal API route used elsewhere in the app to avoid CORS/env issues
+      // /api/posts now returns community-scoped posts
       const response = await axios.get(`/api/posts?limit=50`);
-
-      // response.data may be paginated { posts: [...], total } or a plain array
-      const rawPosts = Array.isArray(response.data)
+      const rawPosts: Post[] = Array.isArray(response.data)
         ? response.data
         : response.data.posts || [];
 
-      // Enhance posts with multimedia and mock comments.
-      // Insert a media post after every 2 or 3 text posts (randomly choose 2 or 3 after each media insertion)
-      const mockComments: PostComment[] = [
-        {
-          commentId: "1",
-          authorName: "Sarah Johnson",
-          authorInitials: "SJ",
-          content: "This is incredibly insightful! Thanks for sharing your experience.",
-          createdAt: new Date(Date.now() - 3600000).toISOString(),
-        },
-        {
-          commentId: "2",
-          authorName: "Michael Chen",
-          authorInitials: "MC",
-          content: "I completely agree with your perspective on this topic. Very helpful!",
-          createdAt: new Date(Date.now() - 7200000).toISOString(),
-        },
-        {
-          commentId: "3",
-          authorName: "Priya Sharma",
-          authorInitials: "PS",
-          content: "Great advice! This really helped me understand the process better.",
-          createdAt: new Date(Date.now() - 1800000).toISOString(),
-        },
-        {
-          commentId: "4",
-          authorName: "David Williams",
-          authorInitials: "DW",
-          content: "Thanks for breaking this down so clearly. Much appreciated!",
-          createdAt: new Date(Date.now() - 5400000).toISOString(),
-        },
-      ];
-
-      const enhancedPosts: Post[] = [];
-      let counter = 0; // counts non-media posts since last media
-      // choose threshold (2 or 3) randomly for the first group
-      let threshold = Math.random() > 0.5 ? 2 : 3;
-
-      for (let i = 0; i < rawPosts.length; i++) {
-        const post: Post = rawPosts[i];
-
-        // decide whether to attach media to this post
-        let mediaType: Post["mediaType"] = null;
-        if (counter >= threshold) {
-          mediaType = Math.random() > 0.5 ? "image" : "video";
-          counter = 0; // reset counter after inserting media
-          threshold = Math.random() > 0.5 ? 2 : 3; // pick next threshold
-        } else {
-          counter += 1;
-        }
-
-        const mediaUrl = mediaType === "image"
-          ? `https://picsum.photos/seed/${post.postId}/800/450`
-          : mediaType === "video"
-            ? "https://www.w3schools.com/html/mov_bbb.mp4"
-            : undefined;
-
-        enhancedPosts.push({
-          ...post,
-          mediaType,
-          mediaUrl,
-          topComment: (post.commentsCount || 0) > 0
-            ? mockComments[Math.floor(Math.random() * mockComments.length)]
-            : undefined,
-        });
-      }
-
       // Apply filters if provided
-      let filteredPosts = enhancedPosts;
-
+      let filteredPosts = rawPosts;
       if (filters) {
-        // Filter by fields (tags)
         if (filters.fields && filters.fields.length > 0) {
           filteredPosts = filteredPosts.filter(post =>
             post.tags && post.tags.some(tag =>
@@ -154,37 +83,26 @@ export function DiscussionFeed({ filters }: DiscussionFeedProps = {}) {
             )
           );
         }
-
-        // Filter by goals (check tags or content for goal-related keywords)
         if (filters.goals && filters.goals.length > 0) {
           filteredPosts = filteredPosts.filter(post => {
             const searchText = `${post.content} ${(post.tags || []).join(' ')}`.toLowerCase();
             return filters.goals.some(goal =>
-              searchText.includes(goal.toLowerCase()) ||
-              goal.toLowerCase().split(' ').some(word => searchText.includes(word))
+              searchText.includes(goal.toLowerCase())
             );
           });
         }
-
-        // Sort posts
         if (filters.sortBy) {
           filteredPosts = [...filteredPosts].sort((a, b) => {
             switch (filters.sortBy) {
-              case 'mostRecent':
-                return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-              case 'mostLiked':
-                return b.likes - a.likes;
-              case 'mostViewed':
-                return b.views - a.views;
-              case 'mostDiscussed':
-                return (b.commentsCount || 0) - (a.commentsCount || 0);
-              default:
-                return 0;
+              case 'mostRecent': return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+              case 'mostLiked': return b.likes - a.likes;
+              case 'mostViewed': return b.views - a.views;
+              case 'mostDiscussed': return (b.commentsCount || 0) - (a.commentsCount || 0);
+              default: return 0;
             }
           });
         }
       }
-
       setPosts(filteredPosts);
     } catch (error) {
       console.error("Error fetching posts:", error);

@@ -18,6 +18,20 @@ class PostCommentCreate(BaseModel):
     parent_id: Optional[str] = None
 
 
+class PostEditData(BaseModel):
+    title: Optional[str] = None
+    content: Optional[str] = None
+    tags: Optional[List[str]] = None
+
+
+@router.get("/posts", response_model=List[PostResponse])
+async def list_posts(community_id: Optional[str] = None, skip: int = 0, limit: int = 50):
+    """List posts, optionally scoped to a community."""
+    if community_id:
+        return await post_manager.get_posts_by_community(community_id, skip, limit)
+    return await post_manager.get_all_posts(skip, limit)
+
+
 @router.get("/posts/{post_id}", response_model=PostResponse)
 async def get_post(post_id: str):
     """Get a single post by ID."""
@@ -72,6 +86,15 @@ async def delete_post(post_id: str, user_data: dict = Depends(require_user)):
             detail="Post not found or you don't have permission to delete it",
         )
     return {"message": "Post deleted successfully"}
+
+
+@router.put("/posts/{post_id}", response_model=PostResponse)
+async def edit_post(post_id: str, edit_data: PostEditData, user_data: dict = Depends(require_user)):
+    """Edit a post's title, content, or tags. Only the author can edit."""
+    updated = await post_manager.edit_post(post_id, user_data["id"], edit_data.dict(exclude_none=True))
+    if not updated:
+        raise HTTPException(status_code=404, detail="Post not found or you don't have permission to edit it")
+    return updated
 
 
 @router.post("/posts/{post_id}/view")
