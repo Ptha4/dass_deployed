@@ -1,14 +1,13 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { CreatePost } from "@/components/dashboard/create-post";
-import { UserPostsFeed } from "@/components/dashboard/user-posts-feed";
 import { RelevantBlogs } from "@/components/dashboard/relevant-blogs";
 import { FollowedCommunitiesWidget } from "@/components/dashboard/followed-communities-widget";
 import { WeeklyGoalsWidget } from "@/components/dashboard/weekly-goals-widget";
 import { WelcomeHeader } from "@/components/dashboard/welcome-header";
 import { FindMentorQuestionnaire } from "@/components/dashboard/find-mentor-questionnaire";
-import { MessageSquare, FileText } from "lucide-react";
+import { UserPostsFeed } from "@/components/dashboard/user-posts-feed";
+import { FileText, Loader2, Users2 } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -18,7 +17,9 @@ import {
 } from "@/components/ui/card";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { useAuth } from "@/contexts/AuthContext";
+import { Post } from "@/types";
 import axios from "axios";
+import Link from "next/link";
 
 interface WeeklyGoal {
   id: number;
@@ -34,15 +35,14 @@ interface DashboardStats {
 }
 
 export default function UserDashboard() {
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loadingStats, setLoadingStats] = useState(true);
-  const [refreshKey, setRefreshKey] = useState(0);
   const [showMentorQuestionnaire, setShowMentorQuestionnaire] = useState(false);
 
   useEffect(() => {
     fetchDashboardStats();
-  }, []);
+  }, [isAuthenticated]);
 
   const fetchDashboardStats = async () => {
     try {
@@ -52,7 +52,6 @@ export default function UserDashboard() {
       setStats(response.data);
     } catch (error) {
       console.error("Error fetching dashboard stats:", error);
-      // Set default values on error
       setStats({
         profileStrength: 0,
         unreadReplies: 0,
@@ -62,11 +61,6 @@ export default function UserDashboard() {
     } finally {
       setLoadingStats(false);
     }
-  };
-
-  const handlePostCreated = () => {
-    // Refresh the posts feed
-    setRefreshKey(prev => prev + 1);
   };
 
   const dashboardContent = (
@@ -86,33 +80,28 @@ export default function UserDashboard() {
         />
       </div>
 
-      {/* Main Grid: 2 columns with INDEPENDENT scrolling */}
-      <div className="flex-1 w-full max-w-[1800px] px-6 sm:px-8 lg:px-12">
+      {/* Main Grid */}
+      <div className="flex-1 w-full max-w-[1800px] px-6 sm:px-8 lg:px-12 pb-40">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-10 h-[calc(100vh-12rem)]">
-          {/* Left Column - User's Posts Feed (65-70%) - Independent Scrollable */}
-          <div className="lg:col-span-2 overflow-y-auto">
-            {/* User Posts Section */}
+          {/* Left Column — Community Feed */}
+          <div className="lg:col-span-2 overflow-y-auto pr-2 pb-10 custom-scrollbar">
             <div className="pb-8">
-              {/* Create New Post Component */}
-              <CreatePost onPostCreated={handlePostCreated} />
-              
-              {/* User's Own Posts */}
               <div className="bg-white rounded-xl overflow-hidden shadow-sm">
                 <div className="px-8 py-4 border-b border-gray-100">
                   <h2 className="text-lg font-semibold text-gray-900">Your Posts</h2>
                   <p className="text-sm text-gray-600 mt-0.5">
-                    Manage and edit your previous posts
+                    Latest posts from you
                   </p>
                 </div>
-                <div className="px-8">
-                  <UserPostsFeed key={refreshKey} />
+                <div className="px-6 py-4">
+                  <UserPostsFeed />
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Right Column - Sidebar Widgets (30-35%) - Independent Scrollable */}
-          <div className="lg:col-span-1 overflow-y-auto space-y-6">
+          {/* Right Column — Sidebar Widgets */}
+          <div className="lg:col-span-1 overflow-y-auto space-y-6 pr-2 pb-10 custom-scrollbar">
             {/* Followed Communities Widget */}
             <FollowedCommunitiesWidget />
 
@@ -138,7 +127,7 @@ export default function UserDashboard() {
                 <RelevantBlogs />
               </CardContent>
             </Card>
-            
+
             {/* Bottom padding for right sidebar */}
             <div className="h-8" />
           </div>

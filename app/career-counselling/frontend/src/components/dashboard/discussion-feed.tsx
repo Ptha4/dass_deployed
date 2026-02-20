@@ -11,24 +11,16 @@ import axios from "axios";
 import { formatDistanceToNow } from "date-fns";
 import { useAuth } from "@/contexts/AuthContext";
 
-interface ExpertDetails {
-  name: string;
-  initials: string;
-}
-
-interface Comment {
-  commentId: string;
-  authorName: string;
-  authorInitials: string;
-  content: string;
-  createdAt: string;
-}
-
 interface Post {
   postId: string;
+  title?: string;
   content: string;
-  expertId: string;
-  expertDetails: ExpertDetails;
+  authorId?: string;
+  authorName?: string;
+  authorInitials?: string;
+  communityId?: string;
+  communityName?: string;
+  communityDisplayName?: string;
   createdAt: string;
   updatedAt: string;
   likes: number;
@@ -38,7 +30,15 @@ interface Post {
   commentsCount?: number;
   mediaType?: "image" | "video" | null;
   mediaUrl?: string;
-  topComment?: Comment;
+  topComment?: PostComment;
+}
+
+interface PostComment {
+  commentId: string;
+  authorName: string;
+  authorInitials: string;
+  content: string;
+  createdAt: string;
 }
 
 interface Filters {
@@ -64,127 +64,45 @@ export function DiscussionFeed({ filters }: DiscussionFeedProps = {}) {
 
   const fetchPosts = async () => {
     try {
-      // Use internal API route used elsewhere in the app to avoid CORS/env issues
+      // /api/posts now returns community-scoped posts
       const response = await axios.get(`/api/posts?limit=50`);
-
-      // response.data may be paginated { posts: [...], total } or a plain array
-      const rawPosts = Array.isArray(response.data)
+      const rawPosts: Post[] = Array.isArray(response.data)
         ? response.data
         : response.data.posts || [];
 
-      // Enhance posts with multimedia and mock comments.
-      // Insert a media post after every 2 or 3 text posts (randomly choose 2 or 3 after each media insertion)
-      const mockComments: Comment[] = [
-        {
-          commentId: "1",
-          authorName: "Sarah Johnson",
-          authorInitials: "SJ",
-          content: "This is incredibly insightful! Thanks for sharing your experience.",
-          createdAt: new Date(Date.now() - 3600000).toISOString(),
-        },
-        {
-          commentId: "2",
-          authorName: "Michael Chen",
-          authorInitials: "MC",
-          content: "I completely agree with your perspective on this topic. Very helpful!",
-          createdAt: new Date(Date.now() - 7200000).toISOString(),
-        },
-        {
-          commentId: "3",
-          authorName: "Priya Sharma",
-          authorInitials: "PS",
-          content: "Great advice! This really helped me understand the process better.",
-          createdAt: new Date(Date.now() - 1800000).toISOString(),
-        },
-        {
-          commentId: "4",
-          authorName: "David Williams",
-          authorInitials: "DW",
-          content: "Thanks for breaking this down so clearly. Much appreciated!",
-          createdAt: new Date(Date.now() - 5400000).toISOString(),
-        },
-      ];
-
-      const enhancedPosts: Post[] = [];
-      let counter = 0; // counts non-media posts since last media
-      // choose threshold (2 or 3) randomly for the first group
-      let threshold = Math.random() > 0.5 ? 2 : 3;
-
-      for (let i = 0; i < rawPosts.length; i++) {
-        const post: Post = rawPosts[i];
-
-        // decide whether to attach media to this post
-        let mediaType: Post["mediaType"] = null;
-        if (counter >= threshold) {
-          mediaType = Math.random() > 0.5 ? "image" : "video";
-          counter = 0; // reset counter after inserting media
-          threshold = Math.random() > 0.5 ? 2 : 3; // pick next threshold
-        } else {
-          counter += 1;
-        }
-
-        const mediaUrl = mediaType === "image"
-          ? `https://picsum.photos/seed/${post.postId}/800/450`
-          : mediaType === "video"
-          ? "https://www.w3schools.com/html/mov_bbb.mp4"
-          : undefined;
-
-        enhancedPosts.push({
-          ...post,
-          mediaType,
-          mediaUrl,
-          topComment: (post.commentsCount || 0) > 0
-            ? mockComments[Math.floor(Math.random() * mockComments.length)]
-            : undefined,
-        });
-      }
-
       // Apply filters if provided
-      let filteredPosts = enhancedPosts;
-      
+      let filteredPosts = rawPosts;
       if (filters) {
-        // Filter by fields (tags)
         if (filters.fields && filters.fields.length > 0) {
-          filteredPosts = filteredPosts.filter(post => 
-            post.tags && post.tags.some(tag => 
-              filters.fields.some(field => 
+          filteredPosts = filteredPosts.filter(post =>
+            post.tags && post.tags.some(tag =>
+              filters.fields.some(field =>
                 tag.toLowerCase().includes(field.toLowerCase()) ||
                 field.toLowerCase().includes(tag.toLowerCase())
               )
             )
           );
         }
-
-        // Filter by goals (check tags or content for goal-related keywords)
         if (filters.goals && filters.goals.length > 0) {
           filteredPosts = filteredPosts.filter(post => {
             const searchText = `${post.content} ${(post.tags || []).join(' ')}`.toLowerCase();
-            return filters.goals.some(goal => 
-              searchText.includes(goal.toLowerCase()) ||
-              goal.toLowerCase().split(' ').some(word => searchText.includes(word))
+            return filters.goals.some(goal =>
+              searchText.includes(goal.toLowerCase())
             );
           });
         }
-
-        // Sort posts
         if (filters.sortBy) {
           filteredPosts = [...filteredPosts].sort((a, b) => {
             switch (filters.sortBy) {
-              case 'mostRecent':
-                return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-              case 'mostLiked':
-                return b.likes - a.likes;
-              case 'mostViewed':
-                return b.views - a.views;
-              case 'mostDiscussed':
-                return (b.commentsCount || 0) - (a.commentsCount || 0);
-              default:
-                return 0;
+              case 'mostRecent': return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+              case 'mostLiked': return b.likes - a.likes;
+              case 'mostViewed': return b.views - a.views;
+              case 'mostDiscussed': return (b.commentsCount || 0) - (a.commentsCount || 0);
+              default: return 0;
             }
           });
         }
       }
-
       setPosts(filteredPosts);
     } catch (error) {
       console.error("Error fetching posts:", error);
@@ -198,7 +116,7 @@ export function DiscussionFeed({ filters }: DiscussionFeedProps = {}) {
     e.stopPropagation();
 
     const userId = user?._id || "";
-    
+
     // Optimistic UI update
     const prevPosts = posts;
     const isLiked = likedBy.includes(userId);
@@ -281,17 +199,14 @@ export function DiscussionFeed({ filters }: DiscussionFeedProps = {}) {
             <div className="flex items-start gap-3 mb-4">
               <Avatar className="h-10 w-10 ring-1 ring-gray-200">
                 <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-500 text-white text-sm">
-                  {post.expertDetails.initials}
+                  {post.authorInitials || "U"}
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-0.5 flex-wrap">
                   <span className="font-semibold text-sm text-gray-900 dark:text-gray-100">
-                    {post.expertDetails.name}
+                    {post.authorName || "Anonymous"}
                   </span>
-                  <Badge variant="secondary" className="text-xs px-2 py-0">
-                    Expert
-                  </Badge>
                   <span className="text-xs text-muted-foreground">·</span>
                   <div className="flex items-center gap-1 text-xs text-muted-foreground">
                     <Clock className="h-3 w-3" />
@@ -340,17 +255,16 @@ export function DiscussionFeed({ filters }: DiscussionFeedProps = {}) {
                     <Badge
                       key={index}
                       variant="outline"
-                      className={`text-xs px-2 py-0.5 ${
-                        tag.toLowerCase().includes("startup")
-                          ? "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-300"
-                          : tag.toLowerCase().includes("master")
+                      className={`text-xs px-2 py-0.5 ${tag.toLowerCase().includes("startup")
+                        ? "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-300"
+                        : tag.toLowerCase().includes("master")
                           ? "bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-900/20 dark:text-purple-300"
                           : tag.toLowerCase().includes("interview")
-                          ? "bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-300"
-                          : tag.toLowerCase().includes("career")
-                          ? "bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-900/20 dark:text-orange-300"
-                          : "bg-gray-50 text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-300"
-                      }`}
+                            ? "bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-300"
+                            : tag.toLowerCase().includes("career")
+                              ? "bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-900/20 dark:text-orange-300"
+                              : "bg-gray-50 text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-300"
+                        }`}
                     >
                       {tag}
                     </Badge>
@@ -367,11 +281,10 @@ export function DiscussionFeed({ filters }: DiscussionFeedProps = {}) {
                   className="gap-2 hover:bg-red-50 dark:hover:bg-red-900/20 h-8 px-2 -ml-2"
                 >
                   <Heart
-                    className={`h-4 w-4 transition-colors ${
-                      post.likedBy?.includes(user?._id || "")
-                        ? "fill-red-500 text-red-500"
-                        : "text-gray-500"
-                    }`}
+                    className={`h-4 w-4 transition-colors ${post.likedBy?.includes(user?._id || "")
+                      ? "fill-red-500 text-red-500"
+                      : "text-gray-500"
+                      }`}
                   />
                   <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
                     {post.likes}

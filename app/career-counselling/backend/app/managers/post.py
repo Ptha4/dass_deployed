@@ -3,265 +3,238 @@ from datetime import datetime
 from bson import ObjectId
 from app.models.post import Post, PostResponse
 from app.core.database import get_database
-from app.managers.user import UserManager
-from app.managers.expert import ExpertManager
-from app.managers.notification import NotificationManager
 
 
 class PostManager:
     def __init__(self):
         self.db = get_database()
         self.collection = self.db.posts
-        self.user_manager = UserManager()
-        self.expert_manager = ExpertManager()
-        self.notification_manager = NotificationManager()
 
-    async def create_post(self, post: Post) -> PostResponse:
-        """
-        Create a new post by an expert.
+    # ── Create ────────────────────────────────────────────────────────────────
 
-        Args:
-            post (Post): Post content and expertId
+    async def create_community_post(
+        self,
+        community_id: str,
+        author_id: str,
+        title: str,
+        content: str,
+        tags: List[str] = [],
+        media: List[dict] = [],
+    ) -> PostResponse:
+        now = datetime.utcnow()
+        post_dict = {
+            "communityId": community_id,
+            "authorId": author_id,
+            "title": title,
+            "content": content,
+            "tags": tags,
+            "media": media,
+            "likes": 0,
+            "likedBy": [],
+            "views": 0,
+            "createdAt": now,
+            "updatedAt": now,
+        }
 
-        Returns:
-            PostResponse: Created post with response details
-        """
-        post_dict = post.model_dump()
-
-        # Remove postId if it's None
-        if post_dict.get("postId") is None:
-            post_dict.pop("postId", None)
-
-        # Set timestamps
-        current_time = datetime.utcnow()
-        post_dict["createdAt"] = current_time
-        post_dict["updatedAt"] = current_time
-
-        # Initialize likes and likedBy
-        post_dict["likes"] = 0
-        post_dict["likedBy"] = []
-
-        # Insert the post
         result = await self.collection.insert_one(post_dict)
         post_dict["postId"] = str(result.inserted_id)
 
-        # Get expert details
-        expert = await self.expert_manager.get_expert(post_dict["expertId"])
-        if expert:
-            user_data = {
-                "name": f"{expert.userDetails.firstName} {expert.userDetails.lastName}".strip(),
-                "initials": f"{expert.userDetails.firstName[0]}{expert.userDetails.lastName[0]}",
-            }
-            post_dict["expertDetails"] = user_data
-
-            # Create notifications for followers
-            await self.notification_manager.create_post_notification_for_followers(
-                expert.userId,
-                post_dict["postId"],
-                post.content
-            )
-        else:
-            post_dict["expertDetails"] = {
-                "name": "Unknown Expert", "initials": "UE"}
-
+        # Enrich with author / community info
+        await self._enrich(post_dict, author_id, community_id)
         return PostResponse(**post_dict)
 
+    # ── Read ──────────────────────────────────────────────────────────────────
+
     async def get_post(self, post_id: str) -> Optional[PostResponse]:
-        """
-        Get a post by ID.
-
-        Args:
-            post_id (str): ID of the post to retrieve
-
-        Returns:
-            Optional[PostResponse]: Post if found, None otherwise
-        """
         try:
-            post = await self.collection.find_one({"_id": ObjectId(post_id)})
-            if post:
-                post["postId"] = str(post["_id"])
-
-                # Get expert details
-                expert = await self.expert_manager.get_expert(post["expertId"])
-                if expert:
-                    user_data = {
-                        "name": f"{expert.userDetails.firstName} {expert.userDetails.lastName}".strip(),
-                        "initials": f"{expert.userDetails.firstName[0]}{expert.userDetails.lastName[0]}",
-                    }
-                    post["expertDetails"] = user_data
-                else:
-                    post["expertDetails"] = {
-                        "name": "Unknown Expert", "initials": "UE"}
-
-                return PostResponse(**post)
-            return None
+            doc = await self.collection.find_one({"_id": ObjectId(post_id)})
+            if not doc:
+                return None
+            doc["postId"] = str(doc["_id"])
+            await self._enrich(doc, doc.get("authorId", ""), doc.get("communityId", ""))
+            # Comment count
+            doc["commentsCount"] = await self.db.comments.count_documents(
+                {"page_id": doc["postId"], "type": "post"}
+            )
+            return PostResponse(**doc)
         except Exception as e:
-            print(f"Error retrieving post: {e}")
+            print(f"get_post error: {e}")
             return None
 
-    async def get_posts_by_expert(self, expert_id: str) -> List[PostResponse]:
-        """
-        Get all posts by a specific expert.
-
-        Args:
-            expert_id (str): ID of the expert
-
-        Returns:
-            List[PostResponse]: List of posts by the expert
-        """
-        cursor = self.collection.find({"expertId": expert_id})
-        cursor.sort("createdAt", -1)  # Sort by creation time, newest first
-
+    async def get_posts_by_community(
+        self, community_id: str, skip: int = 0, limit: int = 30
+    ) -> List[PostResponse]:
+        cursor = (
+            self.collection.find({"communityId": community_id})
+            .sort("createdAt", -1)
+            .skip(skip)
+            .limit(limit)
+        )
         posts = []
-        expert = await self.expert_manager.get_expert(expert_id)
-        user_data = None
-
-        if expert:
-            user_data = {
-                "name": f"{expert.userDetails.firstName} {expert.userDetails.lastName}".strip(),
-                "initials": f"{expert.userDetails.firstName[0]}{expert.userDetails.lastName[0]}",
-            }
-        else:
-            user_data = {"name": "Unknown Expert", "initials": "UE"}
-
-        async for post in cursor:
-            post["postId"] = str(post["_id"])
-            post["expertDetails"] = user_data
-            posts.append(PostResponse(**post))
-
+        async for doc in cursor:
+            doc["postId"] = str(doc["_id"])
+            await self._enrich(doc, doc.get("authorId", ""), community_id)
+            doc["commentsCount"] = await self.db.comments.count_documents(
+                {"page_id": doc["postId"], "type": "post"}
+            )
+            try:
+                posts.append(PostResponse(**doc))
+            except Exception as e:
+                print(f"PostResponse parse error: {e}")
         return posts
 
+    async def get_all_posts(self, skip: int = 0, limit: int = 50) -> List[PostResponse]:
+        """Kept for backward compat — returns newest posts globally."""
+        cursor = self.collection.find().sort("createdAt", -1).skip(skip).limit(limit)
+        posts = []
+        async for doc in cursor:
+            doc["postId"] = str(doc["_id"])
+            await self._enrich(doc, doc.get("authorId", ""), doc.get("communityId", ""))
+            doc["commentsCount"] = await self.db.comments.count_documents(
+                {"page_id": doc["postId"], "type": "post"}
+            )
+            try:
+                posts.append(PostResponse(**doc))
+            except Exception as e:
+                print(f"PostResponse parse error: {e}")
+        return posts
+
+    async def get_feed_posts(self, user_id: str, skip: int = 0, limit: int = 30) -> List[PostResponse]:
+        """Return posts from communities the user has joined, sorted newest first."""
+        # Get community IDs the user has joined
+        community_docs = self.db.communities.find(
+            {"members": user_id}, {"_id": 1}
+        )
+        community_ids = [str(doc["_id"]) async for doc in community_docs]
+        if not community_ids:
+            return []
+
+        cursor = (
+            self.collection.find({"communityId": {"$in": community_ids}})
+            .sort("createdAt", -1)
+            .skip(skip)
+            .limit(limit)
+        )
+        posts = []
+        async for doc in cursor:
+            doc["postId"] = str(doc["_id"])
+            await self._enrich(doc, doc.get("authorId", ""), doc.get("communityId", ""))
+            doc["commentsCount"] = await self.db.comments.count_documents(
+                {"page_id": doc["postId"], "type": "post"}
+            )
+            try:
+                posts.append(PostResponse(**doc))
+            except Exception as e:
+                print(f"PostResponse parse error: {e}")
+        return posts
+
+    # ── Like ──────────────────────────────────────────────────────────────────
+
     async def like_post(self, post_id: str, user_id: str) -> Optional[PostResponse]:
-        """
-        Like or unlike a post.
-
-        Args:
-            post_id (str): ID of the post to like/unlike
-            user_id (str): ID of the user performing the action
-
-        Returns:
-            Optional[PostResponse]: Updated post if successful, None otherwise
-        """
         try:
-            # Get the post first to check if user has already liked it
-            post = await self.collection.find_one({"_id": ObjectId(post_id)})
-            if not post:
+            doc = await self.collection.find_one({"_id": ObjectId(post_id)})
+            if not doc:
                 return None
 
-            liked_by = post.get("likedBy", [])
-
-            if user_id in liked_by:
-                # User has already liked the post, so unlike it
-                result = await self.collection.update_one(
-                    {"_id": ObjectId(post_id)},
-                    {
-                        "$pull": {"likedBy": user_id},
-                        "$inc": {"likes": -1},
-                        "$set": {"updatedAt": datetime.utcnow()}
-                    }
-                )
+            if user_id in doc.get("likedBy", []):
+                update = {
+                    "$pull": {"likedBy": user_id},
+                    "$inc": {"likes": -1},
+                    "$set": {"updatedAt": datetime.utcnow()},
+                }
             else:
-                # User hasn't liked the post yet, so like it
-                result = await self.collection.update_one(
-                    {"_id": ObjectId(post_id)},
-                    {
-                        "$addToSet": {"likedBy": user_id},
-                        "$inc": {"likes": 1},
-                        "$set": {"updatedAt": datetime.utcnow()}
-                    }
-                )
+                update = {
+                    "$addToSet": {"likedBy": user_id},
+                    "$inc": {"likes": 1},
+                    "$set": {"updatedAt": datetime.utcnow()},
+                }
 
+            result = await self.collection.update_one({"_id": ObjectId(post_id)}, update)
             if result.modified_count:
                 return await self.get_post(post_id)
             return None
         except Exception as e:
-            print(f"Error liking/unliking post: {e}")
+            print(f"like_post error: {e}")
             return None
 
-    async def delete_post(self, post_id: str, expert_id: str) -> bool:
-        """
-        Delete a post by its ID. Only the expert who created the post can delete it.
+    # ── Delete ────────────────────────────────────────────────────────────────
 
-        Args:
-            post_id (str): ID of the post to delete
-            expert_id (str): ID of the expert attempting to delete the post
-
-        Returns:
-            bool: True if deleted successfully, False otherwise
-        """
+    async def delete_post(self, post_id: str, author_id: str) -> bool:
+        """Any user can delete their own post."""
         try:
-            # First check if the post exists and belongs to the expert
-            post = await self.collection.find_one({"_id": ObjectId(post_id)})
-            if not post or post["expertId"] != expert_id:
+            doc = await self.collection.find_one({"_id": ObjectId(post_id)})
+            if not doc or doc.get("authorId") != author_id:
                 return False
-
             result = await self.collection.delete_one({"_id": ObjectId(post_id)})
             return result.deleted_count > 0
         except Exception as e:
-            print(f"Error deleting post: {e}")
+            print(f"delete_post error: {e}")
             return False
 
-    async def get_all_posts(self, skip: int = 0, limit: int = 50) -> List[PostResponse]:
-        """
-        Get all posts with expert details and comment counts.
-
-        Args:
-            skip (int): Number of posts to skip for pagination
-            limit (int): Maximum number of posts to return
-
-        Returns:
-            List[PostResponse]: List of all posts with details
-        """
+    async def edit_post(self, post_id: str, author_id: str, updates: dict) -> Optional[PostResponse]:
+        """Edit a post's title, content, or tags. Only the author can edit."""
         try:
-            # Get posts sorted by creation time
-            cursor = self.collection.find().sort("createdAt", -1).skip(skip).limit(limit)
-            
-            posts = []
-            async for post in cursor:
-                post["postId"] = str(post["_id"])
-                
-                # Get expert details
-                expert = await self.expert_manager.get_expert(post["expertId"])
-                if expert:
-                    user_data = {
-                        "name": f"{expert.userDetails.firstName} {expert.userDetails.lastName}".strip(),
-                        "initials": f"{expert.userDetails.firstName[0]}{expert.userDetails.lastName[0]}",
-                    }
-                    post["expertDetails"] = user_data
-                else:
-                    post["expertDetails"] = {"name": "Unknown Expert", "initials": "UE"}
-                
-                # Get comment count for this post
-                comments_collection = self.db.comments
-                comment_count = await comments_collection.count_documents({
-                    "page_id": post["postId"],
-                    "type": "post"
-                })
-                post["commentsCount"] = comment_count
-                
-                posts.append(PostResponse(**post))
-            
-            return posts
+            doc = await self.collection.find_one({"_id": ObjectId(post_id)})
+            if not doc or doc.get("authorId") != author_id:
+                return None
+            updates["updatedAt"] = datetime.utcnow()
+            await self.collection.update_one(
+                {"_id": ObjectId(post_id)},
+                {"$set": updates},
+            )
+            return await self.get_post(post_id)
         except Exception as e:
-            print(f"Error retrieving all posts: {e}")
-            return []
+            print(f"edit_post error: {e}")
+            return None
+
+    # ── View ──────────────────────────────────────────────────────────────────
 
     async def increment_view(self, post_id: str) -> bool:
-        """
-        Increment the view count for a post.
-
-        Args:
-            post_id (str): ID of the post
-
-        Returns:
-            bool: True if successful, False otherwise
-        """
         try:
             result = await self.collection.update_one(
                 {"_id": ObjectId(post_id)},
-                {"$inc": {"views": 1}}
+                {"$inc": {"views": 1}},
             )
             return result.modified_count > 0
         except Exception as e:
-            print(f"Error incrementing post view: {e}")
+            print(f"increment_view error: {e}")
             return False
+
+    # ── Helpers ───────────────────────────────────────────────────────────────
+
+    async def _enrich(self, doc: dict, author_id: str, community_id: str) -> None:
+        """Attach author name and community name to a post dict in-place."""
+        # Author info
+        try:
+            if author_id:
+                user = await self.db.users.find_one({"_id": ObjectId(author_id)})
+                if user:
+                    fn = user.get("firstName", "")
+                    ln = user.get("lastName", "")
+                    doc["authorName"] = f"{fn} {ln}".strip() or "Anonymous"
+                    doc["authorInitials"] = (
+                        (fn[0] if fn else "") + (ln[0] if ln else "")
+                    ).upper() or "U"
+                else:
+                    doc["authorName"] = "Anonymous"
+                    doc["authorInitials"] = "U"
+            else:
+                doc["authorName"] = "Anonymous"
+                doc["authorInitials"] = "U"
+        except Exception:
+            doc["authorName"] = "Anonymous"
+            doc["authorInitials"] = "U"
+
+        # Community info
+        try:
+            if community_id:
+                comm = await self.db.communities.find_one({"_id": ObjectId(community_id)})
+                if comm:
+                    doc["communityName"] = comm.get("name", "")
+                    doc["communityDisplayName"] = comm.get("displayName", "")
+                else:
+                    doc["communityName"] = ""
+                    doc["communityDisplayName"] = ""
+        except Exception:
+            doc["communityName"] = ""
+            doc["communityDisplayName"] = ""

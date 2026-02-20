@@ -5,7 +5,7 @@ Main FastAPI application configuration
 import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routes import blog, branch, college_branch, college, expert, search, user, video, auth, comment, post, admin, expert_analytics, notification, rating, expert_application, file, chatbot, meeting
+from app.routes import blog, branch, college_branch, college, expert, search, user, video, auth, comment, post, admin, expert_analytics, notification, rating, expert_application, file, chatbot, meeting, community
 from app.managers.user import UserManager
 from app.config import settings
 
@@ -43,7 +43,10 @@ app.include_router(notification.router, tags=["notification"], prefix="/api")
 app.include_router(rating.router, tags=["rating"], prefix="/api")
 app.include_router(chatbot.router, tags=["chatbot"], prefix="/api/chatbot")
 app.include_router(meeting.router, tags=["meeting"], prefix="/api")
+app.include_router(community.router, tags=["community"], prefix="/api")
 
+
+from app.managers.community import CommunityManager
 
 @app.on_event("startup")
 async def startup_db_client():
@@ -51,6 +54,10 @@ async def startup_db_client():
     # Ensure all users have a wallet
     user_manager = UserManager()
     await user_manager.initialize_wallet_for_existing_users()
+    
+    # Seed default communities
+    community_manager = CommunityManager()
+    await community_manager.seed_default_communities()
 
 
 @app.get("/api/health")

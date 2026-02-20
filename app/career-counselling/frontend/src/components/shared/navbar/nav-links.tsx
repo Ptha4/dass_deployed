@@ -15,6 +15,7 @@ import {
   User,
   Building2,
   MessageSquare,
+  Users2,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
@@ -38,7 +39,7 @@ const ListItem = React.forwardRef<
 >(({ className, title, children, href, ...props }, ref) => {
   const pathname = usePathname();
   const isActive = pathname === href;
-  
+
   return (
     <NavigationMenuLink asChild>
       <Link
@@ -106,6 +107,12 @@ export default function NavLinks() {
       href: "/forums",
       description: "Join discussions and connect with the community",
       icon: <MessageSquare className="h-4 w-4" />,
+    },
+    {
+      title: "Communities",
+      href: "/communities",
+      description: "Reddit-style communities — post and discuss by topic",
+      icon: <Users2 className="h-4 w-4" />,
     },
   ];
 

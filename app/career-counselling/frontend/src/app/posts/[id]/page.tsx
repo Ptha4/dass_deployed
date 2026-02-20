@@ -12,33 +12,16 @@ import {
   MessageSquare,
   Heart,
   Send,
-  Clock,
   ArrowLeft,
   Loader2,
+  Users2,
 } from "lucide-react";
 import axios from "axios";
+import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
 import { useAuth } from "@/contexts/AuthContext";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
-
-interface ExpertDetails {
-  name: string;
-  initials: string;
-}
-
-interface Post {
-  postId: string;
-  content: string;
-  expertId: string;
-  expertDetails: ExpertDetails;
-  createdAt: string;
-  updatedAt: string;
-  likes: number;
-  likedBy: string[];
-  views: number;
-  tags?: string[];
-  commentsCount?: number;
-}
+import { Post } from "@/types";
 
 interface Comment {
   commentID: string;
@@ -46,7 +29,7 @@ interface Comment {
   userID: string;
   createdAt: string;
   parent_id?: string;
-  userName?: string;
+  user?: { name?: string; avatar?: string };
 }
 
 function PostDetailContent() {
@@ -63,24 +46,22 @@ function PostDetailContent() {
   const [loadingComments, setLoadingComments] = useState(false);
 
   useEffect(() => {
-    if (postId) {
-      fetchPostAndComments();
-    }
+    if (postId) fetchPostAndComments();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [postId]);
 
   const fetchPostAndComments = async () => {
     setLoading(true);
     try {
-      // Fetch post details
-      const postResponse = await axios.get(
+      const postRes = await axios.get(
         `${process.env.NEXT_PUBLIC_API_URL}/posts/${postId}`
       );
-      setPost(postResponse.data);
-
-      // Fetch comments
+      setPost(postRes.data);
       await fetchComments();
-    } catch (error) {
-      console.error("Error fetching post:", error);
+      // track view
+      axios.post(`${process.env.NEXT_PUBLIC_API_URL}/posts/${postId}/view`).catch(() => { });
+    } catch {
+      // handled below
     } finally {
       setLoading(false);
     }
@@ -89,12 +70,11 @@ function PostDetailContent() {
   const fetchComments = async () => {
     setLoadingComments(true);
     try {
-      const response = await axios.get(
+      const res = await axios.get(
         `${process.env.NEXT_PUBLIC_API_URL}/comments?page_id=${postId}&type=post&limit=50`
       );
-      setComments(response.data.comments || []);
-    } catch (error) {
-      console.error("Error fetching comments:", error);
+      setComments(res.data.comments || []);
+    } catch {
       setComments([]);
     } finally {
       setLoadingComments(false);
@@ -103,11 +83,8 @@ function PostDetailContent() {
 
   const handleLike = async () => {
     if (!post) return;
-
     const userId = user?._id || "";
     const isLiked = post.likedBy?.includes(userId);
-
-    // Optimistic UI update
     setPost({
       ...post,
       likes: isLiked ? post.likes - 1 : post.likes + 1,
@@ -115,21 +92,15 @@ function PostDetailContent() {
         ? post.likedBy.filter((id) => id !== userId)
         : [...post.likedBy, userId],
     });
-
     try {
-      await axios.post(
-        `${process.env.NEXT_PUBLIC_API_URL}/posts/${postId}/like`
-      );
-    } catch (error) {
-      console.error("Error liking post:", error);
-      // Rollback on error
+      await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/posts/${postId}/like`);
+    } catch {
       fetchPostAndComments();
     }
   };
 
   const handleAddComment = async () => {
     if (!newComment.trim()) return;
-
     setSubmittingComment(true);
     try {
       await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/comments`, {
@@ -138,20 +109,11 @@ function PostDetailContent() {
         page_id: postId,
         parent_id: null,
       });
-
       setNewComment("");
-      // Refresh comments to show the new one
       await fetchComments();
-      
-      // Update post comment count
-      if (post) {
-        setPost({
-          ...post,
-          commentsCount: (post.commentsCount || 0) + 1,
-        });
-      }
-    } catch (error) {
-      console.error("Error adding comment:", error);
+      if (post) setPost({ ...post, commentsCount: (post.commentsCount || 0) + 1 });
+    } catch {
+      // ignore
     } finally {
       setSubmittingComment(false);
     }
@@ -161,7 +123,7 @@ function PostDetailContent() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
-          <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+          <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
           <p className="text-sm text-muted-foreground">Loading post...</p>
         </div>
       </div>
@@ -175,12 +137,9 @@ function PostDetailContent() {
           <CardContent className="p-8 text-center">
             <MessageSquare className="h-12 w-12 mx-auto text-gray-400 mb-3" />
             <h3 className="text-lg font-semibold mb-2">Post not found</h3>
-            <p className="text-muted-foreground mb-4">
-              The post you're looking for doesn't exist or has been removed.
-            </p>
-            <Button onClick={() => router.push("/dashboard")}>
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Dashboard
+            <p className="text-muted-foreground mb-4">This post doesn't exist or has been removed.</p>
+            <Button onClick={() => router.push("/communities")} variant="outline">
+              <ArrowLeft className="h-4 w-4 mr-2" /> Back to Communities
             </Button>
           </CardContent>
         </Card>
@@ -188,50 +147,53 @@ function PostDetailContent() {
     );
   }
 
+  const userId = user?._id || "";
+  const isLiked = post.likedBy?.includes(userId);
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8">
-        {/* Back Button */}
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => router.push("/dashboard")}
-          className="mb-4"
-        >
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to Dashboard
-        </Button>
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-indigo-50/20">
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8">
+        {/* Back */}
+        <div className="flex items-center gap-3 mb-5">
+          <Button variant="ghost" size="sm" onClick={() => router.back()} className="gap-2">
+            <ArrowLeft className="h-4 w-4" /> Back
+          </Button>
+          {post.communityId && (
+            <Link
+              href={`/communities/${post.communityId}`}
+              className="flex items-center gap-1.5 text-sm text-indigo-600 hover:text-indigo-800 font-medium"
+            >
+              <Users2 className="h-4 w-4" />
+              c/{post.communityName || post.communityId}
+            </Link>
+          )}
+        </div>
 
         {/* Post Card */}
-        <Card className="mb-6">
+        <Card className="mb-5 rounded-2xl border-gray-100 shadow-sm">
           <CardContent className="p-6">
-            {/* Post Header */}
-            <div className="flex items-start gap-4 mb-4">
-              <Avatar className="h-12 w-12">
-                <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-500 text-white">
-                  {post.expertDetails.initials}
+            {/* Author row */}
+            <div className="flex items-center gap-3 mb-4">
+              <Avatar className="h-10 w-10">
+                <AvatarFallback className="bg-gradient-to-br from-indigo-500 to-purple-500 text-white font-bold">
+                  {post.authorInitials || "U"}
                 </AvatarFallback>
               </Avatar>
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="font-semibold text-base">
-                    {post.expertDetails.name}
-                  </span>
-                  <Badge variant="secondary" className="text-xs">
-                    Expert
-                  </Badge>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold text-sm">{post.authorName || "Anonymous"}</span>
                 </div>
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Clock className="h-3.5 w-3.5" />
-                  {formatDistanceToNow(new Date(post.createdAt), {
-                    addSuffix: true,
-                  })}
-                </div>
+                <p className="text-xs text-muted-foreground">
+                  {formatDistanceToNow(new Date(post.createdAt), { addSuffix: true })}
+                </p>
               </div>
             </div>
 
-            {/* Post Content */}
-            <p className="text-base text-gray-700 dark:text-gray-300 mb-4 whitespace-pre-wrap leading-relaxed">
+            {/* Title */}
+            <h1 className="text-2xl font-bold text-gray-900 mb-3">{post.title}</h1>
+
+            {/* Content */}
+            <p className="text-base text-gray-700 mb-4 whitespace-pre-wrap leading-relaxed">
               {post.content}
             </p>
 
@@ -239,21 +201,7 @@ function PostDetailContent() {
             {post.tags && post.tags.length > 0 && (
               <div className="flex flex-wrap gap-2 mb-4">
                 {post.tags.map((tag, index) => (
-                  <Badge
-                    key={index}
-                    variant="outline"
-                    className={`text-xs ${
-                      tag.toLowerCase().includes("startup")
-                        ? "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-300"
-                        : tag.toLowerCase().includes("master")
-                        ? "bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-900/20 dark:text-purple-300"
-                        : tag.toLowerCase().includes("interview")
-                        ? "bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-300"
-                        : tag.toLowerCase().includes("career")
-                        ? "bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-900/20 dark:text-orange-300"
-                        : "bg-gray-50 text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-300"
-                    }`}
-                  >
+                  <Badge key={index} variant="outline" className="bg-indigo-50 text-indigo-700 border-indigo-200 text-xs">
                     {tag}
                   </Badge>
                 ))}
@@ -262,20 +210,16 @@ function PostDetailContent() {
 
             <Separator className="my-4" />
 
-            {/* Post Actions */}
+            {/* Actions */}
             <div className="flex items-center gap-4">
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={handleLike}
-                className="gap-2 hover:bg-red-50 dark:hover:bg-red-900/20"
+                className="gap-2 hover:bg-red-50"
               >
                 <Heart
-                  className={`h-4 w-4 transition-colors ${
-                    post.likedBy?.includes(user?._id || "")
-                      ? "fill-red-500 text-red-500"
-                      : "text-gray-500"
-                  }`}
+                  className={`h-4 w-4 transition-colors ${isLiked ? "fill-red-500 text-red-500" : "text-gray-500"}`}
                 />
                 <span className="text-sm font-medium">{post.likes} Likes</span>
               </Button>
@@ -290,37 +234,29 @@ function PostDetailContent() {
         </Card>
 
         {/* Comments Section */}
-        <Card>
+        <Card className="rounded-2xl border-gray-100 shadow-sm">
           <CardHeader>
-            <h3 className="text-lg font-semibold">
-              Comments ({comments.length})
-            </h3>
+            <h3 className="text-lg font-semibold">Comments ({comments.length})</h3>
           </CardHeader>
           <CardContent className="space-y-6">
-            {/* Add Comment Input */}
+            {/* Add Comment */}
             <div className="space-y-3">
               <Textarea
                 placeholder="Write a comment..."
                 value={newComment}
                 onChange={(e) => setNewComment(e.target.value)}
-                className="min-h-[100px] resize-none"
+                className="min-h-[100px] resize-none rounded-xl"
               />
               <div className="flex justify-end">
                 <Button
                   onClick={handleAddComment}
                   disabled={!newComment.trim() || submittingComment}
-                  className="gap-2"
+                  className="gap-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl"
                 >
                   {submittingComment ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Posting...
-                    </>
+                    <><Loader2 className="h-4 w-4 animate-spin" /> Posting...</>
                   ) : (
-                    <>
-                      <Send className="h-4 w-4" />
-                      Post Comment
-                    </>
+                    <><Send className="h-4 w-4" /> Post Comment</>
                   )}
                 </Button>
               </div>
@@ -331,50 +267,43 @@ function PostDetailContent() {
             {/* Comments List */}
             {loadingComments ? (
               <div className="text-center py-8">
-                <Loader2 className="h-6 w-6 animate-spin mx-auto text-blue-500 mb-2" />
-                <p className="text-sm text-muted-foreground">
-                  Loading comments...
-                </p>
+                <Loader2 className="h-6 w-6 animate-spin mx-auto text-indigo-400 mb-2" />
+                <p className="text-sm text-muted-foreground">Loading comments...</p>
               </div>
             ) : comments.length > 0 ? (
               <div className="space-y-4">
-                {comments.map((comment) => (
-                  <div key={comment.commentID} className="flex gap-4">
-                    <Avatar className="h-10 w-10">
-                      <AvatarFallback className="bg-gray-200 text-gray-700">
-                        {comment.userName
-                          ? comment.userName
-                              .split(" ")
-                              .map((n) => n[0])
-                              .join("")
-                              .toUpperCase()
-                          : comment.userID.substring(0, 2).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1 bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="font-semibold text-sm">
-                          {comment.userName || comment.userID}
-                        </span>
-                        <span className="text-xs text-muted-foreground">
-                          {formatDistanceToNow(new Date(comment.createdAt), {
-                            addSuffix: true,
-                          })}
-                        </span>
+                {comments.map((comment) => {
+                  const name = comment.user?.name || comment.userID;
+                  const initials = name
+                    .split(" ")
+                    .map((n: string) => n[0])
+                    .join("")
+                    .toUpperCase()
+                    .slice(0, 2);
+                  return (
+                    <div key={comment.commentID} className="flex gap-4">
+                      <Avatar className="h-9 w-9 shrink-0">
+                        <AvatarFallback className="bg-gray-100 text-gray-600 text-xs font-semibold">
+                          {initials}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 bg-gray-50 rounded-xl p-4">
+                        <div className="flex items-center gap-2 mb-1.5">
+                          <span className="font-semibold text-sm">{name}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {formatDistanceToNow(new Date(comment.createdAt), { addSuffix: true })}
+                          </span>
+                        </div>
+                        <p className="text-sm text-gray-700 leading-relaxed">{comment.content}</p>
                       </div>
-                      <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
-                        {comment.content}
-                      </p>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <div className="text-center py-8">
-                <MessageSquare className="h-12 w-12 mx-auto text-gray-400 mb-3" />
-                <p className="text-sm text-muted-foreground">
-                  No comments yet. Be the first to comment!
-                </p>
+                <MessageSquare className="h-12 w-12 mx-auto text-gray-300 mb-3" />
+                <p className="text-sm text-muted-foreground">No comments yet. Be the first!</p>
               </div>
             )}
           </CardContent>
