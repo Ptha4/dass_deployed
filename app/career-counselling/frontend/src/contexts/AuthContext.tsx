@@ -23,6 +23,13 @@ interface User {
   expertId?: string;
   type: string;
   wallet?: number;
+  // Onboarding fields
+  grade?: string;
+  preferred_stream?: string;
+  target_college?: string;
+  interests?: string[];
+  career_goals?: string;
+  onboarding_completed?: boolean;
   [key: string]: unknown; // For other fields that may have any type
 }
 
@@ -31,6 +38,7 @@ interface AuthContextType {
   loading: boolean;
   user: User | null;
   logout: () => void;
+  refreshUser: () => Promise<void>;
 }
 
 // Create context with default values
@@ -38,7 +46,8 @@ const AuthContext = createContext<AuthContextType>({
   isAuthenticated: false,
   loading: true,
   user: null,
-  logout: () => {},
+  logout: () => { },
+  refreshUser: async () => { },
 });
 
 // The Auth Provider component
@@ -55,6 +64,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setUser(null);
     router.push("/login");
   }, [router]);
+
+  // Re-fetch the current user profile from the API
+  const refreshUser = useCallback(async () => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+    try {
+      const response = await axios.get("/api/profile", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setUser(response.data);
+    } catch {
+      // silently ignore
+    }
+  }, []);
 
   // Set up interceptors for authentication
   useEffect(() => {
@@ -163,7 +186,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [logout]);
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, loading, user, logout }}>
+    <AuthContext.Provider value={{ isAuthenticated, loading, user, logout, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

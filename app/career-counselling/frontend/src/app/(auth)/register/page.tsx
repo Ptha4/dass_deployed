@@ -105,15 +105,15 @@ export default function RegisterPage() {
       // Show success toast
       toast.success("Account created successfully!");
 
-      // Redirect to dashboard page instead of profile
-      window.location.href = "/dashboard";
+      // Send new users through the onboarding flow before hitting the dashboard
+      window.location.href = "/onboarding";
     } catch (error: Error | unknown) {
       console.error(
         "Error creating user:",
         error instanceof Error
           ? error.message
           : (error as { response?: { data?: { detail?: string } } })?.response
-              ?.data?.detail || "Unknown error"
+            ?.data?.detail || "Unknown error"
       );
 
       // Show specific error message based on error response

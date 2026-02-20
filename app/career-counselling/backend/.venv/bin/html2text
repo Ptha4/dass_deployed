@@ -1,4 +1,6 @@
-#!/home/havish-balaga/career_counselor_0.1.1/app/career-counselling/backend/.venv/bin/python3
+#!/bin/sh
+'''exec' "/home/duskonsnow/Desktop/Vee/IIITH/2-2/Design and Analysis of Software Systems/Project/career_counselor_0.1.1/app/career-counselling/backend/.venv/bin/python" "$0" "$@"
+' '''
 import sys
 from html2text.cli import main
 if __name__ == '__main__':

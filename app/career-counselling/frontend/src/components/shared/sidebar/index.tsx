@@ -1,8 +1,6 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
@@ -10,319 +8,283 @@ import {
   BookOpen,
   GraduationCap,
   Sparkles,
-  ChevronDown,
-  School,
-  Split,
   Video,
-  User,
-  ShieldCheck,
-  Menu,
-  X,
+  ChevronLeft,
+  ChevronRight,
   MessageSquare,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSidebar } from "./sidebar-context";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
-interface SidebarItem {
+interface NavItem {
   title: string;
-  href?: string;
+  href: string;
   icon: React.ReactNode;
-  subItems?: {
-    title: string;
-    href: string;
-    icon: React.ReactNode;
-  }[];
+  matchPrefix?: string;
+}
+
+const staticNavItems: NavItem[] = [
+  {
+    title: "Discussion",
+    href: "/",
+    icon: <MessageSquare className="h-5 w-5" />,
+    matchPrefix: "__exact__",
+  },
+  {
+    title: "Blogs",
+    href: "/blogs",
+    icon: <BookOpen className="h-5 w-5" />,
+  },
+  {
+    title: "Videos",
+    href: "/videos",
+    icon: <Video className="h-5 w-5" />,
+  },
+  {
+    title: "Experts",
+    href: "/experts",
+    icon: <GraduationCap className="h-5 w-5" />,
+  },
+  {
+    title: "Colleges",
+    href: "/colleges",
+    icon: <Building2 className="h-5 w-5" />,
+  },
+  {
+    title: "Career Predictor",
+    href: "/assessments",
+    icon: <Sparkles className="h-5 w-5" />,
+  },
+];
+
+function NavLink({
+  item,
+  isCollapsed,
+  active,
+}: {
+  item: NavItem;
+  isCollapsed: boolean;
+  active: boolean;
+}) {
+  const linkEl = (
+    <Link
+      href={item.href}
+      className={cn(
+        "flex items-center rounded-lg transition-colors group w-full",
+        isCollapsed ? "justify-center px-2 py-2.5" : "gap-3 px-3 py-2.5",
+        active
+          ? "bg-blue-50 text-blue-700"
+          : "text-gray-700 hover:bg-gray-50 hover:text-gray-900"
+      )}
+    >
+      <span
+        className={cn(
+          "flex-shrink-0 transition-colors",
+          active
+            ? "text-blue-700"
+            : "text-gray-500 group-hover:text-gray-700"
+        )}
+      >
+        {item.icon}
+      </span>
+      {!isCollapsed && (
+        <span className="text-sm font-medium truncate">{item.title}</span>
+      )}
+    </Link>
+  );
+
+  if (isCollapsed) {
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>{linkEl}</TooltipTrigger>
+        <TooltipContent side="right" className="font-medium">
+          {item.title}
+        </TooltipContent>
+      </Tooltip>
+    );
+  }
+
+  return linkEl;
 }
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const { isAuthenticated, user } = useAuth();
-  const [isMobileOpen, setIsMobileOpen] = useState(false);
-  const [openCollapsibles, setOpenCollapsibles] = useState<string[]>([]);
+  const { isAuthenticated } = useAuth();
+  const { isCollapsed, setIsCollapsed } = useSidebar();
 
-  const isAdmin = user?.isAdmin;
-  const isExpert = user?.isExpert;
-
-  // Toggle collapsible sections
-  const toggleCollapsible = (title: string) => {
-    setOpenCollapsibles((prev) =>
-      prev.includes(title) ? prev.filter((t) => t !== title) : [...prev, title]
-    );
+  const isActive = (item: NavItem) => {
+    if (item.matchPrefix === "__exact__") return pathname === item.href;
+    return pathname === item.href || pathname.startsWith(item.href + "/");
   };
 
-  // Build dashboard items based on user roles
-  const dashboardItems = [];
-  if (isAuthenticated) {
-    dashboardItems.push({
-      title: "User Dashboard",
-      href: "/dashboard",
-      icon: <User className="h-5 w-5" />,
-    });
+  const isDashboardActive =
+    pathname.startsWith("/dashboard") ||
+    pathname.startsWith("/admin") ||
+    pathname.startsWith("/experts/");
 
-    if (isAdmin) {
-      dashboardItems.push({
-        title: "Admin Dashboard",
-        href: "/admin",
-        icon: <ShieldCheck className="h-5 w-5" />,
-      });
-    }
+  return (
+    <TooltipProvider delayDuration={0}>
+      {/* ─── Desktop Sidebar ─────────────────────────────────────────── */}
+      <aside
+        className={cn(
+          "hidden md:flex flex-col fixed left-0 top-0 h-screen bg-white border-r border-gray-100 z-30 pt-[80px] overflow-visible transition-all duration-300",
+          isCollapsed ? "w-16" : "w-64"
+        )}
+      >
+        {/* Collapse / Expand toggle button */}
+        <button
+          onClick={() => setIsCollapsed((prev: boolean) => !prev)}
+          className="absolute -right-3 top-[96px] z-10 flex h-6 w-6 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-500 shadow-sm hover:bg-gray-50 hover:text-gray-800 transition-colors"
+          aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+        >
+          {isCollapsed ? (
+            <ChevronRight className="h-3 w-3" />
+          ) : (
+            <ChevronLeft className="h-3 w-3" />
+          )}
+        </button>
 
-    if (isExpert && user?.expertId) {
-      dashboardItems.push({
-        title: "Expert Dashboard",
-        href: `/experts/${user.expertId}`,
-        icon: <GraduationCap className="h-5 w-5" />,
-      });
-    }
-  }
+        <nav className="flex-1 overflow-y-auto overflow-x-hidden px-2 py-4">
+          <div className="space-y-1">
+            {staticNavItems.map((item) => (
+              <NavLink
+                key={item.title}
+                item={item}
+                isCollapsed={isCollapsed}
+                active={isActive(item)}
+              />
+            ))}
 
-  const sidebarItems: SidebarItem[] = [
-    // Dashboards Section
-    ...(isAuthenticated && dashboardItems.length === 1
-      ? [
-          {
-            title: "Dashboard",
-            href: dashboardItems[0].href,
-            icon: <LayoutDashboard className="h-5 w-5" />,
-          },
-        ]
-      : []),
-    ...(isAuthenticated && dashboardItems.length > 1
-      ? [
-          {
-            title: "Dashboards",
-            icon: <LayoutDashboard className="h-5 w-5" />,
-            subItems: dashboardItems,
-          },
-        ]
-      : []),
+            {isAuthenticated && (
+              <NavLink
+                item={{
+                  title: "Dashboard",
+                  href: "/dashboard",
+                  icon: <LayoutDashboard className="h-5 w-5" />,
+                }}
+                isCollapsed={isCollapsed}
+                active={isDashboardActive}
+              />
+            )}
+          </div>
+        </nav>
 
-    // Colleges Section
-    {
-      title: "Colleges",
-      icon: <Building2 className="h-5 w-5" />,
-      subItems: [
-        {
-          title: "Explore Colleges",
-          href: "/colleges",
-          icon: <School className="h-5 w-5" />,
-        },
-        {
-          title: "Career Assessment",
-          href: "/assessments",
-          icon: <BookOpen className="h-5 w-5" />,
-        },
-        {
-          title: "College Predictor",
-          href: "/predictor",
-          icon: <Split className="h-5 w-5" />,
-        },
-      ],
-    },
+        {!isCollapsed && (
+          <div className="px-4 py-3 border-t border-gray-100">
+            <p className="text-xs text-gray-400">© 2026 AlumNiti</p>
+          </div>
+        )}
+      </aside>
 
-    // Content Section
-    {
-      title: "Content",
-      icon: <BookOpen className="h-5 w-5" />,
-      subItems: [
-        {
-          title: "Forums",
-          href: "/forums",
-          icon: <MessageSquare className="h-5 w-5" />,
-        },
-        {
-          title: "Blogs",
-          href: "/blogs",
-          icon: <BookOpen className="h-5 w-5" />,
-        },
-        {
-          title: "Videos",
-          href: "/videos",
-          icon: <Video className="h-5 w-5" />,
-        },
-      ],
-    },
+      {/* ─── Mobile Sidebar ───────────────────────────────────────────── */}
+      <MobileSidebar pathname={pathname} isAuthenticated={isAuthenticated} />
+    </TooltipProvider>
+  );
+}
 
-    // Experts Section
-    {
-      title: "Experts",
-      href: "/experts",
-      icon: <GraduationCap className="h-5 w-5" />,
-    },
+/* ------------------------------------------------------------------ */
+/* Lightweight mobile-only sidebar (off-canvas drawer)                 */
+/* ------------------------------------------------------------------ */
+function MobileSidebar({
+  pathname,
+  isAuthenticated,
+}: {
+  pathname: string;
+  isAuthenticated: boolean;
+}) {
+  const { isCollapsed, setIsCollapsed } = useSidebar();
 
-    // AI Chat Section
-    {
-      title: "AI Chat",
-      href: "/chat",
-      icon: <Sparkles className="h-5 w-5" />,
-    },
-  ];
-
-  const isActive = (href?: string) => {
-    if (!href) return false;
+  const isActive = (href: string, exact = false) => {
+    if (exact) return pathname === href;
     return pathname === href || pathname.startsWith(href + "/");
   };
 
-  const hasActiveSubItem = (subItems?: { href: string }[]) => {
-    if (!subItems) return false;
-    return subItems.some((item) => isActive(item.href));
-  };
+  // On mobile "isCollapsed" acts as "drawer is closed"
+  const isOpen = !isCollapsed;
 
-  const renderSidebarContent = () => (
-    <div className="flex flex-col h-full">
-      {/* Navigation Items */}
-      <nav className="flex-1 overflow-y-auto px-3 py-4">
-        <div className="space-y-1">
-          {sidebarItems.map((item) => {
-            const hasSubItems = item.subItems && item.subItems.length > 0;
-            const isItemActive = isActive(item.href);
-            const hasActiveSub = hasActiveSubItem(item.subItems);
-            const isOpen = openCollapsibles.includes(item.title);
+  return (
+    <>
+      {/* Overlay */}
+      {isOpen && (
+        <div
+          className="fixed inset-0 bg-black/40 z-40 md:hidden"
+          onClick={() => setIsCollapsed(true)}
+        />
+      )}
 
-            if (hasSubItems) {
+      <aside
+        className={cn(
+          "fixed left-0 top-0 h-screen w-64 bg-white border-r border-gray-100 z-50 pt-[80px] flex flex-col md:hidden transition-transform duration-300",
+          isOpen ? "translate-x-0" : "-translate-x-full"
+        )}
+      >
+        <nav className="flex-1 overflow-y-auto px-2 py-4">
+          <div className="space-y-1">
+            {staticNavItems.map((item) => {
+              const active =
+                item.matchPrefix === "__exact__"
+                  ? isActive(item.href, true)
+                  : isActive(item.href);
               return (
-                <div key={item.title}>
-                  <button
-                    onClick={() => toggleCollapsible(item.title)}
-                    className={cn(
-                      "w-full flex items-center justify-between px-3 py-2 rounded-lg transition-colors group",
-                      hasActiveSub
-                        ? "bg-blue-50 text-blue-600"
-                        : "hover:bg-gray-50"
-                    )}
-                  >
-                    <span className="flex items-center space-x-3">
-                      <span
-                        className={cn(
-                          "transition-colors",
-                          hasActiveSub
-                            ? "text-blue-600"
-                            : "text-gray-400 group-hover:text-gray-600"
-                        )}
-                      >
-                        {item.icon}
-                      </span>
-                      <span className="text-sm font-medium text-gray-700">
-                        {item.title}
-                      </span>
-                    </span>
-                    <ChevronDown
-                      className={cn(
-                        "h-4 w-4 text-gray-400 transition-transform",
-                        (isOpen || hasActiveSub) && "rotate-180"
-                      )}
-                    />
-                  </button>
-                  {(isOpen || hasActiveSub) && (
-                    <div className="mt-1 space-y-1 border-l-2 border-blue-100 ml-6 pl-4">
-                      {item.subItems?.map((subItem) => (
-                        <Link
-                          key={subItem.href}
-                          href={subItem.href}
-                          onClick={() => setIsMobileOpen(false)}
-                          className={cn(
-                            "flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors text-sm",
-                            isActive(subItem.href)
-                              ? "bg-blue-50 text-blue-600 font-medium"
-                              : "text-gray-600 hover:bg-gray-50"
-                          )}
-                        >
-                          <span
-                            className={cn(
-                              isActive(subItem.href)
-                                ? "text-blue-600"
-                                : "text-gray-400"
-                            )}
-                          >
-                            {subItem.icon}
-                          </span>
-                          <span>{subItem.title}</span>
-                        </Link>
-                      ))}
-                    </div>
+                <Link
+                  key={item.title}
+                  href={item.href}
+                  onClick={() => setIsCollapsed(true)}
+                  className={cn(
+                    "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors",
+                    active
+                      ? "bg-blue-50 text-blue-700"
+                      : "text-gray-700 hover:bg-gray-50"
                   )}
-                </div>
+                >
+                  <span className={active ? "text-blue-700" : "text-gray-500"}>
+                    {item.icon}
+                  </span>
+                  <span className="text-sm font-medium">{item.title}</span>
+                </Link>
               );
-            }
+            })}
 
-            // Regular link without sub-items
-            return (
+            {isAuthenticated && (
               <Link
-                key={item.title}
-                href={item.href!}
-                onClick={() => setIsMobileOpen(false)}
+                href="/dashboard"
+                onClick={() => setIsCollapsed(true)}
                 className={cn(
-                  "flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors group",
-                  isItemActive
-                    ? "bg-blue-50 text-blue-600 font-medium"
+                  "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors",
+                  pathname.startsWith("/dashboard") ||
+                    pathname.startsWith("/admin")
+                    ? "bg-blue-50 text-blue-700"
                     : "text-gray-700 hover:bg-gray-50"
                 )}
               >
                 <span
-                  className={cn(
-                    "transition-colors",
-                    isItemActive
-                      ? "text-blue-600"
-                      : "text-gray-400 group-hover:text-gray-600"
-                  )}
+                  className={
+                    pathname.startsWith("/dashboard") ||
+                      pathname.startsWith("/admin")
+                      ? "text-blue-700"
+                      : "text-gray-500"
+                  }
                 >
-                  {item.icon}
+                  <LayoutDashboard className="h-5 w-5" />
                 </span>
-                <span className="text-sm font-medium">{item.title}</span>
+                <span className="text-sm font-medium">Dashboard</span>
               </Link>
-            );
-          })}
+            )}
+          </div>
+        </nav>
+        <div className="px-4 py-3 border-t border-gray-100">
+          <p className="text-xs text-gray-400">© 2026 AlumNiti</p>
         </div>
-      </nav>
-
-      {/* Footer */}
-      <div className="px-6 py-4 mt-auto">
-        <div className="text-xs text-gray-400">
-          © 2026 AlumNiti
-        </div>
-      </div>
-    </div>
-  );
-
-  return (
-    <>
-      {/* Mobile Toggle Button */}
-      <Button
-        variant="ghost"
-        size="icon"
-        className="fixed top-4 left-4 z-50 md:hidden"
-        onClick={() => setIsMobileOpen(!isMobileOpen)}
-      >
-        {isMobileOpen ? (
-          <X className="h-5 w-5" />
-        ) : (
-          <Menu className="h-5 w-5" />
-        )}
-      </Button>
-
-      {/* Mobile Sidebar Overlay */}
-      {isMobileOpen && (
-        <div
-          className="fixed inset-0 bg-black/50 z-40 md:hidden"
-          onClick={() => setIsMobileOpen(false)}
-        />
-      )}
-
-      {/* Desktop Sidebar */}
-      <aside className="hidden md:flex md:flex-col fixed left-0 top-0 h-screen w-64 bg-white border-r border-gray-100 z-30 pt-[80px]">
-        {renderSidebarContent()}
-      </aside>
-
-      {/* Mobile Sidebar */}
-      <aside
-        className={cn(
-          "fixed left-0 top-0 h-screen w-64 bg-white border-r border-gray-100 z-40 md:hidden transition-transform duration-300",
-          isMobileOpen ? "translate-x-0" : "-translate-x-full"
-        )}
-      >
-        {renderSidebarContent()}
       </aside>
     </>
   );
 }
+
+

@@ -1,7 +1,22 @@
 from pydantic import BaseModel, EmailStr, Field
-from typing import Optional
+from typing import Optional, List
 from enum import Enum
 from bson import ObjectId
+
+
+class Grade(str, Enum):
+    GRADE_9 = "Grade 9"
+    GRADE_10 = "Grade 10"
+    GRADE_11 = "Grade 11"
+    GRADE_12 = "Grade 12"
+
+
+class Stream(str, Enum):
+    SCIENCE_PCM = "Science (PCM)"
+    SCIENCE_PCB = "Science (PCB)"
+    COMMERCE = "Commerce"
+    ARTS = "Arts / Humanities"
+    UNSPECIFIED = ""
 
 
 class Category(str, Enum):
@@ -34,6 +49,13 @@ class UserBase(BaseModel):
     wallet: int = 200  # Default wallet balance of 200 coins
     following: list[str] = []
     followers: list[str] = []
+    # Onboarding fields
+    grade: Optional[Grade] = None
+    preferred_stream: Optional[Stream] = None
+    target_college: Optional[str] = None
+    interests: List[str] = []
+    career_goals: Optional[str] = None
+    onboarding_completed: bool = False
 
 
 class User(UserBase):
@@ -90,6 +112,14 @@ class UserProfileUpdate(BaseModel):
     mobileNo: Optional[str] = None
     wallet: Optional[int] = None
     status: Optional[str] = None  # Add status field to support user status updates
+
+
+class OnboardingUpdate(BaseModel):
+    grade: Optional[str] = None
+    preferred_stream: Optional[str] = None
+    target_college: Optional[str] = None
+    interests: Optional[List[str]] = None
+    career_goals: Optional[str] = None
 
 
 class UserInDB(User):

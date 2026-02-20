@@ -105,8 +105,14 @@ class UserManager:
             update_data["updatedAt"] = datetime.utcnow()
 
             # Ensure the update only modifies allowed fields
-            allowed_fields = {"firstName", "middleName", "lastName", "gender",
-                              "category", "home_state", "mobileNo", "type", "updatedAt", "role", "wallet", "status"}
+            allowed_fields = {
+                "firstName", "middleName", "lastName", "gender",
+                "category", "home_state", "mobileNo", "type", "updatedAt",
+                "role", "wallet", "status",
+                # Onboarding fields
+                "grade", "preferred_stream", "target_college",
+                "interests", "career_goals", "onboarding_completed",
+            }
             filtered_update = {k: v for k,
                                v in update_data.items() if k in allowed_fields}
 

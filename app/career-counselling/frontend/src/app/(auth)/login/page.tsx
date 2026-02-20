@@ -76,7 +76,7 @@ export default function LoginPage() {
         error instanceof Error
           ? error.message
           : (error as { response?: { data?: { detail?: string } } })?.response
-              ?.data?.detail || "Unknown error"
+            ?.data?.detail || "Unknown error"
       );
 
       // Show specific error message based on error response
@@ -106,7 +106,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-lavender/10 to-primary-blue/5 px-4 relative overflow-hidden">
+    <div className="min-h-[calc(100vh-80px)] flex items-center justify-center bg-gradient-to-br from-primary-lavender/10 to-primary-blue/5 px-4 relative overflow-hidden">
       {/* Decorative elements */}
       <div className="absolute top-10 left-10 w-32 h-32 bg-primary-blue/10 rounded-full blur-2xl"></div>
       <div className="absolute bottom-10 right-10 w-48 h-48 bg-primary-lavender/20 rounded-full blur-3xl"></div>

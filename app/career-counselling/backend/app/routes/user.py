@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Query, Depends, status
 from typing import List, Optional
-from app.models.user import User, UserProfileUpdate
+from app.models.user import User, UserProfileUpdate, OnboardingUpdate
 from app.managers.expert import ExpertManager
 from app.managers.user import UserManager
 from app.core.auth_utils import require_admin, require_expert, require_user, get_current_user
@@ -91,6 +91,29 @@ async def get_profile(user_data: dict = Depends(require_user)):
             user_dict["expertId"] = None
 
     return User(**user_dict)
+
+
+@router.put("/onboarding", response_model=User)
+async def complete_onboarding(
+    onboarding_data: OnboardingUpdate,
+    user_data: dict = Depends(require_user)
+):
+    """
+    Save onboarding information for the authenticated user.
+    Marks onboarding_completed = True after saving.
+    """
+    existing_user = await user_manager.get_user_by_email(user_data["email"])
+    if not existing_user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    update_data = {k: v for k, v in onboarding_data.model_dump().items() if v is not None}
+    update_data["onboarding_completed"] = True
+
+    updated_user = await user_manager.update_user(existing_user.id, update_data)
+    if not updated_user:
+        raise HTTPException(status_code=500, detail="Failed to save onboarding data")
+
+    return updated_user
 
 
 @router.put("/profile", response_model=User)

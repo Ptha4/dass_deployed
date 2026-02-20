@@ -9,20 +9,9 @@ import {
   Wallet,
   ShieldCheck,
   GraduationCap,
-  MessageCircle,
   Settings,
   LogOut,
-  Bell,
-  LayoutDashboard,
-  Building2,
-  Sparkles,
 } from "lucide-react";
-import {
-  Sheet,
-  SheetContent,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -34,18 +23,16 @@ import {
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import SearchBar from "./search-bar";
-import NavLinks from "./nav-links";
-import MobileNav from "./mobile-nav";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSidebar } from "@/components/shared/sidebar/sidebar-context";
 import NotificationsDropdown from "@/components/notifications/notifications-dropdown";
 import Chatbot from "@/components/shared/chatbot";
 import { SubscribeButton } from "@/components/subscription/subscribe-button";
 
 export default function Navbar() {
-  const [isScrolled, setIsScrolled] = useState(false);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isChatbotOpen, setIsChatbotOpen] = useState(false);
   const { isAuthenticated, user, logout } = useAuth();
+  const { setIsCollapsed } = useSidebar();
 
   // Listen for custom event to toggle chatbot from mobile nav
   useEffect(() => {
@@ -58,65 +45,61 @@ export default function Navbar() {
       window.removeEventListener("toggle-chatbot", handleToggleChatbotEvent);
   }, []);
 
-  useEffect(() => {
-    const handleScroll = () => {
-      setIsScrolled(window.scrollY > 0);
-    };
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
-
   // Get user initials for avatar fallback
   const getUserInitials = () => {
     if (!user) return "U";
-    return `${user.firstName?.[0] || ""}${
-      user.lastName?.[0] || ""
-    }`.toUpperCase();
+    return `${user.firstName?.[0] || ""}${user.lastName?.[0] || ""
+      }`.toUpperCase();
   };
 
   return (
     <>
-      {/* Top Header Bar - Horizontal Layout with Clean White Background */}
-      <nav className="sticky top-0 z-50 bg-white border-b border-gray-100 shadow-sm transition-all duration-300">
-        <div className="w-full px-8">
-          <div className="flex items-center justify-between h-[80px] gap-8">
-            {/* Left - Logo and Brand Name */}
-            <Link href="/" className="flex items-center space-x-3 group min-w-fit flex-shrink-0">
-              <div className="p-2 rounded-xl transition-all">
-                <Image
-                  src="/logo.png"
-                  alt="AlumNiti Logo"
-                  width={42}
-                  height={42}
-                  priority
-                  className="transition-transform group-hover:scale-110"
-                />
-              </div>
-              <span className="text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent hidden lg:inline tracking-tight">
-                AlumNiti
-              </span>
-            </Link>
+      {/* Top Navbar */}
+      <nav className="sticky top-0 z-50 bg-white border-b border-gray-100 shadow-sm">
+        <div className="w-full px-4 md:px-8">
+          <div className="flex items-center justify-between h-[80px] gap-4 md:gap-8">
+            {/* Left – Mobile sidebar toggle + Logo */}
+            <div className="flex items-center gap-3 min-w-fit flex-shrink-0">
+              {/* Mobile menu button (opens sidebar drawer) */}
+              <button
+                className="md:hidden inline-flex h-10 w-10 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none"
+                aria-label="Open navigation menu"
+                onClick={() => setIsCollapsed(false)}
+              >
+                <Menu className="h-5 w-5" />
+              </button>
 
-            {/* Center - Large Prominent Search Bar (50%+ width) */}
+              <Link
+                href="/"
+                className="flex items-center space-x-3 group min-w-fit flex-shrink-0"
+              >
+                <div className="p-2 rounded-xl transition-all">
+                  <Image
+                    src="/logo.png"
+                    alt="AlumNiti Logo"
+                    width={42}
+                    height={42}
+                    priority
+                    className="transition-transform group-hover:scale-110"
+                  />
+                </div>
+                <span className="text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent hidden lg:inline tracking-tight">
+                  AlumNiti
+                </span>
+              </Link>
+            </div>
+
+            {/* Center – Search Bar */}
             <div className="flex-1 max-w-3xl mx-auto">
               <SearchBar />
             </div>
-
-            {/* Right - User Controls */}
+            {/* Right – User Controls */}
             <div className="flex items-center space-x-4 flex-shrink-0">
               {/* Authentication Controls */}
               {isAuthenticated && user ? (
                 <div className="flex items-center space-x-3">
-                  {/* Notifications with Badge */}
-                  <div className="relative">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="relative h-11 w-11 rounded-full hover:bg-gray-100 text-gray-700 transition-all"
-                    >
-                      <Bell className="h-5 w-5" />
-                    </Button>
-                  </div>
+                  {/* Notifications */}
+                  <NotificationsDropdown />
 
                   {/* User Profile Dropdown */}
                   <DropdownMenu>
@@ -199,12 +182,7 @@ export default function Navbar() {
                           </DropdownMenuItem>
                         )}
                       </DropdownMenuGroup>
-                      <DropdownMenuItem
-                        onClick={() => {
-                          setIsMobileMenuOpen(false);
-                        }}
-                        className="p-0"
-                      >
+                      <DropdownMenuItem className="p-0">
                         <SubscribeButton
                           className="w-full justify-start cursor-pointer rounded px-2 py-1.5 text-sm"
                           showIcon={true}
