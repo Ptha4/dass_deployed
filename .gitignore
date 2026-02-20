@@ -7,6 +7,10 @@
 *.env
 !.env.example
 
+# Changelogs
+CHANGELOG.md
+CHANGELOG_FEB_2026.md
+
 # Python
 __pycache__/
 *.py[cod]

@@ -68,10 +68,8 @@ export default function RootLayout({
             </div>
           </main>
           
-          {/* Footer - Also offset by sidebar */}
-          <div className="md:ml-64 bg-gray-50">
-            <Footer />
-          </div>
+          {/* Footer - Full width, sidebar floats on top */}
+          <Footer />
           
           <Toaster />
           <Analytics />

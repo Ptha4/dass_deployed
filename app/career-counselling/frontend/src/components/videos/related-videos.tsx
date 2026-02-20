@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
-import { Card, CardContent } from "@/components/ui/card";
 import Link from "next/link";
-import { Clock, Eye } from "lucide-react";
+import { Eye, Play, ChevronRight, Video } from "lucide-react";
 import RandomImage from "../shared/random-image";
 import {
   Pagination,
@@ -35,7 +34,7 @@ export default function RelatedVideos({ currentVideoId }: RelatedVideosProps) {
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [itemsPerPage] = useState(3); // Number of related videos per page
+  const [itemsPerPage] = useState(5); // Number of related videos per page
 
   useEffect(() => {
     const fetchRelatedVideos = async () => {
@@ -94,63 +93,107 @@ export default function RelatedVideos({ currentVideoId }: RelatedVideosProps) {
 
   if (loading && relatedVideos.length === 0) {
     return (
-      <div className="space-y-4">
-        <h3 className="font-semibold text-lg">Related Videos</h3>
-        <div className="text-sm text-gray-500">Loading related videos...</div>
+      <div className="space-y-3">
+        <div className="flex items-center gap-2 pb-3 border-b-2 border-gray-900">
+          <Video className="h-5 w-5 text-gray-800" />
+          <h3 className="font-bold text-lg text-gray-900">Similar Videos</h3>
+        </div>
+        {Array(4).fill(0).map((_, i) => (
+          <div key={i} className="flex gap-3 py-2">
+            <div className="flex-none w-36 h-20 rounded-xl bg-gray-100 animate-pulse" />
+            <div className="flex-1 space-y-2 pt-1">
+              <div className="h-3.5 bg-gray-100 rounded animate-pulse w-full" />
+              <div className="h-3 bg-gray-100 rounded animate-pulse w-2/3" />
+              <div className="h-3 bg-gray-100 rounded animate-pulse w-1/2" />
+            </div>
+          </div>
+        ))}
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="space-y-4">
-        <h3 className="font-semibold text-lg">Related Videos</h3>
-        <div className="text-sm text-red-500">{error}</div>
+      <div className="space-y-2">
+        <div className="flex items-center gap-2 pb-3 border-b-2 border-gray-900">
+          <Video className="h-5 w-5 text-gray-800" />
+          <h3 className="font-bold text-lg text-gray-900">Similar Videos</h3>
+        </div>
+        <p className="text-sm text-red-500 py-2">{error}</p>
       </div>
     );
   }
 
   if (relatedVideos.length === 0) {
     return (
-      <div className="space-y-4">
-        <h3 className="font-semibold text-lg">Related Videos</h3>
-        <div className="text-sm text-gray-500">No related videos available</div>
+      <div className="space-y-2">
+        <div className="flex items-center gap-2 pb-3 border-b-2 border-gray-900">
+          <Video className="h-5 w-5 text-gray-800" />
+          <h3 className="font-bold text-lg text-gray-900">Similar Videos</h3>
+        </div>
+        <p className="text-sm text-gray-500 py-2">No similar videos available.</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-4">
-      <h3 className="font-semibold text-lg">Related Videos</h3>
-      {relatedVideos.map((video) => (
+    <div className="space-y-1">
+      {/* Panel header */}
+      <div className="flex items-center justify-between pb-3 border-b-2 border-gray-900">
+        <div className="flex items-center gap-2">
+          <Video className="h-5 w-5 text-gray-800" />
+          <h3 className="font-bold text-lg text-gray-900">Similar Videos</h3>
+        </div>
+        <Link
+          href="/videos"
+          className="flex items-center gap-0.5 text-xs text-blue-600 hover:underline font-medium"
+        >
+          See all <ChevronRight className="h-3.5 w-3.5" />
+        </Link>
+      </div>
+
+      {relatedVideos.map((video, idx) => (
         <Link key={video.videoID} href={`/videos/${video.videoID}`}>
-          <Card className="hover:shadow-md transition-shadow">
-            <div className="flex space-x-4">
-              <div className="relative w-40 h-24">
-                <RandomImage
-                  alt={video.title}
-                  fill
-                  className="object-cover rounded-l-lg"
-                ></RandomImage>
-                <div className="absolute bottom-1 right-1 bg-black/80 text-white text-xs px-1 rounded">
-                  {video.duration}
+          <div
+            className={`flex gap-3 py-3 hover:bg-gray-50 rounded-xl px-2 transition-colors group ${
+              idx < relatedVideos.length - 1 ? "border-b border-gray-100" : ""
+            }`}
+          >
+            {/* Thumbnail */}
+            <div className="relative flex-none w-36 h-20 rounded-xl overflow-hidden bg-gray-100">
+              <RandomImage
+                alt={video.title}
+                fill
+                className="object-cover group-hover:scale-105 transition-transform duration-300"
+              />
+              {/* Play overlay — slightly visible always */}
+              <div className="absolute inset-0 flex items-center justify-center bg-black/10 group-hover:bg-black/40 transition-colors">
+                <div className="bg-white/80 group-hover:bg-white rounded-full p-1.5 transition-colors">
+                  <Play className="h-4 w-4 text-gray-900 fill-gray-900" />
                 </div>
               </div>
-              <CardContent className="flex-1 p-3">
-                <h4 className="font-medium text-sm mb-2 line-clamp-2">
-                  {video.title}
-                </h4>
-                <div className="flex items-center text-xs text-gray-500 space-x-2">
-                  <span>{video.expertName || "Expert"}</span>
-                  <span>•</span>
-                  <div className="flex items-center">
-                    <Eye className="h-3 w-3 mr-1" />
-                    <span>{formatViews(video.views)}</span>
-                  </div>
-                </div>
-              </CardContent>
+              {video.duration && (
+                <span className="absolute bottom-1.5 right-1.5 bg-black/80 text-white text-[10px] px-1.5 py-0.5 rounded font-medium leading-tight">
+                  {video.duration}
+                </span>
+              )}
             </div>
-          </Card>
+
+            {/* Metadata */}
+            <div className="flex-1 min-w-0 flex flex-col justify-between py-0.5">
+              <h4 className="text-sm font-semibold line-clamp-2 leading-snug text-gray-900 group-hover:text-blue-700 transition-colors">
+                {video.title}
+              </h4>
+              <div className="flex items-center gap-2 text-xs text-gray-500 mt-1.5">
+                <span className="line-clamp-1 font-medium">{video.expertName || "Expert"}</span>
+                <span>·</span>
+                <span className="flex items-center gap-0.5 flex-none">
+                  <Eye className="h-3 w-3" />
+                  {formatViews(video.views)}
+                </span>
+              </div>
+            </div>
+          </div>
         </Link>
       ))}
       {/* Pagination UI */}
@@ -212,8 +255,8 @@ export default function RelatedVideos({ currentVideoId }: RelatedVideosProps) {
         </Pagination>
       )}
       {loading && relatedVideos.length > 0 && (
-        <div className="text-sm text-center text-gray-500">
-          Loading more videos...
+        <div className="text-xs text-center text-gray-400 py-1">
+          Loading more…
         </div>
       )}
     </div>

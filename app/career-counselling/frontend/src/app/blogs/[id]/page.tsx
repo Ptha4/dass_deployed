@@ -35,6 +35,8 @@ import {
 
 import CommentsSection from "@/components/shared/comments-section";
 import SystemShareButton from "@/components/shared/system-share-button";
+import VideosCarousel from "@/components/shared/videos-carousel";
+import ExpertsCarousel from "@/components/shared/experts-carousel";
 
 // Loading skeleton component
 const BlogSkeleton = () => (
@@ -71,6 +73,19 @@ export default function BlogDetailPage() {
 
         // Increment view count
         incrementViewCount(data.blogID);
+
+        // Save to lastViewedBlogs in localStorage
+        try {
+          const stored = localStorage.getItem("lastViewedBlogs");
+          const prev: { blogID: string; heading: string; views: number; createdAt: string }[] =
+            stored ? JSON.parse(stored) : [];
+          const filtered = prev.filter((b) => b.blogID !== data.blogID);
+          const updated = [
+            { blogID: data.blogID, heading: data.heading, views: data.views ?? 0, createdAt: data.createdAt },
+            ...filtered,
+          ].slice(0, 20);
+          localStorage.setItem("lastViewedBlogs", JSON.stringify(updated));
+        } catch { /* ignore */ }
 
         // Check if user has liked this blog
         if (user) {
@@ -409,6 +424,18 @@ export default function BlogDetailPage() {
             {/* Related Blogs */}
             <RelatedBlogs currentBlogId={blog.blogID} category={blog.refType} />
           </div>
+        </div>
+
+        {/* ── Bottom Carousels ─────────────────────────────────────── */}
+        <div className="container mx-auto px-4">
+          <section className="mt-12 space-y-10 border-t border-gray-100 pt-8 pb-12">
+            <VideosCarousel
+              title="Related Videos"
+              refType={blog.refType !== "NA" ? blog.refType : undefined}
+              typeId={blog.typeId}
+            />
+            <ExpertsCarousel title="Suggested Experts" />
+          </section>
         </div>
       </div>
     </div>

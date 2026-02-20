@@ -11,6 +11,8 @@ import { useParams } from "next/navigation";
 import RelatedVideos from "@/components/videos/related-videos";
 import VideoWatermark from "@/components/videos/video-watermark";
 import CommentsSection from "@/components/shared/comments-section";
+import BlogsCarousel from "@/components/shared/blogs-carousel";
+import ExpertsCarousel from "@/components/shared/experts-carousel";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 
@@ -97,12 +99,31 @@ export default function VideoPage() {
       try {
         const response = await axios.get(`/api/videos/${params.id}`);
         setVideo(response.data);
-        
+
         // Check if the logged-in user is the video owner
-        if (user && user.isExpert && user._id && 
-            response.data.userId && 
+        if (user && user.isExpert && user._id &&
+            response.data.userId &&
             user._id.toString() === response.data.userId.toString()) {
           setIsOwner(true);
+        }
+
+        // Track this video in localStorage last-viewed list
+        try {
+          const stored = localStorage.getItem("lastViewedVideos");
+          const existing: { videoID: string; title: string; views: number; createdAt: string }[] =
+            stored ? JSON.parse(stored) : [];
+          const updated = [
+            {
+              videoID: response.data.videoID,
+              title: response.data.title,
+              views: response.data.views ?? 0,
+              createdAt: response.data.createdAt ?? new Date().toISOString(),
+            },
+            ...existing.filter((v) => v.videoID !== response.data.videoID),
+          ].slice(0, 20); // keep last 20
+          localStorage.setItem("lastViewedVideos", JSON.stringify(updated));
+        } catch {
+          // localStorage not available — ignore
         }
       } catch (error) {
         console.error(error);
@@ -162,17 +183,29 @@ export default function VideoPage() {
           {video && <VideoDescription video={video} />}
         </div>
 
-        {/* Sidebar */}
-        {/* suggestions of other videos possibly related ones. */}
-        <div className="lg:w-1/3 space-y-6">
-          <aside className="bg-gray-50 rounded-lg p-4 shadow-sm">
+        {/* Sidebar — LinkedIn profile panel style */}
+        <div className="lg:w-1/3 space-y-4">
+          {/* Similar Videos — LinkedIn-style panel */}
+          <aside className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
             {video?.videoID && <RelatedVideos currentVideoId={video.videoID} />}
           </aside>
-          <aside className="bg-gray-50 rounded-lg p-4 shadow-sm">
+
+          {/* Comments */}
+          <aside className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
             <CommentsSection pageId={video?.videoID} type="video" />
           </aside>
         </div>
       </div>
+
+      {/* ── Bottom Carousels: Related Blogs + Related Experts ──────── */}
+      <section className="mt-12 space-y-10 border-t border-gray-100 pt-8">
+        <BlogsCarousel
+          title="Related Blogs"
+          refType={video?.refType}
+          typeId={video?.typeId ?? undefined}
+        />
+        <ExpertsCarousel title="Related Experts" />
+      </section>
     </div>
   );
 }

@@ -4,9 +4,12 @@ import { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import { BlogCard } from "@/components/blogs/blog-card";
 import BlogFilters from "@/components/blogs/blog-filters";
-import { Loader2 } from "lucide-react";
+import FeaturedBlog from "@/components/blogs/featured-blog";
+import RandomImage from "@/components/shared/random-image";
 import { Blog } from "@/types";
 import { Button } from "@/components/ui/button";
+import Link from "next/link";
+import { TrendingUp, History, BookOpen, Play } from "lucide-react";
 import {
   Pagination,
   PaginationContent,
@@ -16,7 +19,9 @@ import {
   PaginationPrevious,
   PaginationEllipsis,
 } from "@/components/ui/pagination";
-import { SkeletonCard, SkeletonCardGrid } from "@/components/shared/loading-indicator";
+import { SkeletonCardGrid } from "@/components/shared/loading-indicator";
+import VideosCarousel from "@/components/shared/videos-carousel";
+import ExpertsCarousel from "@/components/shared/experts-carousel";
 
 export default function BlogsPage() {
   const [filters, setFilters] = useState({
@@ -31,6 +36,12 @@ export default function BlogsPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [totalBlogs, setTotalBlogs] = useState(0);
   const ITEMS_PER_PAGE = 12;
+
+  const [featuredBlog, setFeaturedBlog] = useState<Blog | null>(null);
+  const [trendingBlogs, setTrendingBlogs] = useState<Blog[]>([]);
+  const [lastViewedBlogs, setLastViewedBlogs] = useState<
+    { blogID: string; heading: string; views: number; createdAt: string }[]
+  >([]);
 
   // Reset filters function
   const resetFilters = () => {
@@ -88,10 +99,37 @@ export default function BlogsPage() {
     }
   }, [currentPage, filters, ITEMS_PER_PAGE]);
 
+  const fetchTrendingBlogs = useCallback(async () => {
+    try {
+      const res = await axios.get("/api/blogs/", { params: { limit: 10, sortBy: "views" } });
+      const data = res.data;
+      const raw: Blog[] = Array.isArray(data) ? data : data.blogs ?? [];
+      setTrendingBlogs(raw.slice(0, 10));
+      if (raw.length > 0) setFeaturedBlog(raw[0]);
+    } catch {
+      // non-critical
+    }
+  }, []);
+
+  // Load last viewed from localStorage on mount
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem("lastViewedBlogs");
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) setLastViewedBlogs(parsed.slice(0, 8));
+      }
+    } catch { /* ignore */ }
+  }, []);
+
   // Initial load and when filters/page change
   useEffect(() => {
     fetchBlogs();
   }, [currentPage, filters, fetchBlogs]);
+
+  useEffect(() => {
+    fetchTrendingBlogs();
+  }, [fetchTrendingBlogs]);
 
   // Handle page change
   const handlePageChange = (page: number) => {
@@ -101,8 +139,92 @@ export default function BlogsPage() {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-8">Career Insights Blog <span className="text-lg font-normal text-gray-500">({totalBlogs} articles)</span></h1>
+    <div className="container mx-auto px-4 pt-2 pb-8">
+      <div className="flex items-center justify-between mb-3">
+        <h1 className="text-3xl font-bold">Career Insights Blog <span className="text-lg font-normal text-gray-500">({totalBlogs} articles)</span></h1>
+      </div>
+
+      {/* Featured Blog */}
+      {currentPage === 1 && featuredBlog && (
+        <div className="mb-8">
+          <FeaturedBlog blog={featuredBlog} />
+        </div>
+      )}
+
+      {/* ── Continue Reading (Last Viewed) ────────────────────────── */}
+      {currentPage === 1 && lastViewedBlogs.length > 0 && (
+        <section className="mb-10">
+          <div className="flex items-center gap-2 mb-5">
+            <History className="h-5 w-5 text-gray-500" />
+            <h2 className="text-xl font-bold">Continue Reading</h2>
+          </div>
+          <div className="flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {lastViewedBlogs.map((b) => (
+              <Link
+                key={b.blogID}
+                href={`/blogs/${b.blogID}`}
+                className="flex-none w-64 snap-start group"
+              >
+                <div className="relative h-36 rounded-2xl overflow-hidden shadow-md group-hover:shadow-xl transition-all duration-300 group-hover:-translate-y-1">
+                  <RandomImage alt={b.heading} fill className="object-cover group-hover:scale-105 transition-transform duration-500" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
+                  <div className="absolute top-2 left-2 bg-emerald-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">
+                    Resume
+                  </div>
+                  <div className="absolute bottom-0 left-0 right-0 p-3">
+                    <p className="text-white text-xs font-semibold line-clamp-2 leading-snug">{b.heading}</p>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* ── Trending Blogs ─────────────────────────────────────────── */}
+      {currentPage === 1 && trendingBlogs.length > 0 && (
+        <section className="mb-10">
+          <div className="flex items-center gap-2 mb-5">
+            <TrendingUp className="h-5 w-5 text-orange-500" />
+            <h2 className="text-xl font-bold">Trending Blogs</h2>
+          </div>
+          <div className="flex gap-5 overflow-x-auto pb-4 snap-x snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {trendingBlogs.map((blog, idx) => (
+              <Link
+                key={blog.blogID}
+                href={`/blogs/${blog.blogID}`}
+                className="flex-none w-72 snap-start group"
+              >
+                <div className="relative h-44 rounded-2xl overflow-hidden shadow-md group-hover:shadow-xl transition-all duration-300 group-hover:-translate-y-1">
+                  <RandomImage alt={blog.heading} fill className="object-cover transition-transform duration-500 group-hover:scale-105" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
+                  {/* Rank watermark */}
+                  <div className="absolute top-3 left-3 text-4xl font-black text-white/20 leading-none select-none">#{idx + 1}</div>
+                  {/* Badge */}
+                  <div className="absolute top-3 right-3 bg-orange-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+                    🔥 Trending
+                  </div>
+                  <div className="absolute bottom-0 left-0 right-0 p-3">
+                    <p className="text-white text-sm font-semibold line-clamp-2 leading-snug mb-0.5">{blog.heading}</p>
+                    <p className="text-white/60 text-xs">
+                      {blog.author ? `${blog.author.firstName} ${blog.author.lastName}` : "Expert"} · {(blog.views ?? 0).toLocaleString()} views
+                    </p>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* ── Browse All ─────────────────────────────────────────────── */}
+      {currentPage === 1 && (
+        <div className="flex items-center gap-3 mb-6">
+          <BookOpen className="h-5 w-5 text-gray-400" />
+          <h2 className="text-xl font-semibold text-gray-700">Browse All</h2>
+          <div className="flex-1 h-px bg-gray-200" />
+        </div>
+      )}
 
       <div className="flex flex-col lg:flex-row gap-8">
         <aside className="lg:w-1/4 overflow-y-auto pr-2">
@@ -277,6 +399,12 @@ export default function BlogsPage() {
           )}
         </main>
       </div>
+
+      {/* ── Bottom Carousels ───────────────────────────────────────── */}
+      <section className="mt-12 space-y-10 border-t border-gray-100 pt-8">
+        <VideosCarousel title="Related Videos" />
+        <ExpertsCarousel title="Related Experts" />
+      </section>
     </div>
   );
 }

@@ -5,10 +5,11 @@ import { useEffect, useState, useCallback } from "react";
 import VideoCard from "@/components/videos/video-card";
 import VideoFilters from "@/components/videos/video-filters";
 import FeaturedVideo from "@/components/videos/featured-video";
-import { Loader2 } from "lucide-react";
+import RandomImage from "@/components/shared/random-image";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { Video } from "@/types";
+import { TrendingUp, History, Play } from "lucide-react";
 import {
   Pagination,
   PaginationContent,
@@ -20,10 +21,11 @@ import {
 import {
   SkeletonImage,
   SkeletonText,
-  SkeletonCard,
   SkeletonCardGrid,
   SkeletonCircle
 } from "@/components/shared/loading-indicator";
+import BlogsCarousel from "@/components/shared/blogs-carousel";
+import ExpertsCarousel from "@/components/shared/experts-carousel";
 
 export default function VideosPage() {
   const [filters, setFilters] = useState({
@@ -41,6 +43,12 @@ export default function VideosPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [itemsPerPage] = useState(12); // Number of videos per page
   const [featuredVideo, setFeaturedVideo] = useState<Video | null>(null);
+
+  // Trending and last-viewed
+  const [trendingVideos, setTrendingVideos] = useState<Video[]>([]);
+  const [lastViewedVideos, setLastViewedVideos] = useState<
+    { videoID: string; title: string; views: number; createdAt: string }[]
+  >([]);
 
   const fetchVideos = useCallback(async () => {
     setLoading(true);
@@ -116,6 +124,21 @@ export default function VideosPage() {
     }
   }, [currentPage, filters, itemsPerPage]);
 
+  const fetchTrendingVideos = useCallback(async () => {
+    try {
+      const res = await axios.get("/api/videos", {
+        params: { limit: 8, sortBy: "views" },
+      });
+      const data = res.data;
+      const raw: Video[] = Array.isArray(data)
+        ? data
+        : data.videos ?? [];
+      setTrendingVideos(raw.slice(0, 8));
+    } catch {
+      // non-critical — skip silently
+    }
+  }, []);
+
   const fetchUserRole = useCallback(async () => {
     try {
       const response = await axios.get("/api/role", {
@@ -129,10 +152,24 @@ export default function VideosPage() {
     }
   }, []);
 
+  // Load last viewed from localStorage on mount
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem("lastViewedVideos");
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) setLastViewedVideos(parsed.slice(0, 8));
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+
   useEffect(() => {
     fetchVideos();
     fetchUserRole();
-  }, [currentPage, filters, itemsPerPage, fetchVideos, fetchUserRole]);
+    fetchTrendingVideos();
+  }, [currentPage, filters, itemsPerPage, fetchVideos, fetchUserRole, fetchTrendingVideos]);
 
   // Handle page change
   const handlePageChange = (page: number) => {
@@ -153,15 +190,110 @@ export default function VideosPage() {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="flex items-center justify-between mb-8">
+    <div className="container mx-auto px-4 pt-2 pb-8">
+      <div className="flex items-center justify-between mb-3">
         <h1 className="text-3xl font-bold">Video Library</h1>
       </div>
 
       {/* Featured Video - only shown on first page and when videos are found */}
       {currentPage === 1 && featuredVideo && videos.length > 0 && (
-        <div className="mb-12">
+        <div className="mb-8">
           <FeaturedVideo video={featuredVideo} />
+        </div>
+      )}
+
+      {/* ── Last Viewed Videos ─────────────────────────────────────── */}
+      {currentPage === 1 && lastViewedVideos.length > 0 && (
+        <section className="mb-10">
+          <div className="flex items-center gap-2 mb-5">
+            <History className="h-5 w-5 text-gray-500" />
+            <h2 className="text-xl font-bold">Continue Watching</h2>
+          </div>
+          <div className="flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {lastViewedVideos.map((v) => (
+              <Link
+                key={v.videoID}
+                href={`/videos/${v.videoID}`}
+                className="flex-none w-64 snap-start group"
+              >
+                <div className="relative h-36 rounded-2xl overflow-hidden shadow-md group-hover:shadow-xl transition-all duration-300 group-hover:-translate-y-1">
+                  <RandomImage alt={v.title} fill className="object-cover group-hover:scale-105 transition-transform duration-500" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
+                  {/* Play button */}
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="h-11 w-11 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center group-hover:bg-white/30 transition-colors">
+                      <Play className="h-5 w-5 text-white fill-white ml-0.5" />
+                    </div>
+                  </div>
+                  {/* Resume pill */}
+                  <div className="absolute top-2 left-2 bg-blue-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">
+                    Resume
+                  </div>
+                  {/* Title */}
+                  <div className="absolute bottom-2 left-3 right-3">
+                    <p className="text-white text-xs font-semibold line-clamp-2 leading-snug">{v.title}</p>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* ── Trending / Most Viewed Videos ──────────────────────────── */}
+      {currentPage === 1 && trendingVideos.length > 0 && (
+        <section className="mb-10">
+          <div className="flex items-center justify-between mb-5">
+            <div className="flex items-center gap-2">
+              <TrendingUp className="h-5 w-5 text-orange-500" />
+              <h2 className="text-xl font-bold">Trending Now</h2>
+            </div>
+          </div>
+          <div className="flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {trendingVideos.map((video, idx) => (
+              <Link
+                key={video.videoID}
+                href={`/videos/${video.videoID}`}
+                className="flex-none w-72 snap-start group"
+              >
+                <div className="relative h-40 rounded-2xl overflow-hidden shadow-md group-hover:shadow-xl transition-all duration-300 group-hover:-translate-y-1">
+                  <RandomImage alt={video.title} fill className="object-cover group-hover:scale-105 transition-transform duration-500" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
+
+                  {/* Rank number */}
+                  <div className="absolute top-3 left-3 text-4xl font-black text-white/20 leading-none select-none">
+                    #{idx + 1}
+                  </div>
+
+                  {/* Play */}
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="h-11 w-11 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center group-hover:bg-white/30 transition-colors">
+                      <Play className="h-5 w-5 text-white fill-white ml-0.5" />
+                    </div>
+                  </div>
+
+                  {/* Trending badge */}
+                  <div className="absolute top-3 right-3 bg-orange-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+                    🔥 Trending
+                  </div>
+
+                  {/* Bottom info */}
+                  <div className="absolute bottom-0 left-0 right-0 p-3">
+                    <p className="text-white text-sm font-semibold line-clamp-1 leading-snug mb-0.5">{video.title}</p>
+                    <p className="text-white/60 text-xs">{(video.views ?? 0).toLocaleString()} views</p>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* ── Browse All ─────────────────────────────────────────────── */}
+      {currentPage === 1 && (
+        <div className="flex items-center gap-3 mb-6">
+          <h2 className="text-xl font-semibold text-gray-700">Browse All</h2>
+          <div className="flex-1 h-px bg-gray-200" />
         </div>
       )}
 
@@ -324,10 +456,16 @@ export default function VideosPage() {
                   </PaginationContent>
                 </Pagination>
               )}
-            </>
+          </>
           )}
         </main>
       </div>
+
+      {/* ── Bottom Carousels: Related Blogs + Related Experts ──────── */}
+      <section className="mt-16 space-y-10 border-t border-gray-100 pt-10">
+        <BlogsCarousel title="Related Blogs" />
+        <ExpertsCarousel title="Related Experts" />
+      </section>
     </div>
   );
 }

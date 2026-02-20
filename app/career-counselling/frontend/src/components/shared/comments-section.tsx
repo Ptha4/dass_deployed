@@ -225,300 +225,213 @@ export default function CommentsSection({
   }
 
   return (
-    <div className="rounded-lg bg-white p-6 border border-gray-200 shadow-sm animate-fadeIn">
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-semibold text-gray-800 flex items-center">
-          <div className="w-1 h-8 bg-primary-blue mr-3 rounded-full transition-all duration-300 hover:h-10"></div>
+    <div className="bg-white">
+      {/* Header */}
+      <div className="flex items-center gap-3 mb-6">
+        <MessageSquare className="h-5 w-5 text-gray-700" />
+        <h2 className="text-lg font-semibold text-gray-900">
           {title}
-          <span className="ml-2 text-lg font-normal text-gray-500">
-            ({totalComments})
-          </span>
         </h2>
+        <span className="text-sm text-gray-400 font-normal">{totalComments} comments</span>
       </div>
 
-      {/* Comment Form */}
-      <div className="bg-gray-50 rounded-lg p-5 border border-gray-100 mb-8 transition-all duration-300 hover:shadow-md transform hover:-translate-y-1">
-        <div className="flex space-x-4">
-          <Avatar className="h-10 w-10 border-2 border-white shadow-sm transition-transform duration-300 hover:scale-110">
-            <AvatarImage
-              src={user?.avatar ? String(user.avatar) : "/avatars/user.jpg"}
-            />
-            <AvatarFallback className="bg-primary-blue text-white">
-              {user ? user.firstName?.[0] : "U"}
-            </AvatarFallback>
-          </Avatar>
-          <div className="flex-1 space-y-4">
-            <Textarea
-              placeholder="Add a comment..."
-              value={comment}
-              onChange={(e) => setComment(e.target.value)}
-              className="min-h-[80px] border-gray-200 focus:border-primary-blue focus:ring-primary-blue/20 resize-none rounded-md transition-all duration-200"
-            />
-            <div className="flex justify-end space-x-2">
-              <Button
-                variant="outline"
-                onClick={() => setComment("")}
-                className="text-gray-600 border-gray-200 transition-colors duration-200 hover:border-gray-300"
-              >
+      {/* Comment Compose */}
+      <div className="flex gap-3 mb-8">
+        <Avatar className="h-9 w-9 shrink-0 mt-0.5">
+          <AvatarImage src={user?.avatar ? String(user.avatar) : "/avatars/user.jpg"} />
+          <AvatarFallback className="bg-primary-blue text-white text-sm">
+            {user ? user.firstName?.[0] : "U"}
+          </AvatarFallback>
+        </Avatar>
+        <div className="flex-1">
+          <Textarea
+            placeholder={user ? "Add a comment..." : "Log in to comment"}
+            value={comment}
+            onChange={(e) => setComment(e.target.value)}
+            disabled={!user}
+            className="min-h-[72px] resize-none border-0 border-b-2 border-gray-200 rounded-none px-0 focus:border-primary-blue focus:ring-0 text-sm placeholder:text-gray-400 transition-colors duration-200"
+          />
+          {comment.trim() && (
+            <div className="flex justify-end gap-2 mt-2">
+              <Button variant="ghost" size="sm" onClick={() => setComment("")} className="text-gray-500 text-xs">
                 Cancel
               </Button>
               <Button
+                size="sm"
                 onClick={handleComment}
                 disabled={!comment.trim() || !user}
-                className="bg-primary-blue hover:bg-primary-blue/90 text-white transition-all duration-200 hover:shadow"
+                className="bg-primary-blue hover:bg-primary-blue/90 text-white text-xs px-4 rounded-full"
               >
                 Comment
               </Button>
             </div>
-          </div>
+          )}
         </div>
       </div>
 
       {/* Comments List */}
-      <div className="space-y-6">
+      <div className="space-y-0">
         {loading && comments.length === 0 ? (
-          <div className="flex justify-center py-8 animate-pulse">
-            <div className="flex space-x-4">
-              <div className="rounded-full bg-gray-200 h-12 w-12"></div>
-              <div className="flex-1 space-y-3 py-1">
-                <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-                <div className="space-y-2">
-                  <div className="h-3 bg-gray-100 rounded"></div>
-                  <div className="h-3 bg-gray-100 rounded w-5/6"></div>
+          <div className="space-y-5 py-2">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="flex gap-3 animate-pulse">
+                <div className="rounded-full bg-gray-200 h-9 w-9 shrink-0" />
+                <div className="flex-1 space-y-2 pt-1">
+                  <div className="h-3 bg-gray-200 rounded w-32" />
+                  <div className="h-3 bg-gray-100 rounded w-full" />
+                  <div className="h-3 bg-gray-100 rounded w-4/5" />
                 </div>
               </div>
-            </div>
+            ))}
           </div>
         ) : comments.length === 0 ? (
-          <div className="text-center py-10 bg-gray-50 rounded-lg transition-all duration-300 animate-fadeIn hover:shadow-sm">
-            <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-gray-100 mb-4 transition-transform duration-500 hover:rotate-12">
-              <MessageSquare className="h-8 w-8 text-primary-blue" />
+          <div className="text-center py-10">
+            <div className="inline-flex h-14 w-14 items-center justify-center rounded-full bg-gray-100 mb-3">
+              <MessageSquare className="h-7 w-7 text-gray-400" />
             </div>
-            <p className="text-gray-600 mb-4">
-              No comments yet. Be the first to comment!
-            </p>
+            <p className="text-sm text-gray-500 mb-3">No comments yet. Be the first!</p>
             {!user && (
-              <Button
-                variant="outline"
-                onClick={() => (window.location.href = "/login")}
-                className="border-gray-200 transition-transform duration-200 hover:scale-105"
-              >
+              <Button variant="outline" size="sm" onClick={() => (window.location.href = "/login")} className="rounded-full text-xs">
                 Login to comment
               </Button>
             )}
           </div>
         ) : (
           <>
-            <div className="space-y-6">
-              {comments.map((comment, index) => (
-                <div
-                  key={comment.commentID}
-                  className="border border-gray-100 rounded-lg overflow-hidden mb-4 transition-all duration-300 hover:shadow-md hover:-translate-y-1 animate-fadeIn"
-                  style={{ animationDelay: `${index * 0.1}s` }}
-                >
-                  {/* Main Comment */}
-                  <div className="p-5 bg-white">
-                    <div className="flex space-x-4">
-                      <Avatar className="h-10 w-10 border-2 border-white shadow-sm transition-transform duration-200 hover:scale-110">
-                        <AvatarImage
-                          src={comment.user?.avatar || "/default-avatar.png"}
-                        />
-                        <AvatarFallback className="bg-primary-blue text-white">
-                          {comment.user?.name?.[0] || "U"}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1">
-                        <div className="space-y-2">
-                          <div className="flex items-center space-x-2">
-                            <span className="font-semibold text-gray-800">
-                              {comment.user?.name || "Unknown"}
-                            </span>
-                            <span className="text-sm text-gray-500">
-                              {new Date(comment.createdAt).toLocaleDateString(
-                                undefined,
-                                {
-                                  year: "numeric",
-                                  month: "short",
-                                  day: "numeric",
-                                }
-                              )}
-                            </span>
-                          </div>
-                          <p className="text-gray-700 py-2 leading-relaxed">
-                            {comment.content}
-                          </p>
-                          <div className="flex items-center mt-2">
+            {comments.map((comment) => (
+              <div key={comment.commentID} className="group">
+                {/* Main comment row */}
+                <div className="flex gap-3 py-4">
+                  <Avatar className="h-9 w-9 shrink-0 mt-0.5">
+                    <AvatarImage src={comment.user?.avatar || "/default-avatar.png"} />
+                    <AvatarFallback className="bg-primary-blue text-white text-sm">
+                      {comment.user?.name?.[0] || "U"}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 min-w-0">
+                    {/* Meta row */}
+                    <div className="flex items-baseline gap-2 mb-1">
+                      <span className="text-sm font-semibold text-gray-900">
+                        {comment.user?.name || "Unknown"}
+                      </span>
+                      <span className="text-xs text-gray-400">
+                        {new Date(comment.createdAt).toLocaleDateString(undefined, {
+                          year: "numeric", month: "short", day: "numeric",
+                        })}
+                      </span>
+                    </div>
+                    {/* Content */}
+                    <p className="text-sm text-gray-700 leading-relaxed">{comment.content}</p>
+                    {/* Actions */}
+                    <button
+                      className="mt-2 flex items-center gap-1 text-xs text-gray-400 hover:text-primary-blue transition-colors duration-150"
+                      onClick={() => {
+                        if (replyingTo === comment.commentID) {
+                          setReplyingTo(null);
+                          setReplyContent("");
+                        } else {
+                          setReplyingTo(comment.commentID);
+                          setReplyContent("");
+                        }
+                      }}
+                    >
+                      <Reply className="h-3.5 w-3.5" />
+                      Reply
+                    </button>
+
+                    {/* Reply compose */}
+                    {replyingTo === comment.commentID && (
+                      <div className="flex gap-3 mt-3">
+                        <Avatar className="h-7 w-7 shrink-0 mt-0.5">
+                          <AvatarImage src={user?.avatar ? String(user.avatar) : "/avatars/user.jpg"} />
+                          <AvatarFallback className="bg-primary-blue text-white text-xs">
+                            {user ? user.firstName?.[0] : "U"}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1">
+                          <Textarea
+                            placeholder="Add a reply..."
+                            value={replyContent}
+                            onChange={(e) => setReplyContent(e.target.value)}
+                            className="min-h-[56px] resize-none border-0 border-b-2 border-gray-200 rounded-none px-0 focus:border-primary-blue focus:ring-0 text-sm placeholder:text-gray-400 transition-colors duration-200"
+                            autoFocus
+                          />
+                          <div className="flex justify-end gap-2 mt-2">
+                            <Button variant="ghost" size="sm" onClick={() => { setReplyingTo(null); setReplyContent(""); }} className="text-gray-500 text-xs">
+                              Cancel
+                            </Button>
                             <Button
-                              variant="ghost"
                               size="sm"
-                              className="text-gray-600 hover:text-primary-blue transition-colors duration-200"
-                              onClick={() => {
-                                // Toggle reply form
-                                if (replyingTo === comment.commentID) {
-                                  setReplyingTo(null);
-                                  setReplyContent("");
-                                } else {
-                                  setReplyingTo(comment.commentID);
-                                  setReplyContent("");
-                                }
-                              }}
+                              onClick={() => handleReply(comment.commentID)}
+                              disabled={!replyContent.trim() || !user}
+                              className="bg-primary-blue hover:bg-primary-blue/90 text-white text-xs px-4 rounded-full"
                             >
-                              <Reply className="h-4 w-4 mr-1 transition-transform duration-200 group-hover:translate-x-1" />
                               Reply
                             </Button>
                           </div>
-
-                          {/* Reply Form */}
-                          {replyingTo === comment.commentID && (
-                            <div className="mt-3 pl-4 border-l-2 border-gray-200 space-y-3 animate-slideIn">
-                              <Textarea
-                                placeholder="Write a reply..."
-                                value={replyContent}
-                                onChange={(e) =>
-                                  setReplyContent(e.target.value)
-                                }
-                                className="min-h-[60px] border-gray-200 resize-none focus:border-primary-blue focus:ring-primary-blue/20 transition-all duration-200"
-                                autoFocus
-                              />
-                              <div className="flex justify-end space-x-2">
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => {
-                                    setReplyingTo(null);
-                                    setReplyContent("");
-                                  }}
-                                  className="text-gray-600 border-gray-200 transition-colors duration-200"
-                                >
-                                  Cancel
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  onClick={() => handleReply(comment.commentID)}
-                                  disabled={!replyContent.trim() || !user}
-                                  className="bg-primary-blue hover:bg-primary-blue/90 text-white transition-all duration-200 hover:shadow"
-                                >
-                                  Reply
-                                </Button>
-                              </div>
-                            </div>
-                          )}
                         </div>
                       </div>
-                    </div>
-                  </div>
+                    )}
 
-                  {/* Replies List */}
-                  {comment.replies && comment.replies.length > 0 && (
-                    <div className="bg-gray-50 border-t border-gray-100 p-4">
-                      <div className="pl-4 ml-10 space-y-4 border-l-2 border-gray-200">
-                        {comment.replies.map((reply, replyIndex) => (
-                          <div
-                            key={reply.commentID}
-                            className="flex space-x-3 transition-transform duration-300 hover:translate-x-2 animate-fadeIn"
-                            style={{
-                              animationDelay: `${0.2 + replyIndex * 0.05}s`,
-                            }}
-                          >
-                            <Avatar className="h-8 w-8 border border-white shadow-sm transition-transform duration-200 hover:scale-110">
-                              <AvatarImage
-                                src={
-                                  reply.user?.avatar || "/default-avatar.png"
-                                }
-                              />
-                              <AvatarFallback className="bg-primary-blue text-white">
+                    {/* Replies */}
+                    {comment.replies && comment.replies.length > 0 && (
+                      <div className="mt-3 space-y-3 border-l-2 border-gray-100 pl-4">
+                        {comment.replies.map((reply) => (
+                          <div key={reply.commentID} className="flex gap-3">
+                            <Avatar className="h-7 w-7 shrink-0 mt-0.5">
+                              <AvatarImage src={reply.user?.avatar || "/default-avatar.png"} />
+                              <AvatarFallback className="bg-primary-blue text-white text-xs">
                                 {reply.user?.name?.[0] || "U"}
                               </AvatarFallback>
                             </Avatar>
                             <div className="flex-1">
-                              <div className="flex items-center space-x-2">
-                                <span className="font-semibold text-sm text-gray-800">
-                                  {reply.user?.name || "Unknown"}
-                                </span>
-                                <span className="text-xs text-gray-500">
-                                  {new Date(reply.createdAt).toLocaleDateString(
-                                    undefined,
-                                    {
-                                      year: "numeric",
-                                      month: "short",
-                                      day: "numeric",
-                                    }
-                                  )}
+                              <div className="flex items-baseline gap-2 mb-0.5">
+                                <span className="text-xs font-semibold text-gray-900">{reply.user?.name || "Unknown"}</span>
+                                <span className="text-xs text-gray-400">
+                                  {new Date(reply.createdAt).toLocaleDateString(undefined, {
+                                    year: "numeric", month: "short", day: "numeric",
+                                  })}
                                 </span>
                               </div>
-                              <p className="text-sm text-gray-700 mt-1 leading-relaxed">
-                                {reply.content}
-                              </p>
+                              <p className="text-xs text-gray-700 leading-relaxed">{reply.content}</p>
                             </div>
                           </div>
                         ))}
                       </div>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
-              ))}
-            </div>
+                {/* Divider between top-level comments */}
+                <div className="border-b border-gray-50" />
+              </div>
+            ))}
 
-            {/* Pagination UI */}
+            {/* Pagination */}
             {totalPages > 1 && (
-              <Pagination className="mt-8 animate-fadeIn">
+              <Pagination className="mt-6">
                 <PaginationContent>
                   {currentPage > 1 && (
                     <PaginationItem>
-                      <PaginationPrevious
-                        href="#"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          handlePageChange(currentPage - 1);
-                        }}
-                        className="border-gray-200 hover:border-primary-blue hover:text-primary-blue transition-all duration-200 hover:scale-105"
-                      />
+                      <PaginationPrevious href="#" onClick={(e) => { e.preventDefault(); handlePageChange(currentPage - 1); }} />
                     </PaginationItem>
                   )}
-
                   {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
-                    // Simple pagination logic for showing relevant page numbers
                     let pageNum = i + 1;
                     if (totalPages > 5) {
-                      if (currentPage >= 3) {
-                        pageNum = currentPage - 3 + i;
-                      }
-                      // Ensure we don't go beyond total pages
-                      if (pageNum > totalPages) {
-                        pageNum = totalPages - (4 - i);
-                      }
+                      if (currentPage >= 3) pageNum = currentPage - 3 + i;
+                      if (pageNum > totalPages) pageNum = totalPages - (4 - i);
                     }
                     return (
                       <PaginationItem key={pageNum}>
-                        <PaginationLink
-                          href="#"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            handlePageChange(pageNum);
-                          }}
-                          isActive={currentPage === pageNum}
-                          className={`transition-all duration-200 ${
-                            currentPage === pageNum
-                              ? "bg-primary-blue border-primary-blue"
-                              : "border-gray-200 hover:scale-105"
-                          }`}
-                        >
+                        <PaginationLink href="#" onClick={(e) => { e.preventDefault(); handlePageChange(pageNum); }} isActive={currentPage === pageNum}>
                           {pageNum}
                         </PaginationLink>
                       </PaginationItem>
                     );
                   })}
-
                   {currentPage < totalPages && (
                     <PaginationItem>
-                      <PaginationNext
-                        href="#"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          handlePageChange(currentPage + 1);
-                        }}
-                        className="border-gray-200 hover:border-primary-blue hover:text-primary-blue transition-all duration-200 hover:scale-105"
-                      />
+                      <PaginationNext href="#" onClick={(e) => { e.preventDefault(); handlePageChange(currentPage + 1); }} />
                     </PaginationItem>
                   )}
                 </PaginationContent>
@@ -526,32 +439,9 @@ export default function CommentsSection({
             )}
           </>
         )}
+
         {loading && comments.length > 0 && (
-          <div className="py-4 text-center text-gray-500">
-            <div className="inline-block animate-spin mr-2">
-              <svg
-                className="h-5 w-5 text-primary-blue"
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-              >
-                <circle
-                  className="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  strokeWidth="4"
-                ></circle>
-                <path
-                  className="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                ></path>
-              </svg>
-            </div>
-            Loading more comments...
-          </div>
+          <div className="py-4 text-center text-xs text-gray-400">Loading more comments...</div>
         )}
       </div>
     </div>

@@ -49,6 +49,21 @@ export default function ExpertDetailPage() {
         const data = await response.json();
         setExpert(data);
 
+        // Save to lastViewedExperts in localStorage
+        try {
+          const ud = data.userDetails || {};
+          const name = `${ud.firstName || ""} ${ud.lastName || ""}`.trim();
+          const stored = localStorage.getItem("lastViewedExperts");
+          const prev: { expertID: string; name: string; currentPosition: string; rating: number }[] =
+            stored ? JSON.parse(stored) : [];
+          const filtered = prev.filter((e) => e.expertID !== data.expertID);
+          const updated = [
+            { expertID: data.expertID, name, currentPosition: data.currentPosition ?? "", rating: data.rating ?? 0 },
+            ...filtered,
+          ].slice(0, 20);
+          localStorage.setItem("lastViewedExperts", JSON.stringify(updated));
+        } catch { /* ignore */ }
+
         if (user && user.isExpert && user._id === data.userId) {
           setIsExpertLoggedIn(true);
           setIsDashboardActive(true);
