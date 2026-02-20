@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Calendar, Clock, MapPin, User, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 interface Meeting {
   id: string;
@@ -84,7 +85,7 @@ export function UpcomingEventsWidget() {
           {/* Main Meeting Card */}
           <div
             className={`relative rounded-lg overflow-hidden bg-gradient-to-br ${nextMeeting.color} p-4 mb-3 cursor-pointer hover:shadow-lg transition-shadow`}
-            onClick={() => router.push("/meetings")}
+            onClick={() => toast.info("Meetings dashboard is under construction")}
           >
             <div className="relative z-10">
               <div className="flex items-start justify-between mb-2">
@@ -124,7 +125,7 @@ export function UpcomingEventsWidget() {
               <div
                 key={meeting.id}
                 className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors group"
-                onClick={() => router.push("/meetings")}
+                onClick={() => toast.info("Meetings dashboard is under construction")}
               >
                 <div className={`flex-shrink-0 h-10 w-10 rounded-lg bg-gradient-to-br ${meeting.color} flex items-center justify-center shadow-sm`}>
                   <Calendar className="h-5 w-5 text-white" />
@@ -147,7 +148,7 @@ export function UpcomingEventsWidget() {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => router.push("/meetings")}
+            onClick={() => toast.info("Meetings dashboard is under construction")}
             className="w-full mt-3 text-sm text-gray-600 hover:text-blue-600 hover:bg-blue-50 gap-1"
           >
             View all meetings

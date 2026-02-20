@@ -17,12 +17,16 @@ export function FollowedCommunitiesWidget() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!isAuthenticated) {
+      setLoading(false);
+      return;
+    }
     axios
-      .get("/api/communities?limit=10")
-      .then((r) => setCommunities(Array.isArray(r.data) ? r.data.slice(0, 5) : []))
+      .get("/api/communities/user/joined")
+      .then((r) => setCommunities(Array.isArray(r.data) ? r.data : []))
       .catch(() => setCommunities([]))
       .finally(() => setLoading(false));
-  }, []);
+  }, [isAuthenticated]);
 
   return (
     <Card className="overflow-hidden bg-white rounded-xl shadow-sm border-0">
@@ -39,7 +43,7 @@ export function FollowedCommunitiesWidget() {
           </div>
         ) : communities.length === 0 ? (
           <div className="text-center py-4">
-            <p className="text-sm text-gray-500 mb-2">No communities yet</p>
+            <p className="text-sm text-gray-500 mb-2">You haven&apos;t joined any communities yet</p>
             <Link
               href="/communities"
               className="text-xs text-indigo-600 hover:underline font-medium"

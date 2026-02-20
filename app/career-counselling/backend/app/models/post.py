@@ -3,11 +3,17 @@ from pydantic import BaseModel
 from datetime import datetime
 
 
+class PostMedia(BaseModel):
+    url: str           # e.g. /api/files/{fileId}
+    type: str          # "image" or "video"
+    fileId: str        # GridFS file ID
+
+
 class PostBase(BaseModel):
-    title: str
+    title: Optional[str] = ""
     content: str
-    communityId: str     # all posts now belong to a community
-    authorId: str        # userId of the post author (any user, not just experts)
+    communityId: Optional[str] = ""     # all posts now belong to a community
+    authorId: Optional[str] = ""        # userId of the post author
 
 
 class Post(PostBase):
@@ -18,6 +24,7 @@ class Post(PostBase):
     likedBy: List[str] = []
     views: int = 0
     tags: List[str] = []
+    media: List[PostMedia] = []
 
 
 class PostResponse(Post):
@@ -33,8 +40,10 @@ class PostCreate(BaseModel):
     content: str
     communityId: str
     tags: Optional[List[str]] = []
+    media: Optional[List[PostMedia]] = []
 
 
 class PostLike(BaseModel):
     postId: str
     userId: str
+

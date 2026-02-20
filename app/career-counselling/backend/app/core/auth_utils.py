@@ -110,6 +110,13 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Security(
     
     return user_data
 
+async def get_optional_user(credentials: Optional[HTTPAuthorizationCredentials] = Security(HTTPBearer(auto_error=False))) -> Optional[Dict[str, str]]:
+    """Like get_current_user, but returns None if no token is provided rather than raising an error."""
+    if not credentials:
+        return None
+    token = credentials.credentials
+    return await verify_token(token)
+
 async def require_role(required_roles: Union[str, List[str]], user_data: Dict[str, str] = Depends(get_current_user)) -> Dict[str, str]:
     """
     Check if the user has the required role.

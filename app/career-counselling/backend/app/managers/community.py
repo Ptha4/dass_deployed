@@ -113,6 +113,14 @@ class CommunityManager:
         except Exception as e:
             print(f"increment_post_count error: {e}")
 
+    async def get_user_communities(self, user_id: str) -> List[CommunityResponse]:
+        """Return communities that the given user has joined."""
+        cursor = self.collection.find({"members": user_id}).sort("updatedAt", -1)
+        communities = []
+        async for doc in cursor:
+            communities.append(await self._to_response(doc, user_id))
+        return communities
+
     # ── helpers ──────────────────────────────────────────────────────────────
 
     async def _to_response(self, doc: dict, requesting_user_id: Optional[str]) -> CommunityResponse:
@@ -129,3 +137,31 @@ class CommunityManager:
         except Exception:
             pass
         return "Unknown"
+
+    async def seed_default_communities(self) -> None:
+        """Seed default communities if they don't already exist."""
+        DEFAULT_COMMUNITIES = [
+            {"name": "career-guidance", "displayName": "Career Guidance", "description": "Get advice on choosing the right career path, skill development, and career transitions.", "iconColor": "#6366f1"},
+            {"name": "engineering-students", "displayName": "Engineering Students", "description": "A community for engineering students to discuss academics, projects, and career opportunities.", "iconColor": "#ec4899"},
+            {"name": "college-admissions", "displayName": "College Admissions", "description": "Tips, strategies, and discussions around college applications, entrance exams, and admissions.", "iconColor": "#10b981"},
+            {"name": "interview-prep", "displayName": "Interview Prep", "description": "Share resources, mock interview tips, and success stories for technical and HR interviews.", "iconColor": "#f59e0b"},
+            {"name": "study-abroad", "displayName": "Study Abroad", "description": "Discuss opportunities for studying abroad, scholarships, visa requirements, and university choices.", "iconColor": "#3b82f6"},
+            {"name": "placements", "displayName": "Campus Placements", "description": "Discuss campus recruitment drives, placement strategies, and company experiences.", "iconColor": "#8b5cf6"},
+            {"name": "entrepreneurship", "displayName": "Entrepreneurship", "description": "For budding entrepreneurs to discuss startups, business ideas, funding, and growth strategies.", "iconColor": "#ef4444"},
+            {"name": "higher-education", "displayName": "Higher Education", "description": "Discussions about master's programs, PhD opportunities, and further education choices.", "iconColor": "#14b8a6"},
+        ]
+        now = datetime.utcnow()
+        for comm in DEFAULT_COMMUNITIES:
+            existing = await self.collection.find_one({"name": comm["name"]})
+            if not existing:
+                doc = {
+                    **comm,
+                    "createdBy": "system",
+                    "memberCount": 0,
+                    "postCount": 0,
+                    "members": [],
+                    "createdAt": now,
+                    "updatedAt": now,
+                }
+                await self.collection.insert_one(doc)
+                print(f"Seeded community: {comm['name']}")

@@ -124,6 +124,12 @@ export interface Video {
   featured?: boolean; // Added optional featured property
 }
 
+export interface PostMedia {
+  url: string;
+  type: "image" | "video";
+  fileId: string;
+}
+
 export interface Post {
   postId: string;
   title: string;
@@ -140,6 +146,7 @@ export interface Post {
   likedBy: string[];
   views?: number;
   tags?: string[];
+  media?: PostMedia[];
   commentsCount?: number;
 }
 

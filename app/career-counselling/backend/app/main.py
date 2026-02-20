@@ -46,12 +46,18 @@ app.include_router(meeting.router, tags=["meeting"], prefix="/api")
 app.include_router(community.router, tags=["community"], prefix="/api")
 
 
+from app.managers.community import CommunityManager
+
 @app.on_event("startup")
 async def startup_db_client():
     """Initialize database on startup"""
     # Ensure all users have a wallet
     user_manager = UserManager()
     await user_manager.initialize_wallet_for_existing_users()
+    
+    # Seed default communities
+    community_manager = CommunityManager()
+    await community_manager.seed_default_communities()
 
 
 @app.get("/api/health")

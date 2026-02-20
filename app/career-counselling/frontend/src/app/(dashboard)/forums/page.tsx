@@ -1,108 +1,102 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { DiscussionFeed } from "@/components/dashboard/discussion-feed";
-import { RelevantBlogs } from "@/components/dashboard/relevant-blogs";
-import { FollowedCommunitiesWidget } from "@/components/dashboard/followed-communities-widget";
-import { WeeklyGoalsWidget } from "@/components/dashboard/weekly-goals-widget";
-import { TrendingCarousel } from "@/components/dashboard/trending-carousel";
+import axios from "axios";
+import { Loader2, MessageSquare } from "lucide-react";
 import { ForumsFilterSidebar } from "@/components/forums/forums-filter-sidebar";
-import { FileText, Loader2 } from "lucide-react";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { FollowedCommunitiesWidget } from "@/components/dashboard/followed-communities-widget";
+import { TrendingCarousel } from "@/components/dashboard/trending-carousel";
+import PostItem from "@/components/communities/post-item";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { useAuth } from "@/contexts/AuthContext";
-import axios from "axios";
 import { Post } from "@/types";
-
-interface WeeklyGoal {
-  id: number;
-  title: string;
-  completed: boolean;
-}
-
-interface DashboardStats {
-  profileStrength: number;
-  unreadReplies: number;
-  upcomingMeetingsToday: number;
-  weeklyGoals: WeeklyGoal[];
-}
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function ForumsPage() {
   const { user } = useAuth();
-  const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [loadingStats, setLoadingStats] = useState(true);
+  const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [savedPreferences, setSavedPreferences] = useState<any>(null);
   const [currentFilters, setCurrentFilters] = useState<any>(null);
   const [isFilterCollapsed, setIsFilterCollapsed] = useState(false);
 
   useEffect(() => {
-    fetchDashboardStats();
-    loadSavedPreferences();
+    const prefs = localStorage.getItem("mentorPreferences");
+    if (prefs) setSavedPreferences(JSON.parse(prefs));
   }, []);
-
-  const loadSavedPreferences = async () => {
-    try {
-      const preferences = localStorage.getItem("mentorPreferences");
-      if (preferences) {
-        setSavedPreferences(JSON.parse(preferences));
-      }
-    } catch (error) {
-      console.error("Error loading preferences:", error);
-    }
-  };
-
-  const handleFiltersChange = (filters: any) => {
-    setCurrentFilters(filters);
-    // You can pass these filters to DiscussionFeed if needed
-  };
-
-  const fetchDashboardStats = async () => {
-    try {
-      const response = await axios.get(
-        `${process.env.NEXT_PUBLIC_API_URL}/user/dashboard-stats`
-      );
-      setStats(response.data);
-    } catch (error) {
-      console.error("Error fetching dashboard stats:", error);
-      setStats({
-        profileStrength: 0,
-        unreadReplies: 0,
-        upcomingMeetingsToday: 0,
-        weeklyGoals: [],
-      });
-    } finally {
-      setLoadingStats(false);
-    }
-  };
 
   useEffect(() => {
-    // small delay to allow header/stats to fetch first; DiscussionFeed handles posts
-    setLoading(false);
-  }, []);
+    fetchPosts();
+  }, [currentFilters]);
+
+  const fetchPosts = async () => {
+    setLoading(true);
+    try {
+      const res = await axios.get("/api/posts/feed?limit=50");
+      let data: Post[] = Array.isArray(res.data) ? res.data : res.data.posts || [];
+
+      // Apply filters
+      if (currentFilters) {
+        if (currentFilters.fields?.length) {
+          data = data.filter((p) =>
+            p.tags?.some((tag) =>
+              currentFilters.fields.some(
+                (f: string) =>
+                  tag.toLowerCase().includes(f.toLowerCase()) ||
+                  f.toLowerCase().includes(tag.toLowerCase())
+              )
+            )
+          );
+        }
+        if (currentFilters.sortBy) {
+          data = [...data].sort((a, b) => {
+            switch (currentFilters.sortBy) {
+              case "mostRecent":
+                return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+              case "mostLiked":
+                return b.likes - a.likes;
+              case "mostViewed":
+                return (b.views || 0) - (a.views || 0);
+              case "mostDiscussed":
+                return (b.commentsCount || 0) - (a.commentsCount || 0);
+              default:
+                return 0;
+            }
+          });
+        }
+      }
+      setPosts(data);
+    } catch {
+      setPosts([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const forumsContent = (
     <div className="min-h-screen bg-gray-50">
-      <div className="w-full max-w-[1800px] mx-auto px-6 sm:px-8 lg:px-12 py-6">
+      <div className="w-full max-w-7xl mx-auto px-6 sm:px-8 lg:px-12 py-6">
         {/* Page Header */}
         <div className="mb-6">
           <h1 className="text-3xl font-bold text-gray-900">Discussion Posts</h1>
           <p className="text-gray-600 mt-1">Join the community discussions</p>
         </div>
 
+        {/* Trending Carousel */}
+        <div className="mb-6">
+          <TrendingCarousel />
+        </div>
+
         {/* Main Grid: Filters + Posts + Sidebar */}
-        <div className={`grid grid-cols-1 gap-6 ${isFilterCollapsed ? 'lg:grid-cols-3' : 'lg:grid-cols-4'}`}>
-          {/* Left Sidebar - Filters (collapsible) */}
+        <div
+          className={`grid gap-6 h-[calc(100vh-20rem)] ${isFilterCollapsed ? "grid-cols-1 lg:grid-cols-[1fr_280px]" : "grid-cols-1 lg:grid-cols-[220px_1fr_280px]"
+            }`}
+        >
+          {/* Left Sidebar - Filters */}
           {!isFilterCollapsed && (
-            <div className="lg:col-span-1">
+            <div className="overflow-y-auto pr-2 pb-10 custom-scrollbar h-full hidden lg:block">
               <ForumsFilterSidebar
-                onFiltersChange={handleFiltersChange}
+                onFiltersChange={setCurrentFilters}
                 savedPreferences={savedPreferences}
                 isCollapsed={isFilterCollapsed}
                 onToggleCollapse={() => setIsFilterCollapsed(!isFilterCollapsed)}
@@ -110,57 +104,61 @@ export default function ForumsPage() {
             </div>
           )}
 
-          {/* Center - Discussion Feed */}
-          <div className={isFilterCollapsed ? 'lg:col-span-2' : 'lg:col-span-2'}>
-            {/* Filter toggle button when collapsed */}
+          {/* Center - Posts (using PostItem like community detail) */}
+          <div className="overflow-y-auto pr-2 pb-10 custom-scrollbar h-full">
             {isFilterCollapsed && (
               <div className="mb-4">
                 <ForumsFilterSidebar
-                  onFiltersChange={handleFiltersChange}
+                  onFiltersChange={setCurrentFilters}
                   savedPreferences={savedPreferences}
                   isCollapsed={isFilterCollapsed}
                   onToggleCollapse={() => setIsFilterCollapsed(!isFilterCollapsed)}
                 />
               </div>
             )}
-            
-            {/* Trending Carousel at top */}
-            <TrendingCarousel />
-            
-            <div className="bg-white rounded-xl overflow-hidden shadow-sm">
-              <div className="px-8 py-6">
-                <DiscussionFeed filters={currentFilters} />
+
+            {loading ? (
+              <div className="space-y-4">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="bg-white rounded-2xl border border-gray-100 p-5 space-y-3"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Skeleton className="h-7 w-7 rounded-full" />
+                      <Skeleton className="h-3 w-32" />
+                      <Skeleton className="h-3 w-20 ml-auto" />
+                    </div>
+                    <Skeleton className="h-5 w-3/4" />
+                    <Skeleton className="h-3 w-full" />
+                    <Skeleton className="h-3 w-4/5" />
+                    <div className="flex gap-4 pt-1">
+                      <Skeleton className="h-3 w-14" />
+                      <Skeleton className="h-3 w-24" />
+                    </div>
+                  </div>
+                ))}
               </div>
-            </div>
+            ) : posts.length === 0 ? (
+              <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center">
+                <MessageSquare className="h-12 w-12 mx-auto text-gray-300 mb-3" />
+                <h3 className="text-lg font-bold text-gray-800 mb-1">No discussions yet</h3>
+                <p className="text-gray-400 text-sm">
+                  Join a community and start the conversation!
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {posts.map((post) => (
+                  <PostItem key={post.postId} post={post} showCommunity />
+                ))}
+              </div>
+            )}
           </div>
 
-          {/* Right Sidebar - Community Widgets */}
-          <div className="lg:col-span-1 space-y-6">
-            {/* Followed Communities Widget */}
+          {/* Right Sidebar */}
+          <div className="overflow-y-auto pr-2 pb-10 custom-scrollbar h-full space-y-6 hidden lg:block">
             <FollowedCommunitiesWidget />
-
-            {/* Weekly Goals Widget */}
-            {stats && stats.weeklyGoals.length > 0 && (
-              <WeeklyGoalsWidget goals={stats.weeklyGoals} />
-            )}
-
-            {/* Relevant Blogs Card */}
-            <Card className="bg-white rounded-xl shadow-sm border-0 overflow-hidden">
-              <CardHeader className="pb-3">
-                <div className="flex items-center gap-2">
-                  <FileText className="h-6 w-6 text-green-500" />
-                  <CardTitle className="text-xl font-semibold text-gray-900">
-                    Relevant Blogs
-                  </CardTitle>
-                </div>
-                <CardDescription className="text-gray-500">
-                  Articles curated for your interests
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="pt-0">
-                <RelevantBlogs />
-              </CardContent>
-            </Card>
           </div>
         </div>
       </div>

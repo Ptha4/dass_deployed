@@ -1,14 +1,17 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, UploadFile, File as FastAPIFile
 from typing import List, Optional
 from pydantic import BaseModel
+from bson import ObjectId
 from app.models.community import CommunityCreate, CommunityResponse
 from app.managers.community import CommunityManager
 from app.managers.post import PostManager
-from app.core.auth_utils import get_current_user, require_user
+from app.managers.file import FileManager
+from app.core.auth_utils import get_current_user, require_user, get_optional_user
 
 router = APIRouter()
 community_manager = CommunityManager()
 post_manager = PostManager()
+file_manager = FileManager()
 
 
 # ── Community endpoints ───────────────────────────────────────────────────────
@@ -17,7 +20,7 @@ post_manager = PostManager()
 async def list_communities(
     skip: int = 0,
     limit: int = 50,
-    user_data: Optional[dict] = Depends(get_current_user),
+    user_data: Optional[dict] = Depends(get_optional_user),
 ):
     """List all communities (public). Includes isJoined status if authenticated."""
     try:
@@ -40,10 +43,20 @@ async def create_community(data: CommunityCreate, user_data: dict = Depends(requ
         raise HTTPException(status_code=500, detail="Failed to create community")
 
 
+@router.get("/communities/user/joined", response_model=List[CommunityResponse])
+async def get_user_joined_communities(user_data: dict = Depends(require_user)):
+    """Get all communities the current user has joined."""
+    try:
+        return await community_manager.get_user_communities(user_data["id"])
+    except Exception as e:
+        print(f"get_user_joined_communities error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get joined communities")
+
+
 @router.get("/communities/{community_id}", response_model=CommunityResponse)
 async def get_community(
     community_id: str,
-    user_data: Optional[dict] = Depends(get_current_user),
+    user_data: Optional[dict] = Depends(get_optional_user),
 ):
     """Get a single community by ID or slug."""
     try:
@@ -94,10 +107,16 @@ async def get_community_posts(
         raise HTTPException(status_code=500, detail="Failed to retrieve posts")
 
 
+class MediaItem(BaseModel):
+    url: str
+    type: str
+    fileId: str
+
 class CommunityPostCreate(BaseModel):
     title: str
     content: str
     tags: Optional[List[str]] = []
+    media: Optional[List[MediaItem]] = []
 
 
 @router.post("/communities/{community_id}/posts")
@@ -113,12 +132,20 @@ async def create_community_post(
         if not community:
             raise HTTPException(status_code=404, detail="Community not found")
 
+        # Verify user is a member
+        community_doc = await community_manager.collection.find_one(
+            {"_id": ObjectId(community_id), "members": user_data["id"]}
+        )
+        if not community_doc:
+            raise HTTPException(status_code=403, detail="You must join this community before posting")
+
         post = await post_manager.create_community_post(
             community_id=community_id,
             author_id=user_data["id"],
             title=post_data.title,
             content=post_data.content,
             tags=post_data.tags or [],
+            media=[m.dict() for m in (post_data.media or [])],
         )
 
         # Update post count on community
@@ -130,3 +157,43 @@ async def create_community_post(
     except Exception as e:
         print(f"create_community_post error: {e}")
         raise HTTPException(status_code=500, detail="Failed to create post")
+
+
+ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"]
+ALLOWED_VIDEO_TYPES = ["video/mp4", "video/webm", "video/quicktime"]
+MAX_IMAGE_SIZE = 5 * 1024 * 1024   # 5 MB
+MAX_VIDEO_SIZE = 20 * 1024 * 1024  # 20 MB
+
+
+@router.post("/communities/upload-media")
+async def upload_post_media(
+    file: UploadFile = FastAPIFile(...),
+    user_data: dict = Depends(require_user),
+):
+    """Upload an image or short video for a community post."""
+    content_type = file.content_type or ""
+
+    if content_type in ALLOWED_IMAGE_TYPES:
+        media_type = "image"
+        max_size = MAX_IMAGE_SIZE
+    elif content_type in ALLOWED_VIDEO_TYPES:
+        media_type = "video"
+        max_size = MAX_VIDEO_SIZE
+    else:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported file type: {content_type}. Allowed: JPEG, PNG, GIF, WebP, MP4, WebM."
+        )
+
+    file_id = await file_manager.upload_file(
+        file,
+        folder="post-media",
+        allowed_types=ALLOWED_IMAGE_TYPES + ALLOWED_VIDEO_TYPES,
+        max_size=max_size,
+    )
+
+    return {
+        "fileId": file_id,
+        "url": f"/api/files/{file_id}",
+        "type": media_type,
+    }

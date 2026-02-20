@@ -19,6 +19,7 @@ class PostManager:
         title: str,
         content: str,
         tags: List[str] = [],
+        media: List[dict] = [],
     ) -> PostResponse:
         now = datetime.utcnow()
         post_dict = {
@@ -27,6 +28,7 @@ class PostManager:
             "title": title,
             "content": content,
             "tags": tags,
+            "media": media,
             "likes": 0,
             "likedBy": [],
             "views": 0,
@@ -84,6 +86,35 @@ class PostManager:
     async def get_all_posts(self, skip: int = 0, limit: int = 50) -> List[PostResponse]:
         """Kept for backward compat — returns newest posts globally."""
         cursor = self.collection.find().sort("createdAt", -1).skip(skip).limit(limit)
+        posts = []
+        async for doc in cursor:
+            doc["postId"] = str(doc["_id"])
+            await self._enrich(doc, doc.get("authorId", ""), doc.get("communityId", ""))
+            doc["commentsCount"] = await self.db.comments.count_documents(
+                {"page_id": doc["postId"], "type": "post"}
+            )
+            try:
+                posts.append(PostResponse(**doc))
+            except Exception as e:
+                print(f"PostResponse parse error: {e}")
+        return posts
+
+    async def get_feed_posts(self, user_id: str, skip: int = 0, limit: int = 30) -> List[PostResponse]:
+        """Return posts from communities the user has joined, sorted newest first."""
+        # Get community IDs the user has joined
+        community_docs = self.db.communities.find(
+            {"members": user_id}, {"_id": 1}
+        )
+        community_ids = [str(doc["_id"]) async for doc in community_docs]
+        if not community_ids:
+            return []
+
+        cursor = (
+            self.collection.find({"communityId": {"$in": community_ids}})
+            .sort("createdAt", -1)
+            .skip(skip)
+            .limit(limit)
+        )
         posts = []
         async for doc in cursor:
             doc["postId"] = str(doc["_id"])

@@ -110,7 +110,7 @@ export default function CommunityDetailPage() {
                 }}
             />
 
-            <div className="max-w-5xl mx-auto px-4 -mt-6">
+            <div className="max-w-6xl mx-auto px-6 sm:px-8 lg:px-12 -mt-6">
                 {/* Community header card */}
                 <div className="bg-white rounded-2xl shadow-sm border border-gray-100 mb-6 px-6 py-5">
                     <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
@@ -136,7 +136,7 @@ export default function CommunityDetailPage() {
                                     <p className="text-gray-600 text-sm mt-1 max-w-xl">{community?.description}</p>
                                 </div>
                                 <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 shrink-0">
-                                    {isAuthenticated && (
+                                    {isAuthenticated && community?.isJoined && (
                                         <Link href={`/communities/${id}/submit`}>
                                             <Button
                                                 size="sm"
@@ -199,12 +199,16 @@ export default function CommunityDetailPage() {
                                 </div>
                                 <h3 className="text-lg font-bold text-gray-800 mb-1">No posts yet</h3>
                                 <p className="text-gray-400 text-sm mb-5">Be the first to post in this community!</p>
-                                {isAuthenticated ? (
+                                {isAuthenticated && community?.isJoined ? (
                                     <Link href={`/communities/${id}/submit`}>
                                         <Button className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl gap-2">
                                             <Plus className="h-4 w-4" /> Create First Post
                                         </Button>
                                     </Link>
+                                ) : isAuthenticated && !community?.isJoined ? (
+                                    <Button onClick={handleJoinLeave} disabled={joining} className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl gap-2">
+                                        {joining ? <Loader2 className="h-4 w-4 animate-spin" /> : "Join to Post"}
+                                    </Button>
                                 ) : (
                                     <Link href="/login">
                                         <Button variant="outline" className="rounded-xl gap-2">
@@ -248,7 +252,7 @@ export default function CommunityDetailPage() {
                         </div>
 
                         {/* CTA */}
-                        {isAuthenticated && (
+                        {isAuthenticated && community?.isJoined && (
                             <div className="bg-indigo-600 rounded-2xl p-5 text-white">
                                 <h3 className="font-bold mb-1">Ready to contribute?</h3>
                                 <p className="text-indigo-200 text-xs mb-3">Share your thoughts with the community.</p>

@@ -84,8 +84,33 @@ export default function PostItem({ post, showCommunity = false }: PostItemProps)
                 <h3 className="font-semibold text-gray-900 group-hover:text-indigo-600 transition-colors mb-1.5 line-clamp-2">
                     {post.title}
                 </h3>
-                <p className="text-sm text-gray-500 line-clamp-2 mb-4">{post.content}</p>
+                <p className="text-sm text-gray-500 line-clamp-2 mb-3">{post.content}</p>
             </Link>
+
+            {/* Media gallery */}
+            {post.media && post.media.length > 0 && (
+                <div className={`grid gap-2 mb-3 ${post.media.length === 1 ? "grid-cols-1" : "grid-cols-2"}`}>
+                    {post.media.map((item, i) => (
+                        <div key={i} className="rounded-xl overflow-hidden border border-gray-100 bg-gray-50">
+                            {item.type === "image" ? (
+                                <img
+                                    src={item.url}
+                                    alt=""
+                                    className="w-full h-48 object-cover"
+                                    loading="lazy"
+                                />
+                            ) : (
+                                <video
+                                    src={item.url}
+                                    controls
+                                    className="w-full h-48 object-cover"
+                                    preload="metadata"
+                                />
+                            )}
+                        </div>
+                    ))}
+                </div>
+            )}
 
             {/* Tags */}
             {post.tags && post.tags.length > 0 && (

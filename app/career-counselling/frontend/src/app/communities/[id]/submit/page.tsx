@@ -1,39 +1,128 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import axios from "axios";
 import Link from "next/link";
-import { ArrowLeft, Send, Loader2, Tags } from "lucide-react";
+import { ArrowLeft, Send, Loader2, Tags, ImagePlus, X, Film } from "lucide-react";
 import { Community } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/contexts/AuthContext";
 
+interface MediaItem {
+    url: string;
+    type: "image" | "video";
+    fileId: string;
+    preview?: string; // local preview URL
+}
+
+const WORD_LIMIT = 500;
+
+function countWords(text: string) {
+    return text.trim().split(/\s+/).filter(Boolean).length;
+}
+
 export default function SubmitPostPage() {
     const { id } = useParams() as { id: string };
     const router = useRouter();
     const { isAuthenticated } = useAuth();
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     const [community, setCommunity] = useState<Community | null>(null);
     const [form, setForm] = useState({ title: "", content: "", tags: "" });
+    const [media, setMedia] = useState<MediaItem[]>([]);
+    const [uploading, setUploading] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
+
+    const wordCount = countWords(form.content);
+    const overLimit = wordCount > WORD_LIMIT;
 
     useEffect(() => {
         if (!isAuthenticated) {
             router.push("/login");
             return;
         }
-        axios.get(`/api/communities/${id}`).then((r) => setCommunity(r.data)).catch(() => { });
+        axios.get(`/api/communities/${id}`).then((r) => {
+            setCommunity(r.data);
+            if (r.data && !r.data.isJoined) {
+                router.push(`/communities/${id}`);
+            }
+        }).catch(() => { });
     }, [id, isAuthenticated, router]);
 
+    // ── Media upload ────────────────────────
+    const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const files = e.target.files;
+        if (!files || files.length === 0) return;
+
+        for (const file of Array.from(files)) {
+            if (media.length >= 4) {
+                setError("Maximum 4 media files per post.");
+                break;
+            }
+            const isImage = file.type.startsWith("image/");
+            const isVideo = file.type.startsWith("video/");
+            if (!isImage && !isVideo) {
+                setError("Only images (JPEG, PNG, GIF, WebP) and videos (MP4, WebM) are allowed.");
+                continue;
+            }
+            if (isImage && file.size > 5 * 1024 * 1024) {
+                setError("Image too large. Max 5 MB.");
+                continue;
+            }
+            if (isVideo && file.size > 20 * 1024 * 1024) {
+                setError("Video too large. Max 20 MB.");
+                continue;
+            }
+
+            setUploading(true);
+            setError("");
+            try {
+                const formData = new FormData();
+                formData.append("file", file);
+                const res = await axios.post("/api/communities/upload-media", formData, {
+                    headers: { "Content-Type": "multipart/form-data" },
+                });
+                setMedia((prev) => [
+                    ...prev,
+                    {
+                        url: res.data.url,
+                        type: res.data.type,
+                        fileId: res.data.fileId,
+                        preview: URL.createObjectURL(file),
+                    },
+                ]);
+            } catch (err: any) {
+                setError(err.response?.data?.detail || "Failed to upload media.");
+            } finally {
+                setUploading(false);
+            }
+        }
+        // Reset input so same file can be re-selected
+        if (fileInputRef.current) fileInputRef.current.value = "";
+    };
+
+    const removeMedia = (index: number) => {
+        setMedia((prev) => {
+            const item = prev[index];
+            if (item.preview) URL.revokeObjectURL(item.preview);
+            return prev.filter((_, i) => i !== index);
+        });
+    };
+
+    // ── Submit ────────────────────────────
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError("");
         if (!form.title.trim() || !form.content.trim()) {
             setError("Title and content are required.");
+            return;
+        }
+        if (overLimit) {
+            setError(`Post exceeds the ${WORD_LIMIT}-word limit. Please shorten your content.`);
             return;
         }
         setLoading(true);
@@ -46,6 +135,7 @@ export default function SubmitPostPage() {
                 title: form.title,
                 content: form.content,
                 tags,
+                media: media.map(({ url, type, fileId }) => ({ url, type, fileId })),
             });
             router.push(`/communities/${id}`);
         } catch (err: any) {
@@ -113,6 +203,77 @@ export default function SubmitPostPage() {
                                 onChange={(e) => setForm({ ...form, content: e.target.value })}
                                 className="rounded-xl resize-none min-h-[180px]"
                             />
+                            <div className="flex justify-between mt-1">
+                                <p className="text-xs text-gray-400">
+                                    Keep it concise — use{" "}
+                                    <Link href="/blogs" className="underline text-indigo-500">blogs</Link>{" "}
+                                    for longer content
+                                </p>
+                                <p className={`text-xs font-medium ${overLimit ? "text-red-500" : wordCount > WORD_LIMIT * 0.9 ? "text-amber-500" : "text-gray-400"}`}>
+                                    {wordCount}/{WORD_LIMIT} words
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Media Upload */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1.5 flex items-center gap-1.5">
+                                <ImagePlus className="h-3.5 w-3.5 text-gray-400" />
+                                Media <span className="font-normal text-gray-400">(optional, up to 4)</span>
+                            </label>
+
+                            {/* Preview grid */}
+                            {media.length > 0 && (
+                                <div className="grid grid-cols-2 gap-2 mb-3">
+                                    {media.map((item, i) => (
+                                        <div key={i} className="relative group rounded-xl overflow-hidden border border-gray-100 bg-gray-50">
+                                            {item.type === "image" ? (
+                                                <img
+                                                    src={item.preview || item.url}
+                                                    alt=""
+                                                    className="w-full h-36 object-cover"
+                                                />
+                                            ) : (
+                                                <div className="w-full h-36 flex items-center justify-center bg-gray-100">
+                                                    <Film className="h-8 w-8 text-gray-400" />
+                                                    <span className="text-sm text-gray-500 ml-2">Video</span>
+                                                </div>
+                                            )}
+                                            <button
+                                                type="button"
+                                                onClick={() => removeMedia(i)}
+                                                className="absolute top-1.5 right-1.5 bg-black/60 hover:bg-black/80 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                                            >
+                                                <X className="h-3.5 w-3.5" />
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+
+                            {media.length < 4 && (
+                                <button
+                                    type="button"
+                                    onClick={() => fileInputRef.current?.click()}
+                                    disabled={uploading}
+                                    className="flex items-center gap-2 px-4 py-2.5 border-2 border-dashed border-gray-200 hover:border-indigo-300 rounded-xl text-sm text-gray-500 hover:text-indigo-600 transition-colors w-full justify-center"
+                                >
+                                    {uploading ? (
+                                        <><Loader2 className="h-4 w-4 animate-spin" /> Uploading...</>
+                                    ) : (
+                                        <><ImagePlus className="h-4 w-4" /> Add images or videos</>
+                                    )}
+                                </button>
+                            )}
+                            <input
+                                ref={fileInputRef}
+                                type="file"
+                                className="hidden"
+                                accept="image/jpeg,image/png,image/gif,image/webp,video/mp4,video/webm"
+                                multiple
+                                onChange={handleFileSelect}
+                            />
+                            <p className="text-xs text-gray-400 mt-1">Images: JPEG, PNG, GIF, WebP (max 5 MB) · Videos: MP4, WebM (max 20 MB)</p>
                         </div>
 
                         {/* Tags */}
@@ -163,7 +324,7 @@ export default function SubmitPostPage() {
                             </Button>
                             <Button
                                 type="submit"
-                                disabled={loading}
+                                disabled={loading || overLimit}
                                 className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl gap-2"
                             >
                                 {loading ? (
