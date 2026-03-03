@@ -53,8 +53,39 @@ const LoadingOverlay = ({ error }: { error: string | null }) => (
     }}
   >
     {error ? (
-      <div className="text-red-600 text-center">
-        <p>Error connecting to our backend!</p>
+      <div className="text-red-600 text-center max-w-md mx-auto px-6">
+        <div className="mb-4">
+          <svg
+            className="w-16 h-16 mx-auto text-red-500"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+            />
+          </svg>
+        </div>
+        <h3 className="text-lg font-semibold mb-2">Connection Error</h3>
+        <p className="text-sm mb-4">Unable to connect to our backend service.</p>
+        <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
+          <p className="text-xs font-mono text-red-700">{error}</p>
+        </div>
+        <div className="text-xs text-gray-600 space-y-1">
+          <p>Please check:</p>
+          <p>• Backend server is running on port 8000</p>
+          <p>• Network connection is stable</p>
+          <p>• No firewall blocking the connection</p>
+        </div>
+        <button
+          onClick={() => window.location.reload()}
+          className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm"
+        >
+          Retry Connection
+        </button>
       </div>
     ) : (
       <>
@@ -100,17 +131,31 @@ export default function LandingPage() {
         // Adjust the URL based on your actual API endpoint
         const response = await fetch("/api/health");
         if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
         const data = await response.json();
         if (data.status === "healthy") {
           setIsApiReady(true);
         } else {
-          setError("Unexpected response from backend.");
+          setError(`Backend returned unexpected status: ${data.status}`);
         }
       } catch (e: any) {
         console.error("API check failed:", e);
-        setError(e.message || "Failed to connect to the backend.");
+        
+        // Provide more specific error messages based on the error type
+        if (e.name === 'TypeError' && e.message.includes('fetch')) {
+          setError('Network error: Unable to reach backend server. Please ensure the backend is running on http://127.0.0.1:8000');
+        } else if (e.message.includes('Failed to fetch')) {
+          setError('CORS or network error: Backend may be running but not accessible from frontend');
+        } else if (e.message.includes('HTTP 404')) {
+          setError('Backend health endpoint not found. Check if backend routes are properly configured');
+        } else if (e.message.includes('HTTP 500')) {
+          setError('Backend server error. Check backend logs for details');
+        } else if (e.message.includes('HTTP 503')) {
+          setError('Backend service unavailable. Server may be starting up or overloaded');
+        } else {
+          setError(`Connection failed: ${e.message || 'Unknown error occurred while connecting to backend'}`);
+        }
       } finally {
         setIsLoading(false);
       }
