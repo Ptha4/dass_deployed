@@ -73,12 +73,16 @@ const LoadingOverlay = ({ error }: { error: string | null }) => (
         <p className="text-sm mb-4">Unable to connect to our backend service.</p>
         <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
           <p className="text-xs font-mono text-red-700">{error}</p>
+          <p className="text-xs text-gray-600 mt-2">
+            API URL: {process.env.NEXT_PUBLIC_API_URL || 'Not configured'}
+          </p>
         </div>
         <div className="text-xs text-gray-600 space-y-1">
           <p>Please check:</p>
-          <p>• Backend server is running on port 8000</p>
+          <p>• Backend server is running and accessible</p>
           <p>• Network connection is stable</p>
           <p>• No firewall blocking the connection</p>
+          <p>• Backend URL is correctly configured</p>
         </div>
         <button
           onClick={() => window.location.reload()}
@@ -144,15 +148,15 @@ export default function LandingPage() {
         
         // Provide more specific error messages based on the error type
         if (e.name === 'TypeError' && e.message.includes('fetch')) {
-          setError('Network error: Unable to reach backend server. Please ensure the backend is running on http://127.0.0.1:8000');
+          setError('Network error: Unable to reach backend server. Please check if the backend is deployed and running');
         } else if (e.message.includes('Failed to fetch')) {
-          setError('CORS or network error: Backend may be running but not accessible from frontend');
+          setError('CORS or network error: Backend may be running but not accessible from this domain');
         } else if (e.message.includes('HTTP 404')) {
-          setError('Backend health endpoint not found. Check if backend routes are properly configured');
+          setError('Backend health endpoint not found. Check if backend routes are properly configured and deployed');
         } else if (e.message.includes('HTTP 500')) {
-          setError('Backend server error. Check backend logs for details');
+          setError('Backend server error. The backend service may be experiencing issues');
         } else if (e.message.includes('HTTP 503')) {
-          setError('Backend service unavailable. Server may be starting up or overloaded');
+          setError('Backend service unavailable. The backend may be starting up or temporarily overloaded');
         } else {
           setError(`Connection failed: ${e.message || 'Unknown error occurred while connecting to backend'}`);
         }
