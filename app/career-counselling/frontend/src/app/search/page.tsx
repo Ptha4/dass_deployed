@@ -2,7 +2,7 @@
 
 import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import SearchResults from "@/components/shared/navbar/search-results";
+import { SearchResults } from "@/components/shared/navbar/search-results";
 import SearchBar from "@/components/shared/navbar/search-bar";
 import SearchFilters from "@/components/search/search-filters";
 import { useInView } from "react-intersection-observer";
