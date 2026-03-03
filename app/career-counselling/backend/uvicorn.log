@@ -1,0 +1,163 @@
+INFO:     Will watch for changes in these directories: ['/home/havish-balaga/career_counselor_0.1.1/app/career-counselling/backend']
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     Started reloader process [196256] using StatReload
+INFO:     Started server process [196258]
+INFO:     Waiting for application startup.
+ERROR:    Traceback (most recent call last):
+  File "/home/havish-balaga/career_counselor_0.1.1/app/career-counselling/backend/.venv/lib/python3.12/site-packages/starlette/routing.py", line 692, in lifespan
+    async with self.lifespan_context(app) as maybe_state:
+  File "/usr/lib/python3.12/contextlib.py", line 210, in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/havish-balaga/career_counselor_0.1.1/app/career-counselling/backend/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 133, in merged_lifespan
+    async with original_context(app) as maybe_original_state:
+  File "/usr/lib/python3.12/contextlib.py", line 210, in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/havish-balaga/career_counselor_0.1.1/app/career-counselling/backend/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 133, in merged_lifespan
+    async with original_context(app) as maybe_original_state:
+  File "/usr/lib/python3.12/contextlib.py", line 210, in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/havish-balaga/career_counselor_0.1.1/app/career-counselling/backend/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 133, in merged_lifespan
+    async with original_context(app) as maybe_original_state:
+  File "/usr/lib/python3.12/contextlib.py", line 210, in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/havish-balaga/career_counselor_0.1.1/app/career-counselling/backend/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 133, in merged_lifespan
+    async with original_context(app) as maybe_original_state:
+  File "/usr/lib/python3.12/contextlib.py", line 210, in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/havish-balaga/career_counselor_0.1.1/app/career-counselling/backend/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 133, in merged_lifespan
+    async with original_context(app) as maybe_original_state:
+  File "/usr/lib/python3.12/contextlib.py", line 210, in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/havish-balaga/career_counselor_0.1.1/app/career-counselling/backend/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 133, in merged_lifespan
+    async with original_context(app) as maybe_original_state:
+  File "/usr/lib/python3.12/contextlib.py", line 210, in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/havish-balaga/career_counselor_0.1.1/app/career-counselling/backend/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 133, in merged_lifespan
+    async with original_context(app) as maybe_original_state:
+  File "/usr/lib/python3.12/contextlib.py", line 210, in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/havish-balaga/career_counselor_0.1.1/app/career-counselling/backend/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 133, in merged_lifespan
+    async with original_context(app) as maybe_original_state:
+  File "/usr/lib/python3.12/contextlib.py", line 210, in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/havish-balaga/career_counselor_0.1.1/app/career-counselling/backend/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 133, in merged_lifespan
+    async with original_context(app) as maybe_original_state:
+  File "/usr/lib/python3.12/contextlib.py", line 210, in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/havish-balaga/career_counselor_0.1.1/app/career-counselling/backend/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 133, in merged_lifespan
+    async with original_context(app) as maybe_original_state:
+  File "/usr/lib/python3.12/contextlib.py", line 210, in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/havish-balaga/career_counselor_0.1.1/app/career-counselling/backend/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 133, in merged_lifespan
+    async with original_context(app) as maybe_original_state:
+  File "/usr/lib/python3.12/contextlib.py", line 210, in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/havish-balaga/career_counselor_0.1.1/app/career-counselling/backend/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 133, in merged_lifespan
+    async with original_context(app) as maybe_original_state:
+  File "/usr/lib/python3.12/contextlib.py", line 210, in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/havish-balaga/career_counselor_0.1.1/app/career-counselling/backend/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 133, in merged_lifespan
+    async with original_context(app) as maybe_original_state:
+  File "/usr/lib/python3.12/contextlib.py", line 210, in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/havish-balaga/career_counselor_0.1.1/app/career-counselling/backend/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 133, in merged_lifespan
+    async with original_context(app) as maybe_original_state:
+  File "/usr/lib/python3.12/contextlib.py", line 210, in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/havish-balaga/career_counselor_0.1.1/app/career-counselling/backend/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 133, in merged_lifespan
+    async with original_context(app) as maybe_original_state:
+  File "/usr/lib/python3.12/contextlib.py", line 210, in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/havish-balaga/career_counselor_0.1.1/app/career-counselling/backend/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 133, in merged_lifespan
+    async with original_context(app) as maybe_original_state:
+  File "/usr/lib/python3.12/contextlib.py", line 210, in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/havish-balaga/career_counselor_0.1.1/app/career-counselling/backend/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 133, in merged_lifespan
+    async with original_context(app) as maybe_original_state:
+  File "/usr/lib/python3.12/contextlib.py", line 210, in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/havish-balaga/career_counselor_0.1.1/app/career-counselling/backend/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 133, in merged_lifespan
+    async with original_context(app) as maybe_original_state:
+  File "/usr/lib/python3.12/contextlib.py", line 210, in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/havish-balaga/career_counselor_0.1.1/app/career-counselling/backend/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 133, in merged_lifespan
+    async with original_context(app) as maybe_original_state:
+  File "/home/havish-balaga/career_counselor_0.1.1/app/career-counselling/backend/.venv/lib/python3.12/site-packages/starlette/routing.py", line 569, in __aenter__
+    await self._router.startup()
+  File "/home/havish-balaga/career_counselor_0.1.1/app/career-counselling/backend/.venv/lib/python3.12/site-packages/starlette/routing.py", line 669, in startup
+    await handler()
+  File "/home/havish-balaga/career_counselor_0.1.1/app/career-counselling/backend/app/main.py", line 53, in startup_db_client
+    await user_manager.initialize_wallet_for_existing_users()
+  File "/home/havish-balaga/career_counselor_0.1.1/app/career-counselling/backend/app/managers/user.py", line 272, in initialize_wallet_for_existing_users
+    result = await self.db.users.update_many(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/concurrent/futures/thread.py", line 58, in run
+    result = self.fn(*self.args, **self.kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/havish-balaga/career_counselor_0.1.1/app/career-counselling/backend/.venv/lib/python3.12/site-packages/pymongo/synchronous/collection.py", line 1437, in update_many
+    self._update_retryable(
+  File "/home/havish-balaga/career_counselor_0.1.1/app/career-counselling/backend/.venv/lib/python3.12/site-packages/pymongo/synchronous/collection.py", line 1118, in _update_retryable
+    return self._database.client._retryable_write(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/havish-balaga/career_counselor_0.1.1/app/career-counselling/backend/.venv/lib/python3.12/site-packages/pymongo/synchronous/mongo_client.py", line 2061, in _retryable_write
+    return self._retry_with_session(retryable, func, s, bulk, operation, operation_id)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/havish-balaga/career_counselor_0.1.1/app/career-counselling/backend/.venv/lib/python3.12/site-packages/pymongo/synchronous/mongo_client.py", line 1947, in _retry_with_session
+    return self._retry_internal(
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/havish-balaga/career_counselor_0.1.1/app/career-counselling/backend/.venv/lib/python3.12/site-packages/pymongo/_csot.py", line 125, in csot_wrapper
+    return func(self, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/havish-balaga/career_counselor_0.1.1/app/career-counselling/backend/.venv/lib/python3.12/site-packages/pymongo/synchronous/mongo_client.py", line 1993, in _retry_internal
+    ).run()
+      ^^^^^
+  File "/home/havish-balaga/career_counselor_0.1.1/app/career-counselling/backend/.venv/lib/python3.12/site-packages/pymongo/synchronous/mongo_client.py", line 2730, in run
+    return self._read() if self._is_read else self._write()
+                                              ^^^^^^^^^^^^^
+  File "/home/havish-balaga/career_counselor_0.1.1/app/career-counselling/backend/.venv/lib/python3.12/site-packages/pymongo/synchronous/mongo_client.py", line 2840, in _write
+    self._server = self._get_server()
+                   ^^^^^^^^^^^^^^^^^^
+  File "/home/havish-balaga/career_counselor_0.1.1/app/career-counselling/backend/.venv/lib/python3.12/site-packages/pymongo/synchronous/mongo_client.py", line 2823, in _get_server
+    return self._client._select_server(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/havish-balaga/career_counselor_0.1.1/app/career-counselling/backend/.venv/lib/python3.12/site-packages/pymongo/synchronous/mongo_client.py", line 1799, in _select_server
+    topology = self._get_topology()
+               ^^^^^^^^^^^^^^^^^^^^
+  File "/home/havish-balaga/career_counselor_0.1.1/app/career-counselling/backend/.venv/lib/python3.12/site-packages/pymongo/synchronous/mongo_client.py", line 1737, in _get_topology
+    self._resolve_srv()
+  File "/home/havish-balaga/career_counselor_0.1.1/app/career-counselling/backend/.venv/lib/python3.12/site-packages/pymongo/synchronous/mongo_client.py", line 903, in _resolve_srv
+    res = uri_parser._parse_srv(
+          ^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/havish-balaga/career_counselor_0.1.1/app/career-counselling/backend/.venv/lib/python3.12/site-packages/pymongo/synchronous/uri_parser.py", line 163, in _parse_srv
+    nodes = dns_resolver.get_hosts()
+            ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/havish-balaga/career_counselor_0.1.1/app/career-counselling/backend/.venv/lib/python3.12/site-packages/pymongo/synchronous/srv_resolver.py", line 157, in get_hosts
+    _, nodes = self._get_srv_response_and_hosts(True)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/havish-balaga/career_counselor_0.1.1/app/career-counselling/backend/.venv/lib/python3.12/site-packages/pymongo/synchronous/srv_resolver.py", line 131, in _get_srv_response_and_hosts
+    results = self._resolve_uri(encapsulate_errors)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/havish-balaga/career_counselor_0.1.1/app/career-counselling/backend/.venv/lib/python3.12/site-packages/pymongo/synchronous/srv_resolver.py", line 125, in _resolve_uri
+    raise ConfigurationError(str(exc)) from None
+pymongo.errors.ConfigurationError: A DNS label is empty.
+
+ERROR:    Application startup failed. Exiting.
