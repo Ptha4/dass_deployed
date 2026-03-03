@@ -11,6 +11,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as SonnerToaster } from "sonner";
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
+import { BackButton } from "@/components/shared/back-button";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -68,6 +69,7 @@ export default function RootLayout({
             <SidebarContentWrapper>
               <main className="min-h-screen pt-[80px] bg-gray-50">
                 <div className="px-6">
+                  <BackButton />
                   {children}
                 </div>
               </main>
