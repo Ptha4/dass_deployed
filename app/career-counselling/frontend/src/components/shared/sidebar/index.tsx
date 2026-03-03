@@ -33,9 +33,8 @@ interface NavItem {
 const staticNavItems: NavItem[] = [
   {
     title: "Discussion",
-    href: "/",
+    href: "/forums",
     icon: <MessageSquare className="h-5 w-5" />,
-    matchPrefix: "__exact__",
   },
   {
     title: "Blogs",
