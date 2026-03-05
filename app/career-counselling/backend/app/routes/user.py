@@ -4,6 +4,7 @@ from app.models.user import User, UserProfileUpdate, OnboardingUpdate
 from app.managers.expert import ExpertManager
 from app.managers.user import UserManager
 from app.core.auth_utils import require_admin, require_expert, require_user, get_current_user
+from app.core.database import get_database
 
 router = APIRouter()
 user_manager = UserManager()
@@ -150,6 +151,92 @@ async def update_profile(user_update: UserProfileUpdate, user_data: dict = Depen
         )
 
     return updated_user
+
+
+@router.get("/users/{user_id}", response_model=User)
+async def get_user_profile(user_id: str):
+    """
+    Get a specific user's profile information by user ID.
+    
+    Returns user profile if found, raises 404 if not found.
+    """
+    try:
+        print(f"Fetching profile for user: {user_id}")
+        user = await user_manager.get_user(user_id)
+        if not user:
+            raise HTTPException(
+                status_code=404,
+                detail="User not found"
+            )
+        
+        # Remove sensitive information
+        user_dict = user.model_dump()
+        if "hashedPassword" in user_dict:
+            del user_dict["hashedPassword"]
+        if "password" in user_dict:
+            del user_dict["password"]
+            
+        print(f"Successfully fetched user profile: {user_dict.get('firstName', 'Unknown')}")
+        return user
+    except HTTPException:
+        # Re-raise HTTP exceptions
+        raise
+    except Exception as e:
+        print(f"Error getting user profile: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to retrieve user profile: {str(e)}"
+        )
+
+
+@router.get("/users/{user_id}/posts")
+async def get_user_posts(user_id: str, skip: int = 0, limit: int = 20):
+    """
+    Get posts created by a specific user.
+    
+    Returns a list of posts by the user.
+    """
+    try:
+        # Get user to verify they exist
+        user = await user_manager.get_user(user_id)
+        if not user:
+            raise HTTPException(
+                status_code=404,
+                detail="User not found"
+            )
+        
+        # Get posts from database
+        db = get_database()
+        print(f"Fetching posts for user {user_id}, database: {db}")
+        
+        # Try to access posts collection
+        posts_collection = db.posts
+        posts_cursor = posts_collection.find(
+            {"authorId": user_id}
+        ).sort("createdAt", -1).skip(skip).limit(limit)
+        
+        posts = []
+        async for post in posts_cursor:
+            # Convert ObjectId to string
+            post["_id"] = str(post["_id"])
+            post["postId"] = str(post["_id"])
+            posts.append(post)
+        
+        print(f"Found {len(posts)} posts for user {user_id}")
+        return posts
+    except HTTPException:
+        # Re-raise HTTP exceptions
+        raise
+    except Exception as e:
+        print(f"Error getting user posts: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to retrieve user posts: {str(e)}"
+        )
 
 
 @router.get("/expert-info")

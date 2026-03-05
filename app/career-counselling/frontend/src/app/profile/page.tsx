@@ -6,19 +6,38 @@ import { Loader2, Edit2, Save, User as UserIcon, Wallet } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { User } from "@/types";
 import Link from "next/link";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { useAuth } from "@/contexts/AuthContext";
+import { cn } from "@/lib/utils";
+
+const INTEREST_OPTIONS = [
+  "Engineering",
+  "Medicine / Healthcare",
+  "Law",
+  "Business / MBA",
+  "Computer Science / IT",
+  "Mathematics",
+  "Physics",
+  "Chemistry",
+  "Biology",
+  "Commerce / Finance",
+  "Economics",
+  "Design / Architecture",
+  "Arts & Literature",
+  "Social Sciences",
+  "Government / Civil Services",
+  "Defence",
+  "Sports",
+  "Media & Journalism",
+  "Agriculture",
+  "Education / Teaching",
+] as const;
 
 const categories = [
   "Open",
@@ -79,6 +98,13 @@ export default function ProfilePage() {
   const [lastName, setLastName] = useState("");
   const [saving, setSaving] = useState(false);
 
+  // Onboarding specific states
+  const [grade, setGrade] = useState("");
+  const [preferredStream, setPreferredStream] = useState("");
+  const [targetCollege, setTargetCollege] = useState("");
+  const [interests, setInterests] = useState<string[]>([]);
+  const [careerGoals, setCareerGoals] = useState("");
+
   useEffect(() => {
     if (authUser) {
       setProfile({
@@ -98,6 +124,12 @@ export default function ProfilePage() {
         isExpert: Boolean(authUser.isExpert),
         wallet: Number(authUser.wallet || 0),
         middleName: authUser.middleName,
+        // Onboarding fields
+        grade: authUser.grade || "",
+        preferred_stream: authUser.preferred_stream || "",
+        target_college: authUser.target_college || "",
+        interests: authUser.interests || [],
+        career_goals: authUser.career_goals || "",
       });
       setRole(authUser.isAdmin ? "Admin" : authUser.isExpert ? "Expert" : "");
       setGender(typeof authUser.gender === "string" ? authUser.gender : "");
@@ -119,6 +151,12 @@ export default function ProfilePage() {
       setLastName(
         typeof authUser.lastName === "string" ? authUser.lastName : ""
       );
+      // Set onboarding specific states
+      setGrade(authUser.grade || "");
+      setPreferredStream(authUser.preferred_stream || "");
+      setTargetCollege(authUser.target_college || "");
+      setInterests(authUser.interests || []);
+      setCareerGoals(authUser.career_goals || "");
       setLoading(false);
     } else {
       // Fallback to fetching if not available in context
@@ -156,23 +194,52 @@ export default function ProfilePage() {
     try {
       setSaving(true);
       const token = localStorage.getItem("token");
-      await axios.put(
-        "/api/profile",
-        {
-          firstName,
-          middleName,
-          lastName,
-          gender: gender === "unspecified" ? "" : gender,
-          category: category === "unspecified" ? "" : category,
-          home_state: homeState === "unspecified" ? "" : homeState,
-          mobileNo,
-        },
-        {
+      
+      // Separate onboarding fields from regular profile fields
+      const profileUpdateData = {
+        firstName,
+        middleName,
+        lastName,
+        gender: gender === "unspecified" ? "" : gender,
+        category: category === "unspecified" ? "" : category,
+        home_state: homeState === "unspecified" ? "" : homeState,
+        mobileNo,
+      };
+      
+      // Only send onboarding fields if they have values
+      const onboardingData = {
+        grade: grade === "" ? undefined : grade,
+        preferred_stream: preferredStream === "" ? undefined : preferredStream,
+        target_college: targetCollege === "" ? undefined : targetCollege,
+        interests: interests.length === 0 ? undefined : interests,
+        career_goals: careerGoals === "" ? undefined : careerGoals,
+      };
+      
+      // Check if we have onboarding data to update
+      const hasOnboardingUpdates = Object.values(onboardingData).some(value => value !== undefined);
+      
+      if (hasOnboardingUpdates) {
+        // Send onboarding data to the onboarding endpoint
+        await axios.put("/api/onboarding", onboardingData, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
-        }
-      );
+        });
+        
+        // Also update the basic profile fields
+        await axios.put("/api/profile", profileUpdateData, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+      } else {
+        // Only update basic profile fields
+        await axios.put("/api/profile", profileUpdateData, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+      }
 
       setProfile({
         ...profile!,
@@ -183,6 +250,12 @@ export default function ProfilePage() {
         category,
         home_state: homeState,
         mobileNo,
+        // Update local state with onboarding fields
+        grade: grade || "",
+        preferred_stream: preferredStream || "",
+        target_college: targetCollege || "",
+        interests: interests || [],
+        career_goals: careerGoals || "",
       });
 
       setIsEditing(false);
@@ -425,6 +498,122 @@ export default function ProfilePage() {
                   className={!isEditing ? "bg-gray-50" : ""}
                   placeholder="Enter mobile number"
                 />
+              </div>
+              
+              {/* Onboarding Information */}
+              <div className="space-y-4">
+                <h3 className="font-semibold text-lg text-primary">
+                  Onboarding Information
+                </h3>
+                <Separator />
+                
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700">
+                    Grade
+                  </label>
+                  <Select
+                    value={grade || "unspecified"}
+                    onValueChange={setGrade}
+                    disabled={!isEditing}
+                  >
+                    <SelectTrigger className={!isEditing ? "bg-gray-50" : ""}>
+                      <SelectValue placeholder="Select your grade" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="unspecified">Not Specified</SelectItem>
+                      <SelectItem value="Grade 9">Grade 9</SelectItem>
+                      <SelectItem value="Grade 10">Grade 10</SelectItem>
+                      <SelectItem value="Grade 11">Grade 11</SelectItem>
+                      <SelectItem value="Grade 12">Grade 12</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700">
+                    Preferred Stream
+                  </label>
+                  <Select
+                    value={preferredStream || "unspecified"}
+                    onValueChange={setPreferredStream}
+                    disabled={!isEditing}
+                  >
+                    <SelectTrigger className={!isEditing ? "bg-gray-50" : ""}>
+                      <SelectValue placeholder="Select your stream" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="unspecified">Not Specified</SelectItem>
+                      <SelectItem value="Science (PCM)">Science (PCM)</SelectItem>
+                      <SelectItem value="Science (PCB)">Science (PCB)</SelectItem>
+                      <SelectItem value="Commerce">Commerce</SelectItem>
+                      <SelectItem value="Arts / Humanities">Arts / Humanities</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700">
+                    Target College
+                    <span className="text-gray-400 font-normal text-xs">(optional)</span>
+                  </label>
+                  <Input
+                    placeholder="e.g. IIT Bombay, AIIMS Delhi, SRCC…"
+                    value={targetCollege}
+                    onChange={(e) => setTargetCollege(e.target.value)}
+                    disabled={!isEditing}
+                    className={!isEditing ? "bg-gray-50" : ""}
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700">
+                    Interests
+                    <span className="text-gray-400 font-normal text-xs">(pick up to 8)</span>
+                  </label>
+                  <div className="flex flex-wrap gap-2 max-h-44 overflow-y-auto pr-1">
+                    {INTEREST_OPTIONS.map((interest) => {
+                      const selected = interests.includes(interest);
+                      return (
+                        <button
+                          key={interest}
+                          type="button"
+                          onClick={() => {
+                            if (selected) {
+                              setInterests(interests.filter((i) => i !== interest));
+                            } else if (interests.length < 8) {
+                              setInterests([...interests, interest]);
+                            }
+                          }}
+                          className={cn(
+                            "rounded-full border px-3 py-1 text-xs font-medium transition-colors",
+                            selected
+                              ? "border-blue-600 bg-blue-50 text-blue-700"
+                              : "border-gray-200 hover:bg-gray-50 text-gray-700",
+                            !selected &&
+                              interests.length >= 8 &&
+                              "opacity-40 cursor-not-allowed"
+                          )}
+                        >
+                          {interest}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+                
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700">
+                    Career Goals
+                    <span className="text-gray-400 font-normal text-xs">(optional)</span>
+                  </label>
+                  <Textarea
+                    placeholder="e.g. I want to become a software engineer at a top tech company…"
+                    className="resize-none h-20"
+                    value={careerGoals}
+                    onChange={(e) => setCareerGoals(e.target.value)}
+                    disabled={!isEditing}
+                  />
+                </div>
               </div>
             </div>
           </div>

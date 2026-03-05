@@ -97,7 +97,13 @@ export default function VideoCard({ video }: VideoCardProps) {
         
         <div className="flex items-center text-sm text-gray-500">
           <span className="flex items-center">
-            {video.expertDetails?.userDetails?.firstName} {video.expertDetails?.userDetails?.lastName}
+            <Link 
+              href={`/profile/${video.userId}`}
+              className="hover:text-indigo-600 transition-colors"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {video.expertDetails?.userDetails?.firstName} {video.expertDetails?.userDetails?.lastName}
+            </Link>
           </span>
         </div>
       </CardContent>
