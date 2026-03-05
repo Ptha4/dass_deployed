@@ -46,9 +46,14 @@ class CommunityManager:
 
     async def get_community(self, community_id: str, requesting_user_id: Optional[str] = None) -> Optional[CommunityResponse]:
         try:
-            doc = await self.collection.find_one({"_id": ObjectId(community_id)})
+            doc = None
+            # Try ObjectId lookup first; if community_id is a slug this will raise InvalidId
+            try:
+                doc = await self.collection.find_one({"_id": ObjectId(community_id)})
+            except Exception:
+                pass
+            # Fall back to slug lookup
             if not doc:
-                # also try by slug
                 doc = await self.collection.find_one({"name": community_id})
             if not doc:
                 return None
@@ -76,8 +81,13 @@ class CommunityManager:
 
     async def join_community(self, community_id: str, user_id: str) -> bool:
         try:
+            # Support both ObjectId and slug
+            try:
+                query = {"_id": ObjectId(community_id)}
+            except Exception:
+                query = {"name": community_id}
             result = await self.collection.update_one(
-                {"_id": ObjectId(community_id)},
+                query,
                 {
                     "$addToSet": {"members": user_id},
                     "$inc": {"memberCount": 1},
@@ -91,8 +101,13 @@ class CommunityManager:
 
     async def leave_community(self, community_id: str, user_id: str) -> bool:
         try:
+            # Support both ObjectId and slug
+            try:
+                query = {"_id": ObjectId(community_id)}
+            except Exception:
+                query = {"name": community_id}
             result = await self.collection.update_one(
-                {"_id": ObjectId(community_id)},
+                query,
                 {
                     "$pull": {"members": user_id},
                     "$inc": {"memberCount": -1},
@@ -106,8 +121,13 @@ class CommunityManager:
 
     async def increment_post_count(self, community_id: str) -> None:
         try:
+            # Support both ObjectId and slug
+            try:
+                query = {"_id": ObjectId(community_id)}
+            except Exception:
+                query = {"name": community_id}
             await self.collection.update_one(
-                {"_id": ObjectId(community_id)},
+                query,
                 {"$inc": {"postCount": 1}, "$set": {"updatedAt": datetime.utcnow()}},
             )
         except Exception as e:

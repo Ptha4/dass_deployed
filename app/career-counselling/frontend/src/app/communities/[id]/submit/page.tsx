@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import axios from "axios";
 import Link from "next/link";
-import { ArrowLeft, Send, Loader2, Tags, ImagePlus, X, Film } from "lucide-react";
+import { Send, Loader2, Tags, ImagePlus, X, Film } from "lucide-react";
 import { Community } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -131,7 +131,9 @@ export default function SubmitPostPage() {
                 .split(",")
                 .map((t) => t.trim())
                 .filter(Boolean);
-            await axios.post(`/api/communities/${id}/posts`, {
+            // Use resolved communityId (ObjectId) for API call, not URL slug
+            const communityApiId = community?.communityId || id;
+            await axios.post(`/api/communities/${communityApiId}/posts`, {
                 title: form.title,
                 content: form.content,
                 tags,
@@ -148,20 +150,6 @@ export default function SubmitPostPage() {
     return (
         <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50/30">
             <div className="max-w-2xl mx-auto px-4 py-10">
-                {/* Back link */}
-                <Link
-                    href={`/communities/${id}`}
-                    className="inline-flex items-center gap-1.5 text-sm text-gray-400 hover:text-indigo-600 transition-colors mb-6"
-                >
-                    <ArrowLeft className="h-4 w-4" />
-                    Back to{" "}
-                    {community ? (
-                        <span className="font-medium text-gray-700">c/{community.name}</span>
-                    ) : (
-                        "community"
-                    )}
-                </Link>
-
                 <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                     {/* Header */}
                     <div

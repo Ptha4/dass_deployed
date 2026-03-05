@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Search, UserCircle } from "lucide-react";
+import { UserCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 interface WelcomeHeaderProps {
@@ -15,64 +15,50 @@ export function WelcomeHeader({
   userName,
   unreadReplies = 0,
   upcomingMeetingsToday = 0,
-  onFindMentor,
 }: WelcomeHeaderProps) {
   const router = useRouter();
 
   return (
-    <div className="pb-10">
-      <div className="px-6 sm:px-8 lg:px-12">
-        <div className="bg-gradient-to-r from-blue-50 via-purple-50 to-pink-50 rounded-3xl p-10 shadow-lg">
-          <h1 className="text-4xl font-bold text-gray-900 mb-3 flex items-center gap-4">
-            Welcome back{userName ? `, ${userName}` : ""}!{" "}
-            <span className="animate-wave inline-block origin-[70%_70%] text-4xl">👋</span>
-          </h1>
+    <div className="h-full flex flex-col justify-center">
+      <h1 className="text-3xl font-bold text-gray-900 mb-2 flex items-center gap-3">
+        Welcome back{userName ? `, ${userName}` : ""}!{" "}
+        <span className="animate-wave inline-block origin-[70%_70%] text-3xl">👋</span>
+      </h1>
 
-          <p className="text-gray-600 text-lg mb-8">
-            {unreadReplies > 0 || upcomingMeetingsToday > 0 ? (
+      <p className="text-gray-600 text-sm mb-5">
+        {unreadReplies > 0 || upcomingMeetingsToday > 0 ? (
+          <>
+            You have{" "}
+            {unreadReplies > 0 && (
               <>
-                You have{" "}
-                {unreadReplies > 0 && (
-                  <>
-                    <span className="font-semibold text-blue-600">
-                      {unreadReplies} unread {unreadReplies === 1 ? "reply" : "replies"}
-                    </span>
-                    {upcomingMeetingsToday > 0 && " and "}
-                  </>
-                )}
-                {upcomingMeetingsToday > 0 && (
-                  <span className="font-semibold text-indigo-600">
-                    {upcomingMeetingsToday} upcoming{" "}
-                    {upcomingMeetingsToday === 1 ? "meeting" : "meetings"} today
-                  </span>
-                )}
+                <span className="font-semibold text-blue-600">
+                  {unreadReplies} unread {unreadReplies === 1 ? "reply" : "replies"}
+                </span>
+                {upcomingMeetingsToday > 0 && " and "}
               </>
-            ) : (
-              "Track your career exploration progress and discover new opportunities."
             )}
-          </p>
+            {upcomingMeetingsToday > 0 && (
+              <span className="font-semibold text-indigo-600">
+                {upcomingMeetingsToday} upcoming{" "}
+                {upcomingMeetingsToday === 1 ? "meeting" : "meetings"} today
+              </span>
+            )}
+          </>
+        ) : (
+          "Track your career exploration progress and discover new opportunities."
+        )}
+      </p>
 
-          {/* Quick Action Pills */}
-          <div className="flex flex-wrap gap-4">
-            <Button
-              variant="outline"
-              size="lg"
-              className="bg-white shadow-md hover:shadow-xl transition-all border-purple-200 text-gray-700 font-semibold group h-12 px-6"
-              onClick={() => router.push("/profile")}
-            >
-              <UserCircle className="h-5 w-5 mr-2 text-purple-600 group-hover:scale-110 transition-transform" />
-              Update Profile
-            </Button>
-            <Button
-              size="lg"
-              className="bg-blue-600 hover:bg-blue-700 text-white shadow-md hover:shadow-xl transition-all font-semibold group h-12 px-6"
-              onClick={onFindMentor}
-            >
-              <Search className="h-5 w-5 mr-2 group-hover:scale-110 transition-transform" />
-              Find a Mentor
-            </Button>
-          </div>
-        </div>
+      <div>
+        <Button
+          variant="outline"
+          size="lg"
+          className="bg-white shadow-md hover:shadow-xl transition-all border-purple-200 text-gray-700 font-semibold group h-9 px-4 text-sm"
+          onClick={() => router.push("/profile")}
+        >
+          <UserCircle className="h-4 w-4 mr-2 text-purple-600 group-hover:scale-110 transition-transform" />
+          Update Profile
+        </Button>
       </div>
 
       <style jsx>{`
@@ -93,4 +79,3 @@ export function WelcomeHeader({
     </div>
   );
 }
-

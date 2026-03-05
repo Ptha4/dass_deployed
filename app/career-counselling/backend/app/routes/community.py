@@ -98,9 +98,12 @@ async def get_community_posts(
     skip: int = 0,
     limit: int = 30,
 ):
-    """Get all posts for a specific community."""
+    """Get all posts for a specific community (supports ID or slug)."""
     try:
-        posts = await post_manager.get_posts_by_community(community_id, skip, limit)
+        # Resolve slug or ID to the actual ObjectId string
+        community = await community_manager.get_community(community_id)
+        actual_id = community.communityId if community else community_id
+        posts = await post_manager.get_posts_by_community(actual_id, skip, limit)
         return posts
     except Exception as e:
         print(f"get_community_posts error: {e}")
@@ -125,22 +128,25 @@ async def create_community_post(
     post_data: CommunityPostCreate,
     user_data: dict = Depends(require_user),
 ):
-    """Create a new post within a community."""
+    """Create a new post within a community (supports ID or slug)."""
     try:
-        # Verify community exists
+        # Verify community exists (supports both ObjectId and slug)
         community = await community_manager.get_community(community_id)
         if not community:
             raise HTTPException(status_code=404, detail="Community not found")
 
+        # Always use the resolved ObjectId for DB operations
+        actual_community_id = community.communityId
+
         # Verify user is a member
         community_doc = await community_manager.collection.find_one(
-            {"_id": ObjectId(community_id), "members": user_data["id"]}
+            {"_id": ObjectId(actual_community_id), "members": user_data["id"]}
         )
         if not community_doc:
             raise HTTPException(status_code=403, detail="You must join this community before posting")
 
         post = await post_manager.create_community_post(
-            community_id=community_id,
+            community_id=actual_community_id,
             author_id=user_data["id"],
             title=post_data.title,
             content=post_data.content,
@@ -149,7 +155,7 @@ async def create_community_post(
         )
 
         # Update post count on community
-        await community_manager.increment_post_count(community_id)
+        await community_manager.increment_post_count(actual_community_id)
 
         return post
     except HTTPException:

@@ -1,5 +1,5 @@
 from pydantic import BaseModel, EmailStr, Field
-from typing import Optional, List
+from typing import Optional, List, Any, Dict
 from enum import Enum
 from bson import ObjectId
 
@@ -56,6 +56,7 @@ class UserBase(BaseModel):
     interests: List[str] = []
     career_goals: Optional[str] = None
     onboarding_completed: bool = False
+    recently_viewed: List[Dict[str, Any]] = []  # [{type, itemId, title, viewedAt}]
 
 
 class User(UserBase):

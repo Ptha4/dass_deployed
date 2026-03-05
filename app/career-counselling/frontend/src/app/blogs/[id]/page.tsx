@@ -74,18 +74,19 @@ export default function BlogDetailPage() {
         // Increment view count
         incrementViewCount(data.blogID);
 
-        // Save to lastViewedBlogs in localStorage
-        try {
-          const stored = localStorage.getItem("lastViewedBlogs");
-          const prev: { blogID: string; heading: string; views: number; createdAt: string }[] =
-            stored ? JSON.parse(stored) : [];
-          const filtered = prev.filter((b) => b.blogID !== data.blogID);
-          const updated = [
-            { blogID: data.blogID, heading: data.heading, views: data.views ?? 0, createdAt: data.createdAt },
-            ...filtered,
-          ].slice(0, 20);
-          localStorage.setItem("lastViewedBlogs", JSON.stringify(updated));
-        } catch { /* ignore */ }
+        // Track in user history (DB-backed, per-user)
+        const _token = localStorage.getItem("token");
+        if (_token && data?.heading) {
+          fetch("/api/activity/view", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${_token}` },
+            body: JSON.stringify({
+              type: "blog",
+              itemId: data.blogID || String(params.id),
+              title: data.heading,
+            }),
+          }).catch(() => {});
+        }
 
         // Check if user has liked this blog
         if (user) {

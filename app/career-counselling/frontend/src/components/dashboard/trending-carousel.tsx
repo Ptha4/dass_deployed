@@ -3,90 +3,98 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, TrendingUp, Video, FileText, Eye, Heart } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  TrendingUp,
+  Video,
+  FileText,
+  MessageSquare,
+  Eye,
+  Heart,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 
 interface TrendingItem {
   id: string;
-  type: "video" | "post";
+  type: "video" | "post" | "blog";
   title: string;
-  thumbnail?: string;
   authorName: string;
   views: number;
   likes: number;
   excerpt: string;
+  url: string;
+  score: number;
 }
 
-const mockTrendingItems: TrendingItem[] = [
-  {
-    id: "1",
-    type: "video",
-    title: "Breaking Into Tech: A Complete Roadmap for 2026",
-    thumbnail: "https://picsum.photos/seed/video1/600/400",
-    authorName: "Dr. Sarah Chen",
-    views: 12500,
-    likes: 843,
-    excerpt: "Learn the essential steps to launch your tech career with insights from industry experts.",
+const TYPE_META: Record<
+  TrendingItem["type"],
+  { label: string; icon: React.ElementType; color: string; gradient: string }
+> = {
+  video: {
+    label: "Video",
+    icon: Video,
+    color: "text-red-600",
+    gradient: "from-red-500 to-pink-600",
   },
-  {
-    id: "2",
-    type: "post",
-    title: "Top 10 Skills Employers Are Looking For This Year",
-    thumbnail: "https://picsum.photos/seed/post1/600/400",
-    authorName: "Michael Rodriguez",
-    views: 8900,
-    likes: 621,
-    excerpt: "Discover the most in-demand skills that can boost your employability and career prospects.",
+  post: {
+    label: "Post",
+    icon: MessageSquare,
+    color: "text-purple-600",
+    gradient: "from-purple-500 to-indigo-600",
   },
-  {
-    id: "3",
-    type: "video",
-    title: "How I Got Into MIT: Application Tips & Strategy",
-    thumbnail: "https://picsum.photos/seed/video2/600/400",
-    authorName: "Priya Sharma",
-    views: 15200,
-    likes: 1240,
-    excerpt: "A step-by-step guide to crafting a winning college application from a recent MIT graduate.",
+  blog: {
+    label: "Blog",
+    icon: FileText,
+    color: "text-blue-600",
+    gradient: "from-blue-500 to-cyan-600",
   },
-  {
-    id: "4",
-    type: "post",
-    title: "Remote Work Revolution: Best Practices for Students",
-    thumbnail: "https://picsum.photos/seed/post2/600/400",
-    authorName: "James Chen",
-    views: 7600,
-    likes: 534,
-    excerpt: "Master remote collaboration tools and techniques that will set you apart in the modern workplace.",
-  },
-  {
-    id: "5",
-    type: "video",
-    title: "AI & Machine Learning: Career Paths Explained",
-    thumbnail: "https://picsum.photos/seed/video3/600/400",
-    authorName: "Dr. Emily Watson",
-    views: 18300,
-    likes: 1456,
-    excerpt: "Explore different career trajectories in AI/ML and what skills you need for each path.",
-  },
-];
+};
+
+function recordView(item: TrendingItem) {
+  const token = localStorage.getItem("token");
+  if (!token) return;
+  fetch("/api/activity/view", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ type: item.type, itemId: item.id, title: item.title }),
+  }).catch(() => {});
+}
 
 export function TrendingCarousel() {
   const router = useRouter();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [items, setItems] = useState<TrendingItem[]>([]);
+  const [loading, setLoading] = useState(true);
   const [isAutoPlaying, setIsAutoPlaying] = useState(true);
 
   useEffect(() => {
-    setItems(mockTrendingItems);
+    let cancelled = false;
+    async function load() {
+      try {
+        const res = await fetch("/api/activity/trending?limit=6");
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        if (!cancelled) setItems(Array.isArray(data) ? data : []);
+      } catch (err) {
+        console.error("TrendingCarousel fetch error:", err);
+        if (!cancelled) setItems([]);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+    load();
+    return () => { cancelled = true; };
   }, []);
 
   useEffect(() => {
     if (!isAutoPlaying || items.length === 0) return;
-
     const interval = setInterval(() => {
       setCurrentIndex((prev) => (prev + 1) % items.length);
     }, 5000);
-
     return () => clearInterval(interval);
   }, [isAutoPlaying, items.length]);
 
@@ -101,31 +109,44 @@ export function TrendingCarousel() {
   };
 
   const handleItemClick = (item: TrendingItem) => {
-    if (item.type === "video") {
-      router.push(`/videos/${item.id}`);
-    } else {
-      router.push(`/posts/${item.id}`);
-    }
+    recordView(item);
+    router.push(item.url);
   };
 
-  if (items.length === 0) {
+  if (loading) {
     return (
       <Card className="bg-white rounded-xl shadow-sm border-0 overflow-hidden mb-6">
         <CardContent className="p-6">
-          <div className="animate-pulse flex gap-4">
-            <div className="flex-1 bg-gray-200 h-48 rounded-lg" />
+          <div className="animate-pulse space-y-4">
+            <div className="h-5 bg-gray-200 rounded w-40" />
+            <div className="h-48 bg-gray-200 rounded-lg" />
           </div>
         </CardContent>
       </Card>
     );
   }
 
+  if (items.length === 0) {
+    return (
+      <Card className="bg-gradient-to-br from-orange-50 via-pink-50 to-purple-50 rounded-xl shadow-md border-0 overflow-hidden mb-6">
+        <CardContent className="p-8 flex flex-col items-center gap-3 text-center">
+          <TrendingUp className="h-10 w-10 text-orange-400" />
+          <p className="text-lg font-semibold text-gray-700">No trending content yet</p>
+          <p className="text-sm text-gray-500">
+            Trending posts, videos, and blogs will appear here once there is activity.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
   const currentItem = items[currentIndex];
+  const meta = TYPE_META[currentItem.type] ?? TYPE_META.post;
+  const TypeIcon = meta.icon;
 
   return (
     <Card className="bg-gradient-to-br from-orange-50 via-pink-50 to-purple-50 rounded-xl shadow-md border-0 overflow-hidden mb-6">
       <CardContent className="p-0">
-        {/* Header */}
         <div className="px-6 py-4 bg-white/60 backdrop-blur-sm border-b border-gray-200/50">
           <div className="flex items-center gap-2">
             <TrendingUp className="h-5 w-5 text-orange-600" />
@@ -136,53 +157,33 @@ export function TrendingCarousel() {
           </div>
         </div>
 
-        {/* Carousel Content */}
         <div className="relative">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6">
-            {/* Left - Image/Thumbnail */}
             <div
-              className="relative rounded-xl overflow-hidden cursor-pointer group"
+              className={`relative rounded-xl overflow-hidden cursor-pointer group bg-gradient-to-br ${meta.gradient} h-64 flex items-center justify-center`}
               onClick={() => handleItemClick(currentItem)}
             >
-              <img
-                src={currentItem.thumbnail}
-                alt={currentItem.title}
-                className="w-full h-64 object-cover transition-transform duration-300 group-hover:scale-105"
-              />
-              {/* Overlay */}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-              
-              {/* Type Badge */}
+              <TypeIcon className="h-24 w-24 text-white/30 transition-transform duration-300 group-hover:scale-110" />
               <div className="absolute top-3 left-3 px-3 py-1 bg-white/90 backdrop-blur-sm rounded-full flex items-center gap-1.5 shadow-lg">
-                {currentItem.type === "video" ? (
-                  <>
-                    <Video className="h-3.5 w-3.5 text-red-600" />
-                    <span className="text-xs font-semibold text-gray-900">Video</span>
-                  </>
-                ) : (
-                  <>
-                    <FileText className="h-3.5 w-3.5 text-blue-600" />
-                    <span className="text-xs font-semibold text-gray-900">Post</span>
-                  </>
-                )}
+                <TypeIcon className={`h-3.5 w-3.5 ${meta.color}`} />
+                <span className="text-xs font-semibold text-gray-900">{meta.label}</span>
               </div>
-
-              {/* Stats on hover */}
-              <div className="absolute bottom-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                <div className="px-2 py-1 bg-black/80 backdrop-blur-sm rounded-full flex items-center gap-1">
+              <div className="absolute bottom-3 right-3 flex gap-2">
+                <div className="px-2 py-1 bg-black/60 backdrop-blur-sm rounded-full flex items-center gap-1">
                   <Eye className="h-3 w-3 text-white" />
                   <span className="text-xs font-medium text-white">
-                    {(currentItem.views / 1000).toFixed(1)}K
+                    {currentItem.views >= 1000
+                      ? `${(currentItem.views / 1000).toFixed(1)}K`
+                      : currentItem.views}
                   </span>
                 </div>
-                <div className="px-2 py-1 bg-black/80 backdrop-blur-sm rounded-full flex items-center gap-1">
-                  <Heart className="h-3 w-3 text-red-400" />
+                <div className="px-2 py-1 bg-black/60 backdrop-blur-sm rounded-full flex items-center gap-1">
+                  <Heart className="h-3 w-3 text-red-300" />
                   <span className="text-xs font-medium text-white">{currentItem.likes}</span>
                 </div>
               </div>
             </div>
 
-            {/* Right - Content */}
             <div className="flex flex-col justify-center">
               <div className="space-y-4">
                 <div>
@@ -199,8 +200,6 @@ export function TrendingCarousel() {
                     {currentItem.excerpt}
                   </p>
                 </div>
-
-                {/* Stats */}
                 <div className="flex items-center gap-4 text-sm text-gray-600">
                   <div className="flex items-center gap-1.5">
                     <Eye className="h-4 w-4" />
@@ -213,19 +212,20 @@ export function TrendingCarousel() {
                     <span>likes</span>
                   </div>
                 </div>
-
-                {/* View Button */}
                 <Button
                   onClick={() => handleItemClick(currentItem)}
                   className="w-full md:w-auto gap-2 bg-gradient-to-r from-orange-600 to-pink-600 hover:from-orange-700 hover:to-pink-700"
                 >
-                  {currentItem.type === "video" ? "Watch Now" : "Read More"}
+                  {currentItem.type === "video"
+                    ? "Watch Now"
+                    : currentItem.type === "blog"
+                    ? "Read Blog"
+                    : "Read Post"}
                 </Button>
               </div>
             </div>
           </div>
 
-          {/* Navigation Arrows */}
           <button
             onClick={handlePrevious}
             className="absolute left-2 top-1/2 -translate-y-1/2 p-2 bg-white/90 backdrop-blur-sm hover:bg-white rounded-full shadow-lg transition-all hover:scale-110"
@@ -240,15 +240,11 @@ export function TrendingCarousel() {
           </button>
         </div>
 
-        {/* Dots Indicator */}
         <div className="flex justify-center gap-2 pb-4 px-6">
           {items.map((_, index) => (
             <button
               key={index}
-              onClick={() => {
-                setCurrentIndex(index);
-                setIsAutoPlaying(false);
-              }}
+              onClick={() => { setCurrentIndex(index); setIsAutoPlaying(false); }}
               className={`h-2 rounded-full transition-all duration-300 ${
                 index === currentIndex
                   ? "w-8 bg-gradient-to-r from-orange-600 to-pink-600"

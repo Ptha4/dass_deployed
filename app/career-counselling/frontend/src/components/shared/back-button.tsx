@@ -15,7 +15,6 @@ const NO_BACK_PATHS = [
   "/blogs",
   "/videos",
   "/forums",
-  "/communities",
   "/profile",
   "/meetings",
   "/admin",

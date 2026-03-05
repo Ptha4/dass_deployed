@@ -20,6 +20,8 @@ import {
   BookOpen,
   ArrowUpRight,
   User,
+  Search,
+  Star,
 } from "lucide-react";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { useAuth } from "@/contexts/AuthContext";
@@ -127,41 +129,78 @@ function FeedSection({
   );
 }
 
+interface HistoryItem {
+  type: string;
+  itemId: string;
+  title: string;
+  viewedAt: string;
+}
+
 /* ─── Posts section ──────────────────────────────────────────── */
 function PostsSection() {
+  const { isAuthenticated } = useAuth();
   const [posts, setPosts] = useState<Post[]>([]);
+  const [history, setHistory] = useState<HistoryItem[]>([]);
+  const [useHistory, setUseHistory] = useState(false);
   const [loading, setLoading] = useState(true);
   const [visible, setVisible] = useState(PAGE_SIZE);
 
   useEffect(() => {
-    axios
-      .get(`/api/posts?limit=50`)
-      .then((res) => {
-        const data: Post[] = Array.isArray(res.data) ? res.data : res.data.posts || [];
-        setPosts(data.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
-      })
-      .catch(() => setPosts([]))
-      .finally(() => setLoading(false));
-  }, []);
+    const loadGlobal = () =>
+      axios
+        .get(`/api/posts?limit=50`)
+        .then((res) => {
+          const data: Post[] = Array.isArray(res.data) ? res.data : res.data.posts || [];
+          setPosts(data.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+        })
+        .catch(() => setPosts([]))
+        .finally(() => setLoading(false));
 
-  const shown = posts.slice(0, visible);
+    if (!isAuthenticated) { loadGlobal(); return; }
+
+    const token = localStorage.getItem("token");
+    fetch("/api/activity/recent", { headers: token ? { Authorization: `Bearer ${token}` } : {} })
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data: HistoryItem[]) => {
+        const items = data.filter((h) => h.type === "post");
+        if (items.length > 0) { setHistory(items); setUseHistory(true); setLoading(false); }
+        else loadGlobal();
+      })
+      .catch(() => loadGlobal());
+  }, [isAuthenticated]);
+
+  const shown = useHistory ? history.slice(0, visible) : posts.slice(0, visible);
+  const totalCount = useHistory ? history.length : posts.length;
 
   return (
     <FeedSection
-      title="Recent Posts"
+      title={useHistory ? "Recently Viewed Posts" : "Recent Posts"}
       icon={<MessageSquare className="h-5 w-5" />}
       loading={loading}
-      count={posts.length}
-      hasMore={visible < posts.length}
+      count={totalCount}
+      hasMore={visible < totalCount}
       hasLess={visible > PAGE_SIZE}
       onMore={() => setVisible((v) => v + PAGE_SIZE)}
       onLess={() => setVisible(PAGE_SIZE)}
     >
       {shown.length === 0 ? (
         <p className="text-sm text-gray-500 text-center py-8">No posts yet</p>
+      ) : useHistory ? (
+        <div className="space-y-2">
+          {(shown as HistoryItem[]).map((item) => (
+            <Link key={item.itemId} href={`/posts/${item.itemId}`}>
+              <div className="group flex items-center gap-3 p-3 rounded-xl border border-gray-200 bg-gray-50 hover:border-indigo-300 hover:bg-indigo-50 cursor-pointer transition-all duration-200">
+                <MessageSquare className="h-4 w-4 text-indigo-400 shrink-0" />
+                <p className="text-sm font-medium text-gray-900 line-clamp-2 flex-1 min-w-0">{item.title}</p>
+                <span className="text-xs text-gray-400 shrink-0">{formatDistanceToNow(new Date(item.viewedAt), { addSuffix: true })}</span>
+                <ArrowUpRight className="h-3.5 w-3.5 text-gray-300 group-hover:text-indigo-400 shrink-0" />
+              </div>
+            </Link>
+          ))}
+        </div>
       ) : (
         <div className="space-y-3">
-          {shown.map((post) => (
+          {(shown as Post[]).map((post) => (
             <Link key={post.postId} href={`/posts/${post.postId}`}>
               <div className="group relative flex flex-col gap-2 p-4 rounded-xl border border-gray-200 bg-gray-50 hover:border-indigo-300 hover:bg-indigo-50 hover:shadow-md cursor-pointer transition-all duration-200 hover:-translate-y-0.5">
                 {/* Top row: community badge + arrow */}
@@ -233,39 +272,69 @@ function PostsSection() {
 
 /* ─── Blogs section ──────────────────────────────────────────── */
 function BlogsSection() {
+  const { isAuthenticated } = useAuth();
   const [blogs, setBlogs] = useState<Blog[]>([]);
+  const [history, setHistory] = useState<HistoryItem[]>([]);
+  const [useHistory, setUseHistory] = useState(false);
   const [loading, setLoading] = useState(true);
   const [visible, setVisible] = useState(PAGE_SIZE);
 
   useEffect(() => {
-    axios
-      .get(`/api/blogs`, { params: { limit: 50, sortBy: "recent" } })
-      .then((res) => {
-        const data: Blog[] = res.data.blogs || res.data || [];
-        setBlogs(data);
-      })
-      .catch(() => setBlogs([]))
-      .finally(() => setLoading(false));
-  }, []);
+    const loadGlobal = () =>
+      axios
+        .get(`/api/blogs`, { params: { limit: 50, sortBy: "recent" } })
+        .then((res) => {
+          const data: Blog[] = res.data.blogs || res.data || [];
+          setBlogs(data);
+        })
+        .catch(() => setBlogs([]))
+        .finally(() => setLoading(false));
 
-  const shown = blogs.slice(0, visible);
+    if (!isAuthenticated) { loadGlobal(); return; }
+
+    const token = localStorage.getItem("token");
+    fetch("/api/activity/recent", { headers: token ? { Authorization: `Bearer ${token}` } : {} })
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data: HistoryItem[]) => {
+        const items = data.filter((h) => h.type === "blog");
+        if (items.length > 0) { setHistory(items); setUseHistory(true); setLoading(false); }
+        else loadGlobal();
+      })
+      .catch(() => loadGlobal());
+  }, [isAuthenticated]);
+
+  const shown = useHistory ? history.slice(0, visible) : blogs.slice(0, visible);
+  const totalCount = useHistory ? history.length : blogs.length;
 
   return (
     <FeedSection
-      title="Recent Blogs"
+      title={useHistory ? "Recently Viewed Blogs" : "Recent Blogs"}
       icon={<FileText className="h-5 w-5" />}
       loading={loading}
-      count={blogs.length}
-      hasMore={visible < blogs.length}
+      count={totalCount}
+      hasMore={visible < totalCount}
       hasLess={visible > PAGE_SIZE}
       onMore={() => setVisible((v) => v + PAGE_SIZE)}
       onLess={() => setVisible(PAGE_SIZE)}
     >
       {shown.length === 0 ? (
         <p className="text-sm text-gray-500 text-center py-8">No blogs yet</p>
+      ) : useHistory ? (
+        <div className="space-y-2">
+          {(shown as HistoryItem[]).map((item) => (
+            <Link key={item.itemId} href={`/blogs/${item.itemId}`}>
+              <div className="group flex items-center gap-3 p-3 rounded-xl border border-gray-200 bg-gray-50 hover:border-emerald-300 hover:bg-emerald-50 cursor-pointer transition-all duration-200">
+                <FileText className="h-4 w-4 text-emerald-500 shrink-0" />
+                <p className="text-sm font-medium text-gray-900 line-clamp-2 flex-1 min-w-0">{item.title}</p>
+                <span className="text-xs text-gray-400 shrink-0">{formatDistanceToNow(new Date(item.viewedAt), { addSuffix: true })}</span>
+                <ArrowUpRight className="h-3.5 w-3.5 text-gray-300 group-hover:text-emerald-400 shrink-0" />
+              </div>
+            </Link>
+          ))}
+        </div>
       ) : (
         <div className="space-y-3">
-          {shown.map((blog) => {
+          {(shown as Blog[]).map((blog) => {
             const author = `${blog.author.firstName} ${blog.author.lastName || ""}`.trim();
             const initials = `${blog.author.firstName?.[0] ?? ""}${blog.author.lastName?.[0] ?? ""}`.toUpperCase();
             const readTime = Math.max(1, Math.ceil(blog.body.split(/\s+/).length / 200));
@@ -316,39 +385,69 @@ function BlogsSection() {
 
 /* ─── Videos section ─────────────────────────────────────────── */
 function VideosSection() {
+  const { isAuthenticated } = useAuth();
   const [videos, setVideos] = useState<VideoType[]>([]);
+  const [history, setHistory] = useState<HistoryItem[]>([]);
+  const [useHistory, setUseHistory] = useState(false);
   const [loading, setLoading] = useState(true);
   const [visible, setVisible] = useState(PAGE_SIZE);
 
   useEffect(() => {
-    axios
-      .get(`/api/videos`, { params: { limit: 50 } })
-      .then((res) => {
-        const data: VideoType[] = Array.isArray(res.data) ? res.data : res.data.videos || [];
-        setVideos(data);
-      })
-      .catch(() => setVideos([]))
-      .finally(() => setLoading(false));
-  }, []);
+    const loadGlobal = () =>
+      axios
+        .get(`/api/videos`, { params: { limit: 50 } })
+        .then((res) => {
+          const data: VideoType[] = Array.isArray(res.data) ? res.data : res.data.videos || [];
+          setVideos(data);
+        })
+        .catch(() => setVideos([]))
+        .finally(() => setLoading(false));
 
-  const shown = videos.slice(0, visible);
+    if (!isAuthenticated) { loadGlobal(); return; }
+
+    const token = localStorage.getItem("token");
+    fetch("/api/activity/recent", { headers: token ? { Authorization: `Bearer ${token}` } : {} })
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data: HistoryItem[]) => {
+        const items = data.filter((h) => h.type === "video");
+        if (items.length > 0) { setHistory(items); setUseHistory(true); setLoading(false); }
+        else loadGlobal();
+      })
+      .catch(() => loadGlobal());
+  }, [isAuthenticated]);
+
+  const shown = useHistory ? history.slice(0, visible) : videos.slice(0, visible);
+  const totalCount = useHistory ? history.length : videos.length;
 
   return (
     <FeedSection
-      title="Recent Videos"
+      title={useHistory ? "Recently Viewed Videos" : "Recent Videos"}
       icon={<Video className="h-5 w-5" />}
       loading={loading}
-      count={videos.length}
-      hasMore={visible < videos.length}
+      count={totalCount}
+      hasMore={visible < totalCount}
       hasLess={visible > PAGE_SIZE}
       onMore={() => setVisible((v) => v + PAGE_SIZE)}
       onLess={() => setVisible(PAGE_SIZE)}
     >
       {shown.length === 0 ? (
         <p className="text-sm text-gray-500 text-center py-8">No videos yet</p>
+      ) : useHistory ? (
+        <div className="space-y-2">
+          {(shown as HistoryItem[]).map((item) => (
+            <Link key={item.itemId} href={`/videos/${item.itemId}`}>
+              <div className="group flex items-center gap-3 p-3 rounded-xl border border-gray-200 bg-gray-50 hover:border-violet-300 hover:bg-violet-50 cursor-pointer transition-all duration-200">
+                <Video className="h-4 w-4 text-violet-500 shrink-0" />
+                <p className="text-sm font-medium text-gray-900 line-clamp-2 flex-1 min-w-0">{item.title}</p>
+                <span className="text-xs text-gray-400 shrink-0">{formatDistanceToNow(new Date(item.viewedAt), { addSuffix: true })}</span>
+                <ArrowUpRight className="h-3.5 w-3.5 text-gray-300 group-hover:text-violet-400 shrink-0" />
+              </div>
+            </Link>
+          ))}
+        </div>
       ) : (
         <div className="space-y-3">
-          {shown.map((video) => (
+          {(shown as VideoType[]).map((video) => (
             <Link key={video.videoID} href={`/videos/${video.videoID}`}>
               <div className="group flex flex-col gap-2 p-4 rounded-xl border border-gray-200 bg-gray-50 hover:border-violet-300 hover:bg-violet-50 hover:shadow-md cursor-pointer transition-all duration-200 hover:-translate-y-0.5">
                 {/* Tags + arrow */}
@@ -411,14 +510,55 @@ export default function UserDashboard() {
         <FindMentorQuestionnaire onClose={() => setShowMentorQuestionnaire(false)} />
       )}
 
-      {/* Welcome Header */}
-      <div className="w-full max-w-[1800px]">
-        <WelcomeHeader
-          userName={user?.firstName}
-          unreadReplies={stats?.unreadReplies}
-          upcomingMeetingsToday={stats?.upcomingMeetingsToday}
-          onFindMentor={() => setShowMentorQuestionnaire(true)}
-        />
+      {/* Hero Section — single unified card, all 3 columns horizontal */}
+      <div className="w-full max-w-[1800px] px-6 sm:px-8 lg:px-12 pb-4">
+        <div className="bg-gradient-to-r from-blue-50 via-purple-50 to-pink-50 rounded-3xl shadow-lg overflow-hidden">
+          <div className="flex flex-col lg:flex-row">
+
+            {/* Left — Welcome */}
+            <div className="flex-1 p-7">
+              <WelcomeHeader
+                userName={user?.firstName}
+                unreadReplies={stats?.unreadReplies}
+                upcomingMeetingsToday={stats?.upcomingMeetingsToday}
+              />
+            </div>
+
+            {/* Right — Find Mentor stacked above Upcoming Meetings */}
+            <div className="lg:w-80 p-6 flex flex-col gap-3">
+              {/* Become an Expert */}
+              {user && !user.isExpert && (
+                <Link
+                  href="/become-expert"
+                  className="flex items-center justify-center gap-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white text-sm font-bold px-4 py-2.5 rounded-2xl shadow-md hover:shadow-lg transition-all ring-1 ring-amber-300/60"
+                >
+                  <Star className="h-4 w-4 fill-white" />
+                  Become an Expert
+                </Link>
+              )}
+
+              {/* Find Mentor */}
+              <div className="bg-gradient-to-br from-blue-600 to-indigo-700 rounded-2xl p-4 shadow-md text-white">
+                <p className="text-xs font-semibold uppercase tracking-widest text-blue-200 mb-0.5">Career Support</p>
+                <h3 className="text-base font-bold mb-1">Find a Mentor</h3>
+                <p className="text-xs text-blue-100 leading-snug mb-3">
+                  Get personalised guidance from industry experts and alumni.
+                </p>
+                <button
+                  onClick={() => setShowMentorQuestionnaire(true)}
+                  className="w-full bg-white text-blue-700 font-semibold text-sm py-2 rounded-xl hover:bg-blue-50 transition-colors flex items-center justify-center gap-2"
+                >
+                  <Search className="h-4 w-4" />
+                  Find Mentor
+                </button>
+              </div>
+
+              {/* Upcoming Meetings */}
+              <UpcomingEventsWidget />
+            </div>
+
+          </div>
+        </div>
       </div>
 
       {/* Main Grid */}
@@ -433,9 +573,6 @@ export default function UserDashboard() {
 
           {/* Right Column — Sidebar Widgets */}
           <div className="lg:col-span-1 space-y-6">
-            {/* Upcoming Meetings */}
-            <UpcomingEventsWidget />
-
             {/* Followed Communities */}
             <FollowedCommunitiesWidget />
 
@@ -449,5 +586,7 @@ export default function UserDashboard() {
     </div>
   );
 
-  return <ProtectedRoute>{dashboardContent}</ProtectedRoute>;
+  return (
+    <ProtectedRoute>{dashboardContent}</ProtectedRoute>
+  );
 }

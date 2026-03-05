@@ -16,7 +16,7 @@ interface Meeting {
   color: string;
 }
 
-export function UpcomingEventsWidget() {
+export function UpcomingEventsWidget({ transparent = false }: { transparent?: boolean }) {
   const router = useRouter();
   const [meetings, setMeetings] = useState<Meeting[]>([]);
 
@@ -55,40 +55,40 @@ export function UpcomingEventsWidget() {
   }, []);
 
   if (meetings.length === 0) {
-    return (
+    const empty = (
+      <div className="text-center py-4">
+        <Calendar className="h-10 w-10 mx-auto text-gray-300 mb-2" />
+        <p className="text-sm text-gray-500">No upcoming meetings</p>
+      </div>
+    );
+    return transparent ? empty : (
       <Card className="bg-white rounded-xl shadow-sm border-0">
-        <CardContent className="p-6">
-          <div className="text-center py-4">
-            <Calendar className="h-12 w-12 mx-auto text-gray-300 mb-2" />
-            <p className="text-sm text-gray-500">No upcoming meetings</p>
-          </div>
-        </CardContent>
+        <CardContent className="p-4">{empty}</CardContent>
       </Card>
     );
   }
 
   const nextMeeting = meetings[0];
 
-  return (
-    <Card className="bg-white rounded-xl shadow-sm border-0 overflow-hidden">
-      <CardContent className="p-6">
+  const inner = (
+    <div className="p-0">
         {/* Next Meeting - Featured */}
-        <div className="mb-4">
-          <div className="flex items-center gap-2 mb-3">
-            <Calendar className="h-5 w-5 text-indigo-600" />
-            <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wide">
+        <div className="mb-3">
+          <div className="flex items-center gap-2 mb-2">
+            <Calendar className="h-4 w-4 text-indigo-600" />
+            <h3 className="text-xs font-semibold text-gray-900 uppercase tracking-wide">
               Upcoming Meetings
             </h3>
           </div>
 
           {/* Main Meeting Card */}
           <div
-            className={`relative rounded-lg overflow-hidden bg-gradient-to-br ${nextMeeting.color} p-4 mb-3 cursor-pointer hover:shadow-lg transition-shadow`}
+            className={`relative rounded-lg overflow-hidden bg-gradient-to-br ${nextMeeting.color} p-3 mb-2 cursor-pointer hover:shadow-lg transition-shadow`}
             onClick={() => router.push("/meetings")}
           >
             <div className="relative z-10">
               <div className="flex items-start justify-between mb-2">
-                <h4 className="text-base font-bold text-white leading-tight pr-2">
+                <h4 className="text-sm font-bold text-white leading-tight pr-2">
                   {nextMeeting.topic}
                 </h4>
                 <span className="px-2 py-0.5 bg-white/30 backdrop-blur-sm rounded text-xs font-semibold text-white uppercase">
@@ -96,7 +96,7 @@ export function UpcomingEventsWidget() {
                 </span>
               </div>
 
-              <div className="space-y-1.5 text-white/90 text-sm">
+              <div className="space-y-1 text-white/90 text-xs">
                 <div className="flex items-center gap-2">
                   <Clock className="h-3.5 w-3.5" />
                   <span className="font-medium">{nextMeeting.date} at {nextMeeting.time}</span>
@@ -119,18 +119,18 @@ export function UpcomingEventsWidget() {
 
         {/* Other Meetings - Compact List */}
         {meetings.length > 1 && (
-          <div className="space-y-2">
-            {meetings.slice(1, 3).map((meeting) => (
+          <div className="space-y-1.5">
+            {meetings.slice(1, 2).map((meeting) => (
               <div
                 key={meeting.id}
-                className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors group"
+                className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer transition-colors group ${transparent ? "hover:bg-white/20" : "hover:bg-gray-50"}`}
                 onClick={() => router.push("/meetings")}
               >
-                <div className={`flex-shrink-0 h-10 w-10 rounded-lg bg-gradient-to-br ${meeting.color} flex items-center justify-center shadow-sm`}>
-                  <Calendar className="h-5 w-5 text-white" />
+                <div className={`flex-shrink-0 h-8 w-8 rounded-lg bg-gradient-to-br ${meeting.color} flex items-center justify-center shadow-sm`}>
+                  <Calendar className="h-4 w-4 text-white" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-gray-900 truncate group-hover:text-blue-600 transition-colors">
+                  <p className={`text-sm font-semibold truncate transition-colors group-hover:text-blue-600 ${transparent ? "text-gray-800" : "text-gray-900"}`}>
                     {meeting.topic}
                   </p>
                   <p className="text-xs text-gray-500">
@@ -148,13 +148,22 @@ export function UpcomingEventsWidget() {
             variant="ghost"
             size="sm"
             onClick={() => router.push("/meetings")}
-            className="w-full mt-3 text-sm text-gray-600 hover:text-blue-600 hover:bg-blue-50 gap-1"
+            className={`w-full mt-2 text-xs gap-1 h-7 ${
+              transparent
+                ? "text-gray-700 hover:text-blue-700 hover:bg-white/30"
+                : "text-gray-600 hover:text-blue-600 hover:bg-blue-50"
+            }`}
           >
             View all meetings
             <ExternalLink className="h-3.5 w-3.5" />
           </Button>
         )}
-      </CardContent>
+    </div>
+  );
+
+  return transparent ? inner : (
+    <Card className="bg-white rounded-xl shadow-sm border-0 overflow-hidden">
+      <CardContent className="p-4">{inner}</CardContent>
     </Card>
   );
 }

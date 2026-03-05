@@ -53,13 +53,20 @@ function PostDetailContent() {
   const fetchPostAndComments = async () => {
     setLoading(true);
     try {
-      const postRes = await axios.get(
-        `${process.env.NEXT_PUBLIC_API_URL}/posts/${postId}`
-      );
+      const postRes = await axios.get(`/api/posts/${postId}`);
       setPost(postRes.data);
       await fetchComments();
-      // track view
-      axios.post(`${process.env.NEXT_PUBLIC_API_URL}/posts/${postId}/view`).catch(() => { });
+      // track view count
+      axios.post(`/api/posts/${postId}/view`).catch(() => { });
+      // track in user history (DB-backed, per-user)
+      const _token = localStorage.getItem("token");
+      if (_token && postRes.data?.title) {
+        fetch("/api/activity/view", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${_token}` },
+          body: JSON.stringify({ type: "post", itemId: postId, title: postRes.data.title || postRes.data.content?.slice(0, 60) }),
+        }).catch(() => {});
+      }
     } catch {
       // handled below
     } finally {
@@ -70,9 +77,7 @@ function PostDetailContent() {
   const fetchComments = async () => {
     setLoadingComments(true);
     try {
-      const res = await axios.get(
-        `${process.env.NEXT_PUBLIC_API_URL}/comments?page_id=${postId}&type=post&limit=50`
-      );
+      const res = await axios.get(`/api/comments?page_id=${postId}&type=post&limit=50`);
       setComments(res.data.comments || []);
     } catch {
       setComments([]);
@@ -93,7 +98,7 @@ function PostDetailContent() {
         : [...post.likedBy, userId],
     });
     try {
-      await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/posts/${postId}/like`);
+      await axios.post(`/api/posts/${postId}/like`);
     } catch {
       fetchPostAndComments();
     }
@@ -103,7 +108,7 @@ function PostDetailContent() {
     if (!newComment.trim()) return;
     setSubmittingComment(true);
     try {
-      await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/comments`, {
+      await axios.post(`/api/comments`, {
         content: newComment,
         type: "post",
         page_id: postId,
@@ -153,21 +158,18 @@ function PostDetailContent() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-indigo-50/20">
       <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8">
-        {/* Back */}
-        <div className="flex items-center gap-3 mb-5">
-          <Button variant="ghost" size="sm" onClick={() => router.back()} className="gap-2">
-            <ArrowLeft className="h-4 w-4" /> Back
-          </Button>
-          {post.communityId && (
+        {/* Community breadcrumb */}
+        {post.communityId && (
+          <div className="flex items-center gap-2 mb-5">
             <Link
-              href={`/communities/${post.communityId}`}
+              href={`/communities/${post.communityName || post.communityId}`}
               className="flex items-center gap-1.5 text-sm text-indigo-600 hover:text-indigo-800 font-medium"
             >
               <Users2 className="h-4 w-4" />
               c/{post.communityName || post.communityId}
             </Link>
-          )}
-        </div>
+          </div>
+        )}
 
         {/* Post Card */}
         <Card className="mb-5 rounded-2xl border-gray-100 shadow-sm">

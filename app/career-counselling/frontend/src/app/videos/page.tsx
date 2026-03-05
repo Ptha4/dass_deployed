@@ -152,17 +152,20 @@ export default function VideosPage() {
     }
   }, []);
 
-  // Load last viewed from localStorage on mount
+  // Load last viewed from DB on mount
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem("lastViewedVideos");
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed)) setLastViewedVideos(parsed.slice(0, 8));
-      }
-    } catch {
-      // ignore
-    }
+    const token = localStorage.getItem("token");
+    if (!token) return;
+    fetch("/api/activity/recent", { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data: { type: string; itemId: string; title: string; viewedAt: string }[]) => {
+        const videos = data
+          .filter((h) => h.type === "video")
+          .slice(0, 8)
+          .map((h) => ({ videoID: h.itemId, title: h.title, views: 0, createdAt: h.viewedAt }));
+        setLastViewedVideos(videos);
+      })
+      .catch(() => {});
   }, []);
 
   useEffect(() => {

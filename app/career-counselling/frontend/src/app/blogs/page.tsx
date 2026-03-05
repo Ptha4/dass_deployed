@@ -111,15 +111,20 @@ export default function BlogsPage() {
     }
   }, []);
 
-  // Load last viewed from localStorage on mount
+  // Load last viewed from DB on mount
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem("lastViewedBlogs");
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed)) setLastViewedBlogs(parsed.slice(0, 8));
-      }
-    } catch { /* ignore */ }
+    const token = localStorage.getItem("token");
+    if (!token) return;
+    fetch("/api/activity/recent", { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data: { type: string; itemId: string; title: string; viewedAt: string }[]) => {
+        const blogs = data
+          .filter((h) => h.type === "blog")
+          .slice(0, 8)
+          .map((h) => ({ blogID: h.itemId, heading: h.title, views: 0, createdAt: h.viewedAt }));
+        setLastViewedBlogs(blogs);
+      })
+      .catch(() => {});
   }, []);
 
   // Initial load and when filters/page change

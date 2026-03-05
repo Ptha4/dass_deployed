@@ -65,7 +65,7 @@ export default function PostItem({ post, showCommunity = false }: PostItemProps)
                     <>
                         <span>in</span>
                         <Link
-                            href={`/communities/${post.communityId}`}
+                            href={`/communities/${post.communityName || post.communityId}`}
                             className="font-semibold text-indigo-500 hover:underline"
                             onClick={(e) => e.stopPropagation()}
                         >

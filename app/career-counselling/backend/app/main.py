@@ -5,7 +5,7 @@ Main FastAPI application configuration
 import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routes import blog, branch, college_branch, college, expert, search, user, video, auth, comment, post, admin, expert_analytics, notification, rating, expert_application, file, chatbot, meeting, community
+from app.routes import blog, branch, college_branch, college, expert, search, user, video, auth, comment, post, admin, expert_analytics, notification, rating, expert_application, file, chatbot, meeting, community, activity
 from app.managers.user import UserManager
 from app.config import settings
 
@@ -44,6 +44,7 @@ app.include_router(rating.router, tags=["rating"], prefix="/api")
 app.include_router(chatbot.router, tags=["chatbot"], prefix="/api/chatbot")
 app.include_router(meeting.router, tags=["meeting"], prefix="/api")
 app.include_router(community.router, tags=["community"], prefix="/api")
+app.include_router(activity.router, tags=["activity"], prefix="/api")
 
 
 from app.managers.community import CommunityManager
