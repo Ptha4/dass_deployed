@@ -118,7 +118,7 @@ echo "✓ All services started!"
 echo "==========================================${NC}"
 
 echo -e "\nAccess the application:"
-echo "  Frontend: https://dass-deployed.vercel.app"
+echo "  Frontend: https://team-13.vercel.app"
 echo "  Backend:  https://dass-deployed.onrender.com"
 echo "  API Docs: https://dass-deployed.onrender.com/docs"
 
