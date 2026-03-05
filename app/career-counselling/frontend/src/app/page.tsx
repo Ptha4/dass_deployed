@@ -133,7 +133,7 @@ export default function LandingPage() {
       setError(null);
       try {
         // Adjust the URL based on your actual API endpoint
-        const response = await fetch("/api/health");
+        const response = await fetch("https://dass-deployed.onrender.com/api/health");
         if (!response.ok) {
           throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
