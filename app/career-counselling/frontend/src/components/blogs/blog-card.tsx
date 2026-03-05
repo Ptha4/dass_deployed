@@ -47,7 +47,15 @@ export function BlogCard({ blog }: BlogCardProps) {
                 <AvatarFallback>{author.firstName[0]}</AvatarFallback>
               </Avatar>
               <div className="text-sm">
-                <p className="font-medium">{authorName}</p>
+                <p className="font-medium">
+                  <Link 
+                    href={`/profile/${blog.userID}`}
+                    className="hover:text-indigo-600 transition-colors"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {authorName}
+                  </Link>
+                </p>
                 <p className="text-gray-500">
                   {new Date(blog.createdAt).toLocaleDateString()}
                 </p>

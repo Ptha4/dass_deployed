@@ -34,6 +34,16 @@ export interface User {
   isAdmin: boolean;
   password: string | null;
   wallet: number;
+  profilePicture?: string;
+  // Onboarding fields
+  grade?: string;
+  preferred_stream?: string;
+  target_college?: string;
+  interests: string[];
+  career_goals?: string;
+  onboarding_completed: boolean;
+  following: string[];
+  followers: string[];
 }
 
 interface Person {

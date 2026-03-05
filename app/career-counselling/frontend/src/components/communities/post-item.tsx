@@ -60,7 +60,13 @@ export default function PostItem({ post, showCommunity = false }: PostItemProps)
                 >
                     {initials}
                 </div>
-                <span className="font-medium text-gray-600">{post.authorName || "Anonymous"}</span>
+                <Link
+                    href={`/profile/${post.authorId}`}
+                    className="font-medium text-gray-600 hover:text-indigo-600 transition-colors"
+                    onClick={(e) => e.stopPropagation()}
+                >
+                    {post.authorName || "Anonymous"}
+                </Link>
                 {showCommunity && post.communityDisplayName && (
                     <>
                         <span>in</span>
