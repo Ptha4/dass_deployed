@@ -16,6 +16,7 @@ class ExpertBase(BaseModel):
     rating: float = 0
     available: bool = True
     studentsGuided: int = 0  # Default to 0 students guided
+    profile_video_id: Optional[str] = None  # Expert's chosen profile video ID
 
 
 class Expert(ExpertBase):
@@ -43,3 +44,4 @@ class ExpertUpdate(BaseModel):
     bio: Optional[str] = None
     available: Optional[bool] = None
     studentsGuided: Optional[int] = None
+    profile_video_id: Optional[str] = None  # Expert's chosen profile video ID

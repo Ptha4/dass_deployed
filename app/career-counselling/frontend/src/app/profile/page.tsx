@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import axios from "axios";
-import { Loader2, Edit2, Save, User as UserIcon, Wallet } from "lucide-react";
+import { Loader2, Edit2, Save, User as UserIcon, Wallet, Camera } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { User } from "@/types";
 import Link from "next/link";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
@@ -84,7 +85,7 @@ const states = [
 ];
 
 export default function ProfilePage() {
-  const { user: authUser } = useAuth();
+  const { user: authUser, updateProfilePicture } = useAuth();
   const [profile, setProfile] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [role, setRole] = useState("");
@@ -97,6 +98,9 @@ export default function ProfilePage() {
   const [middleName, setMiddleName] = useState("");
   const [lastName, setLastName] = useState("");
   const [saving, setSaving] = useState(false);
+  const [uploadingPicture, setUploadingPicture] = useState(false);
+  const [picturePreview, setPicturePreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Onboarding specific states
   const [grade, setGrade] = useState("");
@@ -124,6 +128,10 @@ export default function ProfilePage() {
         isExpert: Boolean(authUser.isExpert),
         wallet: Number(authUser.wallet || 0),
         middleName: authUser.middleName,
+        onboarding_completed: Boolean(authUser.onboarding_completed),
+        following: Array.isArray(authUser.following) ? (authUser.following as string[]) : [],
+        followers: Array.isArray(authUser.followers) ? (authUser.followers as string[]) : [],
+        profile_picture_url: typeof authUser.profile_picture_url === "string" ? authUser.profile_picture_url : null,
         // Onboarding fields
         grade: authUser.grade || "",
         preferred_stream: authUser.preferred_stream || "",
@@ -157,6 +165,10 @@ export default function ProfilePage() {
       setTargetCollege(authUser.target_college || "");
       setInterests(authUser.interests || []);
       setCareerGoals(authUser.career_goals || "");
+      // Initialise picture preview from stored URL
+      if (typeof authUser.profile_picture_url === "string") {
+        setPicturePreview(authUser.profile_picture_url);
+      }
       setLoading(false);
     } else {
       // Fallback to fetching if not available in context
@@ -187,6 +199,57 @@ export default function ProfilePage() {
       console.error("Error fetching profile:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handlePictureUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Client-side validation
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
+    if (!allowedTypes.includes(file.type)) {
+      alert("Only JPG, PNG, or WebP images are allowed.");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      alert("Image must be smaller than 5 MB.");
+      return;
+    }
+
+    // Show local preview immediately
+    const localUrl = URL.createObjectURL(file);
+    setPicturePreview(localUrl);
+
+    try {
+      setUploadingPicture(true);
+      const token = localStorage.getItem("token");
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const response = await axios.post("/api/profile/picture", formData, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "multipart/form-data",
+        },
+      });
+
+      const newUrl: string = response.data.profile_picture_url;
+      // Update local profile state
+      setProfile((prev) => prev ? { ...prev, profile_picture_url: newUrl } : prev);
+      // Update global auth context so navbar / dashboard update too
+      updateProfilePicture(newUrl);
+    } catch (err: unknown) {
+      const msg =
+        axios.isAxiosError(err) && err.response?.data?.detail
+          ? err.response.data.detail
+          : "Failed to upload picture. Please try again.";
+      alert(msg);
+      setPicturePreview(null);
+    } finally {
+      setUploadingPicture(false);
+      // Reset file input so the same file can be re-selected
+      if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
 
@@ -298,9 +361,38 @@ export default function ProfilePage() {
             : "bg-gradient-to-r from-primary to-primary/80"
         } rounded-lg shadow-lg mb-8 p-8 text-white`}
       >
-        <div className="flex items-center space-x-4">
-          <div className="bg-white p-3 rounded-full">
-            <UserIcon className="h-12 w-12 text-primary" />
+        <div className="flex items-center space-x-6">
+          {/* Avatar with upload overlay */}
+          <div className="relative flex-shrink-0">
+            <Avatar className="h-24 w-24 ring-4 ring-white/40 shadow-lg">
+              <AvatarImage
+                src={picturePreview || ""}
+                alt={`${profile.firstName} ${profile.lastName}`}
+              />
+              <AvatarFallback className="bg-white/20 text-white text-2xl font-bold">
+                {profile.firstName?.[0]}{profile.lastName?.[0]}
+              </AvatarFallback>
+            </Avatar>
+            {/* Camera button overlay */}
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploadingPicture}
+              className="absolute bottom-0 right-0 h-8 w-8 rounded-full bg-white text-primary flex items-center justify-center shadow-md hover:bg-gray-100 transition-colors disabled:opacity-60"
+              title="Change profile picture"
+            >
+              {uploadingPicture
+                ? <Loader2 className="h-4 w-4 animate-spin" />
+                : <Camera className="h-4 w-4" />
+              }
+            </button>
+            {/* Hidden file input */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              className="hidden"
+              onChange={handlePictureUpload}
+            />
           </div>
           <div>
             <h1 className="text-3xl font-bold">

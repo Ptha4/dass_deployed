@@ -112,6 +112,8 @@ class UserManager:
                 # Onboarding fields
                 "grade", "preferred_stream", "target_college",
                 "interests", "career_goals", "onboarding_completed",
+                # Profile picture
+                "profile_picture_url",
             }
             filtered_update = {k: v for k,
                                v in update_data.items() if k in allowed_fields}

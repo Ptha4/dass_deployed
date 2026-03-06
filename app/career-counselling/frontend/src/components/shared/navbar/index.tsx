@@ -112,7 +112,9 @@ export default function Navbar() {
                         <Avatar className="h-11 w-11 ring-2 ring-gray-200 shadow-sm">
                           <AvatarImage
                             src={
-                              typeof user.profileImage === "string"
+                              typeof user.profile_picture_url === "string"
+                                ? user.profile_picture_url
+                                : typeof user.profileImage === "string"
                                 ? user.profileImage
                                 : ""
                             }

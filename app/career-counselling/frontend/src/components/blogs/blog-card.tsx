@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Clock, Eye } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -11,14 +12,17 @@ interface BlogCardProps {
 }
 
 export function BlogCard({ blog }: BlogCardProps) {
+  const router = useRouter();
   const { author } = blog;
   const authorName = `${author.firstName} ${author.middleName || ""} ${
     author.lastName
   }`.trim();
 
   return (
-    <Card className="overflow-hidden hover:shadow-lg transition-shadow">
-      <Link href={`/blogs/${blog.blogID}`}>
+    <Card
+      className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer"
+      onClick={() => router.push(`/blogs/${blog.blogID}`)}
+    >
         <div className="relative h-48">
           <RandomImage
             alt={blog.heading}
@@ -77,7 +81,6 @@ export function BlogCard({ blog }: BlogCardProps) {
             </div>
           </div>
         </CardContent>
-      </Link>
     </Card>
   );
 }

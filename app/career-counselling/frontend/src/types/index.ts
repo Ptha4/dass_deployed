@@ -35,6 +35,7 @@ export interface User {
   password: string | null;
   wallet: number;
   profilePicture?: string;
+  profile_picture_url?: string | null;
   // Onboarding fields
   grade?: string;
   preferred_stream?: string;
@@ -109,6 +110,7 @@ export interface Expert {
   rating: number;
   available: boolean;
   studentsGuided: number;
+  profile_video_id?: string | null; // Expert's chosen profile video ID
 
   // Metadata
   createdAt: string; // ISO date string

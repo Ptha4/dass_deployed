@@ -519,6 +519,12 @@ export default function UserDashboard() {
             <div className="flex-1 p-7">
               <WelcomeHeader
                 userName={user?.firstName}
+                userLastName={user?.lastName}
+                profilePictureUrl={
+                  typeof user?.profile_picture_url === "string"
+                    ? user.profile_picture_url
+                    : null
+                }
                 unreadReplies={stats?.unreadReplies}
                 upcomingMeetingsToday={stats?.upcomingMeetingsToday}
               />

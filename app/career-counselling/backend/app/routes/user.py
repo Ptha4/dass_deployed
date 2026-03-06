@@ -1,14 +1,16 @@
-from fastapi import APIRouter, HTTPException, Query, Depends, status
+from fastapi import APIRouter, HTTPException, Query, Depends, status, UploadFile, File
 from typing import List, Optional
 from app.models.user import User, UserProfileUpdate, OnboardingUpdate
 from app.managers.expert import ExpertManager
 from app.managers.user import UserManager
+from app.managers.file import FileManager
 from app.core.auth_utils import require_admin, require_expert, require_user, get_current_user
 from app.core.database import get_database
 
 router = APIRouter()
 user_manager = UserManager()
 expert_manager = ExpertManager()
+file_manager = FileManager()
 
 
 @router.post("/users", response_model=User)
@@ -149,6 +151,40 @@ async def update_profile(user_update: UserProfileUpdate, user_data: dict = Depen
             status_code=500,
             detail="Failed to update user"
         )
+
+    return updated_user
+
+
+@router.post("/profile/picture", response_model=User)
+async def upload_profile_picture(
+    file: UploadFile = File(...),
+    user_data: dict = Depends(require_user)
+):
+    """
+    Upload a profile picture for the authenticated user.
+    Accepts JPEG or PNG images up to 5 MB.
+    Returns the updated user with the new profile_picture_url.
+    """
+    existing_user = await user_manager.get_user_by_email(user_data["email"])
+    if not existing_user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Upload file via FileManager (GridFS)
+    file_id = await file_manager.upload_file(
+        file,
+        folder="profile_pictures",
+        allowed_types=["image/jpeg", "image/png", "image/webp"],
+        max_size=5 * 1024 * 1024,  # 5 MB
+    )
+
+    profile_picture_url = f"/api/files/{file_id}"
+
+    updated_user = await user_manager.update_user(
+        existing_user.id,
+        {"profile_picture_url": profile_picture_url}
+    )
+    if not updated_user:
+        raise HTTPException(status_code=500, detail="Failed to update profile picture")
 
     return updated_user
 

@@ -22,6 +22,7 @@ import ExpertRatings from "@/components/experts/detail/expert-ratings";
 import BookMeeting from "@/components/experts/detail/book-meeting";
 import FollowButton from "@/components/experts/follow";
 import RateExpert from "@/components/experts/detail/rate-expert";
+import ProfileVideoPlayer from "@/components/experts/detail/profile-video-player";
 import type { Expert } from "@/types/index";
 import { SocialLinksDrawer } from "@/components/experts/detail/social-links";
 import ExpertDashboard from "@/components/experts/detail/expert-dashboard";
@@ -168,7 +169,9 @@ export default function ExpertDetailPage() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <Card className="lg:col-span-2 shadow-xl border-0 bg-white">
               <div className="p-8">
+                {/* ── Top row: avatar + info ── */}
                 <div className="flex flex-col items-center text-center md:text-left md:flex-row gap-6">
+                  {/* Avatar */}
                   <div className="relative flex-shrink-0">
                     <Avatar className="h-28 w-28 ring-4 ring-white shadow-xl">
                       <AvatarFallback className="text-3xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white font-semibold">
@@ -183,20 +186,20 @@ export default function ExpertDetailPage() {
                     </Badge>
                   </div>
 
-                  <div className="flex-1 flex flex-col items-center md:items-start">
-                    <div className="space-y-3 w-full">
-                      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-                        <div className="flex items-center gap-2 justify-center md:justify-start">
-                          <h1 className="text-3xl font-bold text-gray-900">
-                            {`${expert.userDetails.firstName} ${expert.userDetails.lastName}`}
-                          </h1>
-                          {isVerified && (
-                            <div className="flex-shrink-0" title="Verified Expert">
+                  {/* Name / position / social */}
+                  <div className="flex-1 flex flex-col items-center md:items-start gap-3">
+                    {/* Name row + dashboard toggle */}
+                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 w-full">
+                      <div className="flex items-center gap-2 justify-center md:justify-start">
+                        <h1 className="text-3xl font-bold text-gray-900">
+                          {`${expert.userDetails.firstName} ${expert.userDetails.lastName}`}
+                        </h1>
+                        {isVerified && (
+                          <div className="flex-shrink-0" title="Verified Expert">
                             <CheckCircle className="h-6 w-6 fill-blue-600 text-white" />
                           </div>
                         )}
                       </div>
-
                       {isExpertLoggedIn && (
                         <div className="flex justify-center md:justify-start space-x-2">
                           <Button
@@ -219,6 +222,7 @@ export default function ExpertDetailPage() {
                       )}
                     </div>
 
+                    {/* Position / org */}
                     <div className="space-y-1">
                       <div className="flex items-center gap-2 justify-center md:justify-start">
                         <p className="text-lg text-blue-600 font-semibold">
@@ -237,6 +241,7 @@ export default function ExpertDetailPage() {
                       </p>
                     </div>
 
+                    {/* Social + Follow */}
                     <div className="flex items-center justify-center md:justify-start gap-3">
                       <SocialLinksDrawer socialLinks={expert.socialLinks} />
                       {!isExpertLoggedIn && (
@@ -248,12 +253,15 @@ export default function ExpertDetailPage() {
                     </div>
                   </div>
                 </div>
-              </div>
-            </div>
-            </Card>
 
+                {/* ── Profile Video — full-width, below top row ── */}
+                <div className="mt-6 w-full">
+                  <ProfileVideoPlayer expertId={expert.expertID} />
+                </div>
+              </div>
+            </Card>
             {(!isExpertLoggedIn || !isDashboardActive) && (
-              <Card className="p-6 bg-gradient-to-br from-white to-blue-50 shadow-lg">
+              <Card id="book-meeting" className="p-6 bg-gradient-to-br from-white to-blue-50 shadow-lg scroll-mt-24">
                 <div className="flex flex-col h-full space-y-6">
                   <div className="text-center space-y-4">
                     <h2 className="text-3xl font-bold text-blue-600">

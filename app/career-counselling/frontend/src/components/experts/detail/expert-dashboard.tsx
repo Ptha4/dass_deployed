@@ -851,7 +851,7 @@ export default function ExpertDashboard({
                 </TabsContent>
 
                 <TabsContent value="videos" className="space-y-4">
-                  <VideoManagement />
+                  <VideoManagement expertId={expert.expertID} />
                 </TabsContent>
 
                 <TabsContent value="blogs" className="space-y-4">

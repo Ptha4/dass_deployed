@@ -20,6 +20,7 @@ import { Expert } from "@/types";
 import { ExpertsFilterSidebar } from "@/components/experts/experts-filter-sidebar";
 import BlogsCarousel from "@/components/shared/blogs-carousel";
 import VideosCarousel from "@/components/shared/videos-carousel";
+import FollowButton from "@/components/experts/follow";
 
 // Main Experts Page Component
 export default function ExpertsPage() {
@@ -268,11 +269,10 @@ export default function ExpertsPage() {
         const grad = gradients[(name.charCodeAt(0) || 0) % gradients.length];
         const isVerified = featuredExpert.rating >= 4.0 || featuredExpert.studentsGuided > 10;
         return (
-          <Link href={`/experts/${featuredExpert.expertID}`} className="block mb-8 group">
-            <div className={`relative rounded-2xl overflow-hidden bg-gradient-to-r ${grad} shadow-xl`}>
+          <div className={`relative rounded-2xl overflow-hidden bg-gradient-to-r ${grad} shadow-xl mb-8`}>
               <div className="flex flex-col md:flex-row items-center gap-6 p-8">
                 {/* Avatar */}
-                <div className="relative shrink-0">
+                <Link href={`/experts/${featuredExpert.expertID}`} className="relative shrink-0">
                   <Avatar className="h-28 w-28 border-4 border-white/40 shadow-2xl">
                     <AvatarFallback className="bg-white/20 text-white text-3xl font-bold">
                       {`${ud.firstName?.[0] || ""}${ud.lastName?.[0] || ""}`}
@@ -281,14 +281,14 @@ export default function ExpertsPage() {
                   {featuredExpert.available && (
                     <div className="absolute bottom-1 right-1 h-4 w-4 rounded-full bg-green-400 ring-2 ring-white" />
                   )}
-                </div>
+                </Link>
                 {/* Info */}
-                <div className="flex-1 text-white text-center md:text-left">
+                <Link href={`/experts/${featuredExpert.expertID}`} className="flex-1 text-white text-center md:text-left group">
                   <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 mb-1">
                     <span className="bg-white/20 text-white text-xs font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wide">⭐ Featured Expert</span>
                     {isVerified && <span className="bg-white/20 text-white text-xs font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1"><CheckCircle className="h-3 w-3" /> Verified</span>}
                   </div>
-                  <h2 className="text-2xl md:text-3xl font-bold mb-1">{name}</h2>
+                  <h2 className="text-2xl md:text-3xl font-bold mb-1 group-hover:underline underline-offset-2">{name}</h2>
                   <p className="text-white/80 text-sm mb-1">{featuredExpert.currentPosition}</p>
                   <p className="text-white/60 text-xs mb-3">{featuredExpert.organization}</p>
                   <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 text-sm">
@@ -296,19 +296,31 @@ export default function ExpertsPage() {
                     <span className="flex items-center gap-1.5"><Users className="h-4 w-4 text-white/70" />{featuredExpert.studentsGuided} students guided</span>
                     <span className="flex items-center gap-1.5"><Calendar className="h-4 w-4 text-white/70" />Since {new Date(featuredExpert.createdAt).getFullYear()}</span>
                   </div>
-                </div>
+                </Link>
                 {/* CTA */}
                 <div className="flex flex-col gap-2 shrink-0">
-                  <span className="bg-white text-gray-900 font-semibold text-sm px-5 py-2.5 rounded-full shadow group-hover:shadow-lg transition-shadow text-center">View Profile</span>
+                  <Link href={`/experts/${featuredExpert.expertID}`} className="bg-white text-gray-900 font-semibold text-sm px-5 py-2.5 rounded-full shadow hover:shadow-lg transition-shadow text-center">
+                    View Profile
+                  </Link>
+                  <Link
+                    href={`/experts/${featuredExpert.expertID}#book-meeting`}
+                    className="flex items-center justify-center gap-1.5 bg-white/20 hover:bg-white/30 text-white font-semibold text-sm px-5 py-2.5 rounded-full border border-white/40 transition-colors text-center"
+                  >
+                    <Calendar className="h-4 w-4" />
+                    Book Meeting
+                  </Link>
+                  <FollowButton
+                    targetUserId={featuredExpert.userId}
+                    className="!rounded-full !text-sm !px-5 !py-2.5 !bg-white/10 hover:!bg-white/20 !text-white !border !border-white/30 !font-semibold"
+                  />
                   {featuredExpert.meetingCost && (
-                    <span className="bg-white/20 text-white text-xs text-center px-4 py-1.5 rounded-full border border-white/30">
+                    <span className="bg-white/10 text-white text-xs text-center px-4 py-1.5 rounded-full border border-white/20">
                       {featuredExpert.meetingCost.toLocaleString("en-IN")} coins/hr
                     </span>
                   )}
                 </div>
               </div>
             </div>
-          </Link>
         );
       })()}
 
@@ -376,9 +388,17 @@ export default function ExpertsPage() {
                   </div>
                   {/* Card body */}
                   <div className="pt-7 px-4 pb-4 flex flex-col flex-1">
-                    <div className="flex items-center gap-1 mb-0.5">
-                      <p className="text-sm font-bold text-gray-900 line-clamp-1">{name}</p>
-                      {isVerified && <CheckCircle className="h-3.5 w-3.5 fill-blue-600 text-white shrink-0" />}
+                    <div className="flex items-center gap-2 mb-0.5">
+                      {/* Name + tick grouped tightly */}
+                      <span className="flex items-center gap-0.5 min-w-0">
+                        <p className="text-sm font-bold text-gray-900 line-clamp-1">{name}</p>
+                        {isVerified && <CheckCircle className="h-3.5 w-3.5 fill-blue-600 text-white shrink-0" />}
+                      </span>
+                      {/* Follow button pushed to the right */}
+                      <FollowButton
+                        targetUserId={expert.userId}
+                        className="!h-6 !text-[10px] !px-2 !py-0 !rounded-full !font-semibold shrink-0 ml-auto"
+                      />
                     </div>
                     <p className="text-xs text-gray-500 line-clamp-1 mb-0.5">{expert.currentPosition}</p>
                     <p className="text-xs text-gray-400 line-clamp-1 mb-3">{expert.organization}</p>
@@ -391,7 +411,7 @@ export default function ExpertsPage() {
                       <Link href={`/experts/${expert.expertID}`} className="flex-1 text-center text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white py-1.5 rounded-full transition-colors">
                         View Profile
                       </Link>
-                      <Link href={`/experts/${expert.expertID}`} className="flex-1 text-center text-xs font-semibold border border-gray-200 hover:border-blue-400 hover:text-blue-600 text-gray-600 py-1.5 rounded-full transition-colors">
+                      <Link href={`/experts/${expert.expertID}#book-meeting`} className="flex-1 text-center text-xs font-semibold border border-gray-200 hover:border-blue-400 hover:text-blue-600 text-gray-600 py-1.5 rounded-full transition-colors">
                         Book Meeting
                       </Link>
                     </div>
