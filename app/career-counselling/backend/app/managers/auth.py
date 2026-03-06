@@ -4,6 +4,7 @@ from bson import ObjectId
 from app.models.user import User, UserSignUp, UserLogin
 from app.core.database import get_database
 from app.core.auth_utils import get_token, verify_token
+from app.managers import otp as otp_manager
 import bcrypt
 
 class AuthManager:
@@ -17,12 +18,21 @@ class AuthManager:
         Register a new user with info and return a JWT token.
 
         Args:
-            user_data (UserSignUp): User object with email, password, first name, last name, and middle name.
+            user_data (UserSignUp): User object with email, password, first name, last name,
+                                    middle name, phone, and verification_token.
 
         Returns:
             Optional[str]: JWT token if successful, None otherwise.
         """
         try:
+            # Validate the phone verification token before creating the account
+            token_valid = await otp_manager.consume_verification_token(
+                user_data.phone, user_data.verification_token
+            )
+            if not token_valid:
+                print("Invalid or expired phone verification token")
+                return None
+
             # Hash password before storing
             hashed_password = bcrypt.hashpw(user_data.password.encode("utf-8"), bcrypt.gensalt())
             
@@ -35,7 +45,7 @@ class AuthManager:
                 "middleName": user_data.middleName,
                 "gender": "",
                 "category": "",
-                "mobileNo": "",
+                "mobileNo": user_data.phone,
                 "home_state": "",
                 "type": "free",
                 "isExpert": False,
@@ -46,7 +56,23 @@ class AuthManager:
             }
 
             result = await self.collection.insert_one(user_dict)
-            user_dict["uid"] = str(result.inserted_id)
+            user_id = str(result.inserted_id)
+            user_dict["uid"] = user_id
+
+            # Auto-join the new user into c/general
+            try:
+                general = await self.db.communities.find_one({"name": "general"})
+                if general:
+                    await self.db.communities.update_one(
+                        {"_id": general["_id"]},
+                        {
+                            "$addToSet": {"members": user_id},
+                            "$inc": {"memberCount": 1},
+                            "$set": {"updatedAt": datetime.utcnow()},
+                        },
+                    )
+            except Exception as e:
+                print(f"Warning: could not auto-join user to general: {e}")
 
             # Generate JWT token with role
             token = await get_token(user_data.email)

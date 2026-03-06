@@ -5,6 +5,16 @@ from app.models.blog import Blog, Author, BlogResponse
 from app.core.database import get_database
 
 
+def _build_author(user_doc: dict) -> Author:
+    """Safely build an Author from a MongoDB user document, handling None name fields."""
+    return Author(
+        userID=str(user_doc["_id"]),
+        firstName=user_doc.get("firstName") or "",
+        middleName=user_doc.get("middleName"),
+        lastName=user_doc.get("lastName") or "",
+    )
+
+
 class BlogManager:
     def __init__(self):
         self.db = get_database()
@@ -92,8 +102,10 @@ class BlogManager:
                 author = await self.db.users.find_one(
                     {"_id": ObjectId(blog['userID'])}
                 )
-                author['userID'] = str(author["_id"])
-                blog['author'] = Author(**author)
+                if not author:
+                    print(f"Author not found for blog {blog_id}, userID={blog.get('userID')}")
+                    return None
+                blog['author'] = _build_author(author)
 
                 # fetch expert id
                 expert = await self.db.experts.find_one(
@@ -147,11 +159,12 @@ class BlogManager:
                 author = await self.db.users.find_one(
                     {"_id": ObjectId(blog['userID'])}
                 )
-                author['userID'] = str(author["_id"])
-                blog['author'] = Author(**author)
+                if not author:
+                    continue
+                blog['author'] = _build_author(author)
 
                 # Set expertId to the author's userID for the follow button
-                blog['expertId'] = author['userID']
+                blog['expertId'] = str(author['_id'])
 
                 blogs.append(BlogResponse(**blog))
 
@@ -181,17 +194,22 @@ class BlogManager:
 
         blogs = []
         async for blog in cursor:
-            blog["blogID"] = str(blog["_id"])
-            author = await self.db.users.find_one(
-                {"_id": ObjectId(blog['userID'])}
-            )
-            author['userID'] = str(author["_id"])
-            blog['author'] = Author(**author)
+            try:
+                blog["blogID"] = str(blog["_id"])
+                author = await self.db.users.find_one(
+                    {"_id": ObjectId(blog['userID'])}
+                )
+                if not author:
+                    continue
+                blog['author'] = _build_author(author)
 
-            # Set expertId to the author's userID for the follow button
-            blog['expertId'] = author['userID']
+                # Set expertId to the author's userID for the follow button
+                blog['expertId'] = str(author['_id'])
 
-            blogs.append(BlogResponse(**blog))
+                blogs.append(BlogResponse(**blog))
+            except Exception as e:
+                print(f"Error processing blog {blog.get('_id')}: {e}")
+                continue
 
         return blogs
 
@@ -380,17 +398,22 @@ class BlogManager:
         
         blogs = []
         async for blog in cursor:
-            blog["blogID"] = str(blog["_id"])
-            author = await self.db.users.find_one(
-                {"_id": ObjectId(blog['userID'])}
-            )
-            author['userID'] = str(author["_id"])
-            blog['author'] = Author(**author)
+            try:
+                blog["blogID"] = str(blog["_id"])
+                author = await self.db.users.find_one(
+                    {"_id": ObjectId(blog['userID'])}
+                )
+                if not author:
+                    continue
+                blog['author'] = _build_author(author)
 
-            # Set expertId to the author's userID for the follow button
-            blog['expertId'] = author['userID']
+                # Set expertId to the author's userID for the follow button
+                blog['expertId'] = str(author['_id'])
 
-            blogs.append(BlogResponse(**blog))
+                blogs.append(BlogResponse(**blog))
+            except Exception as e:
+                print(f"Error processing blog {blog.get('_id')}: {e}")
+                continue
 
         return blogs
         

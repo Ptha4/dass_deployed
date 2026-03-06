@@ -161,6 +161,7 @@ class CommunityManager:
     async def seed_default_communities(self) -> None:
         """Seed default communities if they don't already exist."""
         DEFAULT_COMMUNITIES = [
+            {"name": "general", "displayName": "General", "description": "A place for all topics — career questions, introductions, and anything else that doesn't fit a specific community.", "iconColor": "#6366f1"},
             {"name": "career-guidance", "displayName": "Career Guidance", "description": "Get advice on choosing the right career path, skill development, and career transitions.", "iconColor": "#6366f1"},
             {"name": "engineering-students", "displayName": "Engineering Students", "description": "A community for engineering students to discuss academics, projects, and career opportunities.", "iconColor": "#ec4899"},
             {"name": "college-admissions", "displayName": "College Admissions", "description": "Tips, strategies, and discussions around college applications, entrance exams, and admissions.", "iconColor": "#10b981"},

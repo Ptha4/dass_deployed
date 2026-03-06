@@ -54,12 +54,17 @@ export default function PostItem({ post, showCommunity = false }: PostItemProps)
         <div className="group bg-white border border-gray-100 hover:border-indigo-200 rounded-2xl shadow-sm hover:shadow-md transition-all duration-200 p-5">
             {/* Author row */}
             <div className="flex items-center gap-2 mb-3 text-xs text-gray-400">
-                <div
-                    className="h-7 w-7 rounded-full flex items-center justify-center text-white font-bold text-xs"
-                    style={{ backgroundColor: "#6366f1" }}
+                <Link
+                    href={`/profile/${post.authorId}`}
+                    onClick={(e) => e.stopPropagation()}
                 >
-                    {initials}
-                </div>
+                    <div
+                        className="h-7 w-7 rounded-full flex items-center justify-center text-white font-bold text-xs cursor-pointer hover:opacity-80 transition-opacity"
+                        style={{ backgroundColor: "#6366f1" }}
+                    >
+                        {initials}
+                    </div>
+                </Link>
                 <Link
                     href={`/profile/${post.authorId}`}
                     className="font-medium text-gray-600 hover:text-indigo-600 transition-colors"
@@ -129,6 +134,22 @@ export default function PostItem({ post, showCommunity = false }: PostItemProps)
                             {tag}
                         </span>
                     ))}
+                </div>
+            )}
+
+            {/* Top Comment */}
+            {post.topComment && (
+                <div className="flex items-start gap-2 mb-3 px-3 py-2.5 rounded-xl bg-gray-50 border border-gray-100">
+                    <div
+                        className="h-6 w-6 shrink-0 rounded-full flex items-center justify-center text-white font-bold text-[10px] mt-0.5"
+                        style={{ backgroundColor: "#6366f1" }}
+                    >
+                        {post.topComment.authorInitials}
+                    </div>
+                    <div className="min-w-0">
+                        <span className="text-xs font-medium text-gray-600 mr-1.5">{post.topComment.authorName}</span>
+                        <span className="text-xs text-gray-500 line-clamp-2">{post.topComment.content}</span>
+                    </div>
                 </div>
             )}
 

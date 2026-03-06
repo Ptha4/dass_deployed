@@ -5,12 +5,14 @@ from app.models.post import PostResponse
 from app.models.comment import Comment, CommentCreate, CommentResponse
 from app.managers.post import PostManager
 from app.managers.comment import CommentManager
+from app.managers.community import CommunityManager
 from app.core.auth_utils import get_current_user, require_user, get_optional_user
 from datetime import datetime
 
 router = APIRouter()
 post_manager = PostManager()
 comment_manager = CommentManager()
+community_manager = CommunityManager()
 
 
 class PostCommentCreate(BaseModel):
@@ -24,6 +26,50 @@ class PostEditData(BaseModel):
     tags: Optional[List[str]] = None
 
 
+class GeneralPostCreate(BaseModel):
+    content: str
+    title: Optional[str] = None
+    tags: Optional[List[str]] = []
+
+
+@router.post("/posts", response_model=PostResponse)
+async def create_general_post(
+    post_data: GeneralPostCreate,
+    user_data: dict = Depends(require_user),
+):
+    """Create a post in c/general. Auto-joins the user to general if not already a member."""
+    try:
+        general = await community_manager.get_community("general")
+        if not general:
+            raise HTTPException(status_code=503, detail="c/general community not found. Please contact an admin.")
+
+        general_id = general.communityId
+
+        # Auto-join the user to c/general if not already a member
+        await community_manager.join_community(general_id, user_data["id"])
+
+        # Use provided title or derive one from content
+        title = (post_data.title or "").strip()
+        if not title:
+            words = post_data.content.split()
+            title = " ".join(words[:12]) + ("…" if len(words) > 12 else "")
+
+        post = await post_manager.create_community_post(
+            community_id=general_id,
+            author_id=user_data["id"],
+            title=title,
+            content=post_data.content,
+            tags=post_data.tags or [],
+        )
+        await community_manager.increment_post_count(general_id)
+        return post
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"create_general_post error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to create post")
+
+
 @router.get("/posts", response_model=List[PostResponse])
 async def list_posts(community_id: Optional[str] = None, skip: int = 0, limit: int = 50):
     """List posts, optionally scoped to a community."""
@@ -33,14 +79,11 @@ async def list_posts(community_id: Optional[str] = None, skip: int = 0, limit: i
 
 @router.get("/posts/feed", response_model=List[PostResponse])
 async def get_feed(skip: int = 0, limit: int = 30, user_data: Optional[dict] = Depends(get_optional_user)):
-    """Get posts from communities the current user has joined, or all posts if not joined any."""
+    """Get posts from communities the current user has joined."""
     try:
         if user_data:
-            posts = await post_manager.get_feed_posts(user_data["id"], skip, limit)
-            if posts:
-                return posts
-        # Fall back to all recent posts
-        return await post_manager.get_all_posts(skip, limit)
+            return await post_manager.get_feed_posts(user_data["id"], skip, limit)
+        return []
     except Exception as e:
         print(f"get_feed error: {e}")
         raise HTTPException(status_code=500, detail="Failed to get feed")

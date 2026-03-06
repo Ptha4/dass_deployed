@@ -146,7 +146,7 @@ export default function CommunityDetailPage() {
                                             </Button>
                                         </Link>
                                     )}
-                                    {isAuthenticated && (
+                                    {isAuthenticated && community?.name !== "general" && (
                                         <Button
                                             size="sm"
                                             variant={community?.isJoined ? "outline" : "default"}
@@ -205,7 +205,7 @@ export default function CommunityDetailPage() {
                                             <Plus className="h-4 w-4" /> Create First Post
                                         </Button>
                                     </Link>
-                                ) : isAuthenticated && !community?.isJoined ? (
+                                ) : isAuthenticated && !community?.isJoined && community?.name !== "general" ? (
                                     <Button onClick={handleJoinLeave} disabled={joining} className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl gap-2">
                                         {joining ? <Loader2 className="h-4 w-4 animate-spin" /> : "Join to Post"}
                                     </Button>

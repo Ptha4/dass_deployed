@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -394,22 +395,24 @@ export default function BlogDetailPage() {
             {/* Author Card */}
             <div className="bg-white p-6 rounded-lg shadow-sm mb-8">
               <div className="flex items-center space-x-4 mb-4">
-                <Avatar className="h-12 w-12 ring-2 ring-primary-lavender">
-                  <AvatarFallback className="bg-primary-blue text-white">
-                    {authorName[0]}
-                  </AvatarFallback>
-                </Avatar>
+                <Link href={`/profile/${blog.userID}`}>
+                  <Avatar className="h-12 w-12 ring-2 ring-primary-lavender cursor-pointer hover:opacity-80 transition-opacity">
+                    <AvatarFallback className="bg-primary-blue text-white">
+                      {authorName[0]}
+                    </AvatarFallback>
+                  </Avatar>
+                </Link>
                 <div>
                   {blog.expertId ? (
                     <ExpertHoverCard expertId={blog.expertId}>
-                      <h3 className="font-semibold text-gray-900">
+                      <Link href={`/profile/${blog.userID}`} className="font-semibold text-gray-900 hover:text-indigo-600 transition-colors">
                         {authorName}{" "}
-                      </h3>
+                      </Link>
                     </ExpertHoverCard>
                   ) : (
-                    <h3 className="font-semibold text-gray-900">
+                    <Link href={`/profile/${blog.userID}`} className="font-semibold text-gray-900 hover:text-indigo-600 transition-colors">
                       {authorName}
-                    </h3>
+                    </Link>
                   )}
                   <p className="text-sm text-gray-500">Content Contributor</p>
                 </div>
