@@ -29,7 +29,7 @@ interface Comment {
   userID: string;
   createdAt: string;
   parent_id?: string;
-  user?: { name?: string; avatar?: string };
+  user?: { name?: string; avatar?: string; userId?: string };
 }
 
 function PostDetailContent() {
@@ -176,17 +176,22 @@ function PostDetailContent() {
           <CardContent className="p-6">
             {/* Author row */}
             <div className="flex items-center gap-3 mb-4">
-              <Avatar className="h-10 w-10">
-                <AvatarFallback className="bg-gradient-to-br from-indigo-500 to-purple-500 text-white font-bold">
-                  {post.authorInitials || "U"}
-                </AvatarFallback>
-              </Avatar>
+              <Link href={`/profile/${post.authorId}`}>
+                <Avatar className="h-10 w-10 cursor-pointer hover:opacity-80 transition-opacity">
+                  <AvatarFallback className="bg-gradient-to-br from-indigo-500 to-purple-500 text-white font-bold">
+                    {post.authorInitials || "U"}
+                  </AvatarFallback>
+                </Avatar>
+              </Link>
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="font-semibold text-sm">{post.authorName || "Anonymous"}</span>
+                  <Link href={`/profile/${post.authorId}`} className="font-semibold text-sm hover:text-indigo-600 transition-colors">{post.authorName || "Anonymous"}</Link>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  {formatDistanceToNow(new Date(post.createdAt), { addSuffix: true })}
+                  {new Date(post.createdAt).toLocaleString(undefined, {
+                    year: "numeric", month: "short", day: "numeric",
+                    hour: "2-digit", minute: "2-digit",
+                  })}
                 </p>
               </div>
             </div>
@@ -284,16 +289,26 @@ function PostDetailContent() {
                     .slice(0, 2);
                   return (
                     <div key={comment.commentID} className="flex gap-4">
-                      <Avatar className="h-9 w-9 shrink-0">
-                        <AvatarFallback className="bg-gray-100 text-gray-600 text-xs font-semibold">
-                          {initials}
-                        </AvatarFallback>
-                      </Avatar>
+                      <Link href={comment.user?.userId ? `/profile/${comment.user.userId}` : `#`}>
+                        <Avatar className="h-9 w-9 shrink-0 cursor-pointer hover:opacity-80 transition-opacity">
+                          <AvatarFallback className="bg-gray-100 text-gray-600 text-xs font-semibold">
+                            {initials}
+                          </AvatarFallback>
+                        </Avatar>
+                      </Link>
                       <div className="flex-1 bg-gray-50 rounded-xl p-4">
                         <div className="flex items-center gap-2 mb-1.5">
-                          <span className="font-semibold text-sm">{name}</span>
+                          <Link
+                            href={comment.user?.userId ? `/profile/${comment.user.userId}` : `#`}
+                            className="font-semibold text-sm hover:text-indigo-600 transition-colors"
+                          >
+                            {name}
+                          </Link>
                           <span className="text-xs text-muted-foreground">
-                            {formatDistanceToNow(new Date(comment.createdAt), { addSuffix: true })}
+                            {new Date(comment.createdAt).toLocaleString(undefined, {
+                              year: "numeric", month: "short", day: "numeric",
+                              hour: "2-digit", minute: "2-digit",
+                            })}
                           </span>
                         </div>
                         <p className="text-sm text-gray-700 leading-relaxed">{comment.content}</p>

@@ -107,7 +107,11 @@ class PostManager:
         )
         community_ids = [str(doc["_id"]) async for doc in community_docs]
         if not community_ids:
-            return []
+            # Fall back to c/general so new/unjoined users always see something
+            general = await self.db.communities.find_one({"name": "general"}, {"_id": 1})
+            if not general:
+                return []
+            community_ids = [str(general["_id"])]
 
         cursor = (
             self.collection.find({"communityId": {"$in": community_ids}})
@@ -238,3 +242,32 @@ class PostManager:
         except Exception:
             doc["communityName"] = ""
             doc["communityDisplayName"] = ""
+
+        # Top comment (most recent parent comment)
+        try:
+            post_id = doc.get("postId")
+            if post_id:
+                top_comment_doc = await self.db.comments.find_one(
+                    {"page_id": post_id, "type": "post", "parent_id": None},
+                    sort=[("createdAt", -1)],
+                )
+                if top_comment_doc:
+                    commenter_email = top_comment_doc.get("userID", "")
+                    commenter = await self.db.users.find_one({"email": commenter_email}) if commenter_email else None
+                    if commenter:
+                        fn = commenter.get("firstName") or ""
+                        ln = commenter.get("lastName") or ""
+                        c_name = f"{fn} {ln}".strip() or "Anonymous"
+                        c_initials = ((fn[0] if fn else "") + (ln[0] if ln else "")).upper() or "U"
+                    else:
+                        c_name = "Anonymous"
+                        c_initials = "U"
+                    doc["topComment"] = {
+                        "content": top_comment_doc.get("content", ""),
+                        "authorName": c_name,
+                        "authorInitials": c_initials,
+                    }
+                else:
+                    doc["topComment"] = None
+        except Exception:
+            doc["topComment"] = None

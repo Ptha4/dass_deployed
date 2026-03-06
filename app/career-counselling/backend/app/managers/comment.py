@@ -3,14 +3,29 @@ from datetime import datetime
 from bson import ObjectId
 from app.models.comment import Comment, CommentResponse
 from app.core.database import get_database
-from app.managers.user import UserManager
+
+
+async def _get_comment_user(db, email: str) -> dict:
+    """Fetch user name, avatar and userId directly from the db by email."""
+    try:
+        user = await db.users.find_one({"email": email})
+        if user:
+            fn = user.get("firstName") or ""
+            ln = user.get("lastName") or ""
+            return {
+                "name": f"{fn} {ln}".strip() or "Unknown",
+                "avatar": user.get("avatar") or "/default-avatar.png",
+                "userId": str(user["_id"]),
+            }
+    except Exception:
+        pass
+    return {"name": "Unknown", "avatar": "/default-avatar.png", "userId": ""}
 
 
 class CommentManager:
     def __init__(self):
         self.db = get_database()
         self.collection = self.db.comments
-        self.user_manager = UserManager()
 
     async def create_comment(self, comment: Comment) -> CommentResponse:
         comment_dict = comment.model_dump()
@@ -23,16 +38,7 @@ class CommentManager:
         comment_dict["commentID"] = str(result.inserted_id)
 
         # Get the user data to include in the response
-        user = await self.user_manager.get_user_by_email(comment.userID)
-        if user:
-            user_data = {
-                "name": f"{user.firstName} {user.lastName}".strip(),
-                "avatar": user.avatar if hasattr(user, "avatar") else "/default-avatar.png"
-            }
-            comment_dict['user'] = user_data
-        else:
-            comment_dict['user'] = {"name": "Unknown",
-                                    "avatar": "/default-avatar.png"}
+        comment_dict['user'] = await _get_comment_user(self.db, comment.userID)
 
         comment_dict['replies'] = []  # Initialize with empty replies array
         return CommentResponse(**comment_dict)
@@ -51,16 +57,7 @@ class CommentManager:
             comment_ids.append(comment["commentID"])
 
             # Get user by email
-            user = await self.user_manager.get_user_by_email(comment['userID'])
-            if user:
-                user_data = {
-                    "name": f"{user.firstName} {user.lastName}".strip(),
-                    "avatar": user.avatar if hasattr(user, "avatar") else "/default-avatar.png"
-                }
-                comment['user'] = user_data
-            else:
-                comment['user'] = {"name": "Unknown",
-                                   "avatar": "/default-avatar.png"}
+            comment['user'] = await _get_comment_user(self.db, comment['userID'])
 
             comment['replies'] = []  # Initialize with empty replies
             comments.append(comment)
@@ -79,16 +76,7 @@ class CommentManager:
                 reply["commentID"] = str(reply["_id"])
 
                 # Get user for the reply
-                user = await self.user_manager.get_user_by_email(reply['userID'])
-                if user:
-                    user_data = {
-                        "name": f"{user.firstName} {user.lastName}".strip(),
-                        "avatar": user.avatar if hasattr(user, "avatar") else "/default-avatar.png"
-                    }
-                    reply['user'] = user_data
-                else:
-                    reply['user'] = {"name": "Unknown",
-                                     "avatar": "/default-avatar.png"}
+                reply['user'] = await _get_comment_user(self.db, reply['userID'])
 
                 # Add the reply to its parent's replies array
                 parent_id = reply.get("parent_id")

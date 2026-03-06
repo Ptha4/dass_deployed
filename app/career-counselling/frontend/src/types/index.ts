@@ -158,6 +158,11 @@ export interface Post {
   tags?: string[];
   media?: PostMedia[];
   commentsCount?: number;
+  topComment?: {
+    content: string;
+    authorName: string;
+    authorInitials: string;
+  } | null;
 }
 
 export interface Community {
@@ -253,6 +258,7 @@ export interface Comment {
   user: {
     name: string;
     avatar: string;
+    userId?: string;
   };
   content: string;
   createdAt: string;

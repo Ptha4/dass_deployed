@@ -33,6 +33,7 @@ class PostResponse(Post):
     communityName: Optional[str] = None
     communityDisplayName: Optional[str] = None
     commentsCount: Optional[int] = 0
+    topComment: Optional[dict] = None
 
 
 class PostCreate(BaseModel):

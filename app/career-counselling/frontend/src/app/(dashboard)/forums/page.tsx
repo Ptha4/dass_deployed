@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import axios from "axios";
-import { MessageSquare, Plus, SlidersHorizontal, ChevronDown, Loader2, Users2, Search } from "lucide-react";
+import { MessageSquare, Plus, SlidersHorizontal, ChevronDown, Loader2, Search } from "lucide-react";
 import { FollowedCommunitiesWidget } from "@/components/dashboard/followed-communities-widget";
 import { TrendingCarousel } from "@/components/dashboard/trending-carousel";
 import PostItem from "@/components/communities/post-item";
@@ -36,7 +36,7 @@ const DEFAULT_FILTERS: DiscussionsFilters = {
 
 export default function ForumsPage() {
   const router = useRouter();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, loading: authLoading } = useAuth();
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [appliedFilters, setAppliedFilters] = useState<DiscussionsFilters>(DEFAULT_FILTERS);
@@ -62,9 +62,10 @@ export default function ForumsPage() {
   }, [isAuthenticated]);
 
   useEffect(() => {
+    if (authLoading) return;
     fetchPosts();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [appliedFilters]);
+  }, [appliedFilters, authLoading]);
 
   const fetchPosts = async () => {
     setLoading(true);
@@ -193,14 +194,28 @@ export default function ForumsPage() {
                     <div className="flex justify-center py-4">
                       <Loader2 className="h-5 w-5 animate-spin text-indigo-400" />
                     </div>
-                  ) : joinedCommunities.length === 0 ? (
-                    <div className="text-center py-4 space-y-2">
-                      <Users2 className="h-8 w-8 mx-auto text-gray-300" />
-                      <p className="text-sm text-gray-500 font-medium">No communities joined yet</p>
-                      <p className="text-xs text-gray-400">Join a community first to start posting.</p>
-                    </div>
                   ) : (
                     <div className="space-y-0.5 max-h-52 overflow-y-auto mb-2">
+                      {/* Always show c/general as the default option */}
+                      {!joinedCommunities.some((c) => c.name === "general") && (
+                        <button
+                          onClick={() => {
+                            setCreateOpen(false);
+                            router.push("/communities/general/submit");
+                          }}
+                          className="w-full flex items-center gap-2.5 px-2 py-2 rounded-lg hover:bg-indigo-50 transition-colors text-left group"
+                        >
+                          <div className="h-7 w-7 rounded-lg flex items-center justify-center text-white text-xs font-bold shrink-0 bg-indigo-500">
+                            G
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-gray-800 group-hover:text-indigo-600 truncate">
+                              c/general
+                            </p>
+                            <p className="text-xs text-gray-400 truncate">General — post anything</p>
+                          </div>
+                        </button>
+                      )}
                       {joinedCommunities.map((c) => (
                         <button
                           key={c.communityId}

@@ -46,7 +46,23 @@ class AuthManager:
             }
 
             result = await self.collection.insert_one(user_dict)
-            user_dict["uid"] = str(result.inserted_id)
+            user_id = str(result.inserted_id)
+            user_dict["uid"] = user_id
+
+            # Auto-join the new user into c/general
+            try:
+                general = await self.db.communities.find_one({"name": "general"})
+                if general:
+                    await self.db.communities.update_one(
+                        {"_id": general["_id"]},
+                        {
+                            "$addToSet": {"members": user_id},
+                            "$inc": {"memberCount": 1},
+                            "$set": {"updatedAt": datetime.utcnow()},
+                        },
+                    )
+            except Exception as e:
+                print(f"Warning: could not auto-join user to general: {e}")
 
             # Generate JWT token with role
             token = await get_token(user_data.email)

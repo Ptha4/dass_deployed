@@ -105,8 +105,8 @@ export default function RegisterPage() {
       // Show success toast
       toast.success("Account created successfully!");
 
-      // Send new users through the onboarding flow before hitting the dashboard
-      window.location.href = "/onboarding";
+      // Go straight to dashboard — OnboardingGate will show the modal immediately
+      window.location.href = "/dashboard";
     } catch (error: Error | unknown) {
       console.error(
         "Error creating user:",

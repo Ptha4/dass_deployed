@@ -138,12 +138,16 @@ async def create_community_post(
         # Always use the resolved ObjectId for DB operations
         actual_community_id = community.communityId
 
-        # Verify user is a member
+        # Verify user is a member (auto-join for c/general)
         community_doc = await community_manager.collection.find_one(
             {"_id": ObjectId(actual_community_id), "members": user_data["id"]}
         )
         if not community_doc:
-            raise HTTPException(status_code=403, detail="You must join this community before posting")
+            if community.name == "general":
+                # Auto-join general community
+                await community_manager.join_community(actual_community_id, user_data["id"])
+            else:
+                raise HTTPException(status_code=403, detail="You must join this community before posting")
 
         post = await post_manager.create_community_post(
             community_id=actual_community_id,
