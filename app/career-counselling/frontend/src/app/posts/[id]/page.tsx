@@ -24,6 +24,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { Post } from "@/types";
 import { Input } from "@/components/ui/input";
+import MarkdownViewer from "@/components/shared/markdown-viewer";
 
 interface Comment {
   commentID: string;
@@ -281,9 +282,9 @@ function PostDetailContent() {
             <h1 className="text-2xl font-bold text-gray-900 mb-3">{post.title}</h1>
 
             {/* Content */}
-            <p className="text-base text-gray-700 mb-4 whitespace-pre-wrap leading-relaxed">
-              {post.content}
-            </p>
+            <div className="prose max-w-none">
+              <MarkdownViewer content={post.content} />
+            </div>
 
             {/* Tags */}
             {post.tags && post.tags.length > 0 && (
