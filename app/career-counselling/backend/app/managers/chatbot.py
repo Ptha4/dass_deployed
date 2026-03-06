@@ -186,22 +186,23 @@ class ChatbotManager:
                         video = await video_manager.get_video(video_id)
                         if video:
                             # Handle video data based on its type
-                            if hasattr(video, "__dict__"):  # It's likely a Pydantic model
-                                detailed_results.append({
-                                    "type": "video",
-                                    "title": getattr(video, "title", ""),
-                                    "description": getattr(video, "description", ""),
-                                    "tags": getattr(video, "tags", []),
-                                    "duration": getattr(video, "duration", "Unknown")
-                                })
-                            else:  # It's a dictionary
-                                detailed_results.append({
-                                    "type": "video",
-                                    "title": video.get("title", ""),
-                                    "description": video.get("description", ""),
-                                    "tags": video.get("tags", []),
-                                    "duration": video.get("duration", "Unknown")
-                                })
+                            video_info = {
+                                "type": "video",
+                                "title": getattr(video, "title", ""),
+                                "description": getattr(video, "description", ""),
+                                "tags": getattr(video, "tags", []),
+                                "duration": getattr(video, "duration", "Unknown")
+                            }
+                            
+                            # Add transcript if available (for Pydantic models)
+                            if hasattr(video, "transcript") and video.transcript:
+                                video_info["transcript"] = video.transcript
+                            
+                            # Add transcript if it's a dictionary
+                            if isinstance(video, dict) and "transcript" in video and video["transcript"]:
+                                video_info["transcript"] = video["transcript"]
+                            
+                            detailed_results.append(video_info)
                     except Exception as e:
                         print(f"Error processing video {video_id}: {str(e)}")
 
@@ -447,7 +448,7 @@ class ChatbotManager:
             2. Experts - Career counselors and professionals with their specializations
             3. Branches/Courses - Details about various educational programs and career paths
             4. Blogs - Informative articles on career guidance
-            5. Videos - Educational content for career development
+            5. Videos - Educational content for career development (including full transcripts)
             
             SEARCH CAPABILITY:
             You have the ability to search the AlumNiti platform for information 
