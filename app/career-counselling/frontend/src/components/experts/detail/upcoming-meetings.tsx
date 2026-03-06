@@ -98,7 +98,7 @@ export default function UpcomingMeetings({ expertId }: UpcomingMeetingsProps) {
       const token = localStorage.getItem("token");
       if (!token) return;
 
-      const response = await axios.get("/api/refunds", {
+      const response = await axios.get("/api/refunds/expert", {
         headers: {
           Authorization: `Bearer ${token}`,
         },

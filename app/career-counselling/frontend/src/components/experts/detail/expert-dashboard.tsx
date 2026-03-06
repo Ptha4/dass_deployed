@@ -296,7 +296,7 @@ export default function ExpertDashboard({
   const fetchRefundData = async () => {
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch("/api/refunds", {
+      const response = await fetch("/api/refunds/expert", {
         headers: {
           Authorization: `Bearer ${token}`,
         },
