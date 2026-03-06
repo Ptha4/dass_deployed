@@ -9,7 +9,7 @@ from app.config import settings
 
 ACCOUNT_SID = settings.ACCOUNT_SID
 AUTH_TOKEN = settings.AUTH_TOKEN
-WHATSAPP_FROM = settings.TWILIO_WHATSAPP_FROM
+SMS_FROM = settings.TWILIO_SMS_FROM
 
 OTP_TTL_MINUTES = 5
 VERIFICATION_TOKEN_TTL_MINUTES = 10
@@ -56,8 +56,8 @@ async def send_otp(phone: str) -> dict:
     try:
         client = Client(ACCOUNT_SID, AUTH_TOKEN)
         client.messages.create(
-            from_=WHATSAPP_FROM,
-            to=f"whatsapp:{phone}",
+            from_=SMS_FROM,
+            to=phone,
             body=f"Your AlumNiti verification code is: {otp}. It expires in {OTP_TTL_MINUTES} minutes.",
         )
     except Exception as e:

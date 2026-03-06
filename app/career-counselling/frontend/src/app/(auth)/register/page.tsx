@@ -90,7 +90,7 @@ export default function RegisterPage() {
       setOtpVerified(false);
       setVerificationToken("");
       setOtp("");
-      toast.success("OTP sent to your WhatsApp!");
+      toast.success("OTP sent via SMS!");
     } catch (error: unknown) {
       const detail = (error as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
       if (detail?.includes("already registered")) {
@@ -327,7 +327,7 @@ export default function RegisterPage() {
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-gray-700">
                     Phone Number{" "}
-                    <span className="text-xs text-gray-400">(WhatsApp, E.164 format)</span>
+                    <span className="text-xs text-gray-400">(E.164 format, e.g. +919876543210)</span>
                   </label>
                   <div className="flex gap-2">
                     <Input

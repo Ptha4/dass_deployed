@@ -11,7 +11,7 @@ class Settings(BaseSettings):
     GEMINI_API_KEY: str
     ACCOUNT_SID: str = ""
     AUTH_TOKEN: str = ""
-    TWILIO_WHATSAPP_FROM: str = "whatsapp:+14155238886"
+    TWILIO_SMS_FROM: str = ""
 
     class Config:
         env_file = ".env"
