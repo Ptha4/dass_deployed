@@ -4,6 +4,7 @@ from bson import ObjectId
 from app.models.user import User, UserSignUp, UserLogin
 from app.core.database import get_database
 from app.core.auth_utils import get_token, verify_token
+from app.managers import otp as otp_manager
 import bcrypt
 
 class AuthManager:
@@ -17,12 +18,21 @@ class AuthManager:
         Register a new user with info and return a JWT token.
 
         Args:
-            user_data (UserSignUp): User object with email, password, first name, last name, and middle name.
+            user_data (UserSignUp): User object with email, password, first name, last name,
+                                    middle name, phone, and verification_token.
 
         Returns:
             Optional[str]: JWT token if successful, None otherwise.
         """
         try:
+            # Validate the phone verification token before creating the account
+            token_valid = await otp_manager.consume_verification_token(
+                user_data.phone, user_data.verification_token
+            )
+            if not token_valid:
+                print("Invalid or expired phone verification token")
+                return None
+
             # Hash password before storing
             hashed_password = bcrypt.hashpw(user_data.password.encode("utf-8"), bcrypt.gensalt())
             
@@ -35,7 +45,7 @@ class AuthManager:
                 "middleName": user_data.middleName,
                 "gender": "",
                 "category": "",
-                "mobileNo": "",
+                "mobileNo": user_data.phone,
                 "home_state": "",
                 "type": "free",
                 "isExpert": False,

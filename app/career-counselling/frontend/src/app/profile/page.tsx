@@ -203,7 +203,6 @@ export default function ProfilePage() {
         gender: gender === "unspecified" ? "" : gender,
         category: category === "unspecified" ? "" : category,
         home_state: homeState === "unspecified" ? "" : homeState,
-        mobileNo,
       };
       
       // Only send onboarding fields if they have values
@@ -489,14 +488,15 @@ export default function ProfilePage() {
               <div className="space-y-2">
                 <label className="block text-sm font-medium text-gray-700">
                   Mobile Number
+                  <span className="ml-2 text-xs text-green-600 font-normal">(verified)</span>
                 </label>
                 <Input
                   type="tel"
                   value={mobileNo}
-                  onChange={(e) => setMobileNo(e.target.value)}
-                  disabled={!isEditing}
-                  className={!isEditing ? "bg-gray-50" : ""}
-                  placeholder="Enter mobile number"
+                  readOnly
+                  disabled
+                  className="bg-gray-50 cursor-not-allowed"
+                  placeholder="—"
                 />
               </div>
               

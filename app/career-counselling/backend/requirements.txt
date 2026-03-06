@@ -116,6 +116,7 @@ pytest==8.3.5
 python-dateutil==2.9.0.post0
 python-dotenv==1.1.0
 python-http-client==3.3.7
+twilio==9.10.2
 python-multipart==0.0.20
 pytz==2025.1
 pyzmq==25.1.2
