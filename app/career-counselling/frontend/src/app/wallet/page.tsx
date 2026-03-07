@@ -106,6 +106,7 @@ export default function WalletPage() {
                 wallet: authUser.wallet || 200, // default value for wallet
                 following: (authUser.following as string[]) ?? [],
                 followers: (authUser.followers as string[]) ?? [],
+                interests: (authUser.interests as string[]) ?? [],
             });
             setLoading(false);
         } else {

@@ -43,7 +43,7 @@ export interface User {
   target_college?: string;
   interests: string[];
   career_goals?: string;
-  onboarding_completed: boolean;
+  onboarding_completed?: boolean;
   following: string[];
   followers: string[];
 }

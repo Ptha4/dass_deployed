@@ -121,9 +121,10 @@ const MarkdownViewer: React.FC<MarkdownViewerProps> = ({
               {...props}
             />
           ),
-          img: (props) => (
+          img: ({ alt, ...props }) => (
             <img
               className="max-w-full h-auto rounded"
+              alt={alt ?? ""}
               {...props}
               onError={(e) => {
                 e.currentTarget.style.display = "none";
