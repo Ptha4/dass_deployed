@@ -98,7 +98,14 @@ trap cleanup SIGINT SIGTERM
 # Start backend in background
 echo -e "${GREEN}Starting backend (FastAPI)...${NC}"
 cd "$BACKEND_DIR"
-source venv/bin/activate
+if [ -d ".venv" ]; then
+    source .venv/bin/activate
+elif [ -d "venv" ]; then
+    source venv/bin/activate
+else
+    echo -e "${RED}✗ No virtual environment found. Please create one with python -m venv .venv${NC}"
+    exit 1
+fi
 uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload &
 BACKEND_PID=$!
 echo "Backend PID: $BACKEND_PID"

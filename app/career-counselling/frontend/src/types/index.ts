@@ -112,6 +112,7 @@ export interface Expert {
   available: boolean;
   studentsGuided: number;
   profile_video_id?: string | null; // Expert's chosen profile video ID
+  availability?: any; // Native scheduling availability
 
   // Metadata
   createdAt: string; // ISO date string

@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     ACCOUNT_SID: str = ""
     AUTH_TOKEN: str = ""
     TWILIO_SMS_FROM: str = ""
+    DAILY_API_KEY: str = ""
 
     class Config:
         env_file = ".env"

@@ -71,6 +71,7 @@ import MarkdownViewer from "@/components/shared/markdown-viewer";
 import UpcomingMeetings from "@/components/experts/detail/upcoming-meetings";
 import { VideoManagement } from "@/components/experts/video-management";
 import { BlogManagement } from "@/components/experts/blog-management";
+import AvailabilitySettings from "@/components/experts/detail/availability-settings";
 
 interface ExpertDashboardProps {
   expert: Expert;
@@ -617,12 +618,12 @@ export default function ExpertDashboard({
                 </p>
                 {actualEarnings.completedSessions <
                   analytics.performance.meetings.completed && (
-                  <p className="text-xs text-red-600 mt-1 font-medium">
-                    {analytics.performance.meetings.completed -
-                      actualEarnings.completedSessions}{" "}
-                    refunded
-                  </p>
-                )}
+                    <p className="text-xs text-red-600 mt-1 font-medium">
+                      {analytics.performance.meetings.completed -
+                        actualEarnings.completedSessions}{" "}
+                      refunded
+                    </p>
+                  )}
                 <p className="text-xs text-amber-600 mt-1 font-medium">
                   {analytics.performance.meetings.upcoming} upcoming
                 </p>
@@ -648,14 +649,14 @@ export default function ExpertDashboard({
                 </p>
                 {actualEarnings.total <
                   analytics.performance.earnings.total && (
-                  <p className="text-xs text-red-600 mt-1 font-medium">
-                    {(
-                      analytics.performance.earnings.total -
-                      actualEarnings.total
-                    ).toLocaleString()}{" "}
-                    refunded
-                  </p>
-                )}
+                    <p className="text-xs text-red-600 mt-1 font-medium">
+                      {(
+                        analytics.performance.earnings.total -
+                        actualEarnings.total
+                      ).toLocaleString()}{" "}
+                      refunded
+                    </p>
+                  )}
                 <p className="text-xs text-green-600 mt-1 font-medium">
                   +{analytics.performance.earnings.growth}% growth
                 </p>
@@ -880,7 +881,7 @@ export default function ExpertDashboard({
                 <MessageSquare className="h-4 w-4 mr-2" />
                 Create New Post
               </Button>
-              
+
               <Button
                 className="w-full justify-start hover:bg-blue-50"
                 variant="outline"
@@ -974,6 +975,14 @@ export default function ExpertDashboard({
             </CardContent>
           </Card>
         </div>
+      </div>
+
+      {/* Availability Schedule */}
+      <div className="mt-6">
+        <AvailabilitySettings
+          expertId={expert.expertID}
+          initialAvailability={expert.availability}
+        />
       </div>
 
       {/* Create Post Modal */}

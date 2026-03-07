@@ -9,6 +9,8 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@daily-co/daily-js": "^0.87.0",
+    "@daily-co/daily-react": "^0.24.0",
     "@emotion/react": "^11.11.4",
     "@emotion/styled": "^11.11.5",
     "@hookform/resolvers": "^4.1.0",
@@ -46,6 +48,7 @@
     "cmdk": "^1.0.0",
     "date-fns": "^4.1.0",
     "framer-motion": "^12.4.3",
+    "jotai": "^2.18.0",
     "lottie-react": "^2.4.1",
     "lucide-react": "^0.475.0",
     "motion": "^12.7.4",

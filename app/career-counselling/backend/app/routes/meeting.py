@@ -1,307 +1,312 @@
-from fastapi import APIRouter, Depends, HTTPException, Body, UploadFile, File, Form, BackgroundTasks
-from typing import List, Optional
-from app.core.auth_utils import get_current_user, require_admin
-from app.models.user import UserBase
-from app.models.meeting import Meeting, Transaction, RefundRequest
-from app.managers.meeting import MeetingManager, TransactionManager, RefundManager
-from app.managers.file import FileManager
+"""
+Meeting API routes for booking, listing, joining, and cancelling meetings.
+"""
+from fastapi import APIRouter, HTTPException, Depends, Query, status
+from typing import Optional
+from datetime import datetime
 from pydantic import BaseModel
-from datetime import datetime, timedelta
-import json
+from app.managers.meeting import MeetingManager
+from app.managers.expert import ExpertManager
+from app.core.auth_utils import require_user, get_current_user
+from app.services.daily_service import create_meeting_token
 
 router = APIRouter()
-# Initialize manager instances
 meeting_manager = MeetingManager()
-transaction_manager = TransactionManager()
-refund_manager = RefundManager()
+expert_manager = ExpertManager()
 
 
-class MeetingCreate(BaseModel):
+class BookMeetingRequest(BaseModel):
     expertId: str
-    userId: str
-    startTime: datetime
-    endTime: datetime
-    amount: float
-    status: str = "scheduled"
-
-    class Config:
-        # Allow conversion from strings to datetime
-        json_encoders = {datetime: lambda dt: dt.isoformat()}
-        # Include extra fields not defined in the model
-        extra = "ignore"
+    startTime: str  # ISO format datetime string
+    endTime: str    # ISO format datetime string
 
 
-class RefundRequestCreate(BaseModel):
-    meetingId: str
-    reason: str
-
-
-class RefundRequestUpdate(BaseModel):
-    status: str
-    adminNotes: Optional[str] = None
-
-
-@router.post("/meetings", response_model=Meeting)
-async def create_meeting(
-    # Use raw dict instead of Pydantic model for debugging
-    meeting_data: dict = Body(...),
-    current_user_data: dict = Depends(get_current_user)
+@router.get("/experts/{expert_id}/slots")
+async def get_available_slots(
+    expert_id: str,
+    date: str = Query(..., description="Date in YYYY-MM-DD format"),
 ):
-    """Create a new meeting between user and expert"""
-    print("Received meeting creation request with data:", meeting_data)
-    print("Current user data:", current_user_data)
-
-    # Make sure the user is either the expert or the meeting participant
-    userId = meeting_data.get("userId", "")
-    if current_user_data["id"] != userId and current_user_data.get("role") != "admin":
-        print(
-            f"Authorization error: User {current_user_data['id']} is trying to create a meeting for user {userId}")
-        raise HTTPException(
-            status_code=403, detail="Not authorized to create this meeting")
-
+    """
+    Get available 1-hour meeting slots for an expert on a specific date.
+    """
     try:
-        # Create a transaction first
-        transaction_data = {
-            "userId": meeting_data.get("userId"),
-            "expertId": meeting_data.get("expertId"),
-            "amount": float(meeting_data.get("amount", 0)),
-            "type": "payment",
-            "description": f"Payment for meeting with expert {meeting_data.get('expertId')}",
-        }
+        # Verify expert exists
+        expert = await expert_manager.get_expert(expert_id)
+        if not expert:
+            raise HTTPException(status_code=404, detail="Expert not found")
 
-        print("Creating transaction with data:", transaction_data)
-        transaction = await transaction_manager.create_transaction(transaction_data)
-        print("Transaction created:", transaction)
-
-        # Create the meeting with transaction ID
-        # Copy the dict since we're not using Pydantic model
-        meeting_dict = meeting_data.copy()
-        meeting_dict["isPaid"] = True
-        meeting_dict["transactionId"] = transaction.id
-        meeting_dict["status"] = meeting_dict.get(
-            "status", "scheduled")  # Ensure status is set
-
-        # Ensure datetime fields are properly converted
-        try:
-            meeting_dict["startTime"] = datetime.fromisoformat(
-                meeting_dict.get("startTime").replace("Z", "+00:00"))
-        except Exception as e:
-            print(f"Error converting startTime: {e}")
-            meeting_dict["startTime"] = datetime.now()
-
-        try:
-            meeting_dict["endTime"] = datetime.fromisoformat(
-                meeting_dict.get("endTime").replace("Z", "+00:00"))
-        except Exception as e:
-            print(f"Error converting endTime: {e}")
-            meeting_dict["endTime"] = datetime.now() + timedelta(hours=1)
-
-        print("Creating meeting with data:", meeting_dict)
-        meeting = await meeting_manager.create_meeting(meeting_dict)
-        print("Meeting created:", meeting)
-
-        # Update transaction with meeting ID (now that we have it)
-        transaction_dict = {
-            "meetingId": meeting.id
-        }
-
-        # For simplicity, update synchronously
-        print("Updating transaction with meeting ID:", transaction_dict)
-        await transaction_manager.update_transaction(transaction.id, transaction_dict)
-
-        return meeting
+        slots = await meeting_manager.get_available_slots(expert_id, date)
+        return {"date": date, "expertId": expert_id, "slots": slots}
     except ValueError as e:
-        print(f"ValueError in create_meeting: {str(e)}")
         raise HTTPException(status_code=400, detail=str(e))
+    except HTTPException:
+        raise
     except Exception as e:
-        print(f"Unexpected error in create_meeting: {str(e)}")
-        import traceback
-        traceback.print_exc()
-        raise HTTPException(
-            status_code=500, detail=f"Failed to create meeting: {str(e)}")
+        print(f"Error getting available slots: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get available slots")
 
 
-@router.get("/meetings/{meeting_id}", response_model=Meeting)
+@router.post("/meetings/book")
+async def book_meeting(
+    request: BookMeetingRequest,
+    user_data: dict = Depends(require_user),
+):
+    """
+    Book a meeting with an expert. Deducts coins from the student's wallet
+    and creates a Daily.co room for the video call.
+    """
+    try:
+        # Get the current user
+        from app.managers.user import UserManager
+        user_manager = UserManager()
+        user = await user_manager.get_user_by_email(user_data["email"])
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        start_time = datetime.fromisoformat(request.startTime)
+        end_time = datetime.fromisoformat(request.endTime)
+
+        # Server-side validation: reject bookings in the past
+        if start_time < datetime.now():
+            raise HTTPException(status_code=400, detail="Cannot book a slot in the past")
+
+        meeting = await meeting_manager.book_meeting(
+            expert_id=request.expertId,
+            user_id=user.id,
+            start_time=start_time,
+            end_time=end_time,
+        )
+
+        if not meeting:
+            raise HTTPException(status_code=500, detail="Failed to book meeting")
+
+        return {
+            "success": True,
+            "message": "Meeting booked successfully",
+            "meeting": meeting,
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error booking meeting: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to book meeting: {str(e)}")
+
+
+@router.get("/meetings/my")
+async def get_my_meetings(
+    status_filter: Optional[str] = Query(None, alias="status"),
+    user_data: dict = Depends(require_user),
+):
+    """
+    Get all meetings for the currently logged-in user (student).
+    """
+    try:
+        from app.managers.user import UserManager
+        user_manager = UserManager()
+        user = await user_manager.get_user_by_email(user_data["email"])
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        meetings = await meeting_manager.get_all_meetings_for_user(user.id, status_filter)
+        return {"meetings": meetings}
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error getting user meetings: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get meetings")
+
+
+@router.get("/meetings/expert/{expert_id}")
+async def get_expert_meetings(
+    expert_id: str,
+    status_filter: Optional[str] = Query(None, alias="status"),
+    user_data: dict = Depends(require_user),
+):
+    """
+    Get all meetings for an expert. Only the expert themselves can view this.
+    """
+    try:
+        # Verify the caller is the expert
+        expert = await expert_manager.get_expert(expert_id)
+        if not expert:
+            raise HTTPException(status_code=404, detail="Expert not found")
+
+        if expert.userId != user_data.get("id"):
+            raise HTTPException(status_code=403, detail="You can only view your own meetings")
+
+        meetings = await meeting_manager.get_expert_meetings(expert_id, status_filter)
+        return {"meetings": meetings}
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error getting expert meetings: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get meetings")
+
+
+@router.get("/meetings/{meeting_id}")
 async def get_meeting(
     meeting_id: str,
-    current_user_data: dict = Depends(get_current_user)
+    user_data: dict = Depends(require_user),
 ):
-    """Get a meeting by ID"""
+    """
+    Get a single meeting by ID. Only participants can view it.
+    """
     meeting = await meeting_manager.get_meeting(meeting_id)
-
     if not meeting:
         raise HTTPException(status_code=404, detail="Meeting not found")
 
-    # Check if the user is authorized to view this meeting
-    if (current_user_data["id"] != meeting.userId and
-        current_user_data["id"] != meeting.expertId and
-            current_user_data.get("role") != "admin"):
-        raise HTTPException(
-            status_code=403, detail="Not authorized to view this meeting")
+    # Verify the caller is a participant
+    from app.managers.user import UserManager
+    user_manager = UserManager()
+    user = await user_manager.get_user_by_email(user_data["email"])
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    is_student = meeting["userId"] == user.id
+    is_expert = False
+    expert = await expert_manager.get_expert(meeting["expertId"])
+    if expert and expert.userId == user.id:
+        is_expert = True
+
+    if not is_student and not is_expert:
+        raise HTTPException(status_code=403, detail="You are not a participant of this meeting")
 
     return meeting
 
 
-@router.get("/meetings/user/{user_id}", response_model=List[Meeting])
-async def get_user_meetings(
-    user_id: str,
-    current_user_data: dict = Depends(get_current_user)
+@router.get("/meetings/{meeting_id}/token")
+async def get_meeting_token(
+    meeting_id: str,
+    user_data: dict = Depends(require_user),
 ):
-    """Get meetings for a user"""
-    # Check if the user is authorized to view these meetings
-    if current_user_data["id"] != user_id and current_user_data.get("role") != "admin":
-        raise HTTPException(
-            status_code=403, detail="Not authorized to view these meetings")
+    """
+    Get a Daily.co meeting token for joining a meeting.
+    Only participants can request a token.
+    """
+    meeting = await meeting_manager.get_meeting(meeting_id)
+    if not meeting:
+        raise HTTPException(status_code=404, detail="Meeting not found")
 
-    meetings = await meeting_manager.get_user_meetings(user_id)
-    return meetings
+    if meeting["status"] == "cancelled":
+        raise HTTPException(status_code=400, detail="This meeting has been cancelled")
 
+    # Determine if the caller is the student or the expert
+    from app.managers.user import UserManager
+    user_manager = UserManager()
+    user = await user_manager.get_user_by_email(user_data["email"])
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
 
-@router.get("/meetings/expert/{expert_id}", response_model=List[Meeting])
-async def get_expert_meetings(
-    expert_id: str,
-    current_user_data: dict = Depends(get_current_user)
-):
-    """Get meetings for an expert"""
-    # Check if the user is authorized to view these meetings
-    is_expert_user = current_user_data.get(
-        "role") == "expert" and current_user_data.get("expertId") == expert_id
+    is_student = meeting["userId"] == user.id
+    is_expert = False
+    expert = await expert_manager.get_expert(meeting["expertId"])
+    if expert and expert.userId == user.id:
+        is_expert = True
 
-    if not is_expert_user and current_user_data.get("role") != "admin":
-        raise HTTPException(
-            status_code=403, detail="Not authorized to view these meetings")
+    if not is_student and not is_expert:
+        raise HTTPException(status_code=403, detail="You are not a participant of this meeting")
 
-    meetings = await meeting_manager.get_expert_meetings(expert_id)
-    return meetings
+    user_name = f"{user.firstName} {user.lastName}"
+    room_name = meeting.get("dailyRoomName", "")
 
-
-@router.post("/refunds", response_model=RefundRequest)
-async def create_refund_request(
-    # Changed from dict = Body(...) to str = Form(...)
-    refund_data: str = Form(...),
-    file: Optional[UploadFile] = File(None),
-    current_user_data: dict = Depends(get_current_user)
-):
-    """Create a refund request for a meeting"""
-    try:
-        # Parse JSON string to dict
-        try:
-            refund_dict_data = json.loads(refund_data)
-        except json.JSONDecodeError:
-            raise HTTPException(
-                status_code=400, detail="Invalid JSON in refund_data")
-
-        # Parse the refund data from form
-        refund_dict = {
-            "meetingId": refund_dict_data.get("meetingId"),
-            "userId": current_user_data["id"],
-            "reason": refund_dict_data.get("reason"),
-        }
-
-        print(f"Processing refund request with data: {refund_dict}")
-
-        # Upload the file if provided
-        if file and file.filename:
-            file_manager = FileManager()
-            file_id = await file_manager.upload_file(file, folder="refund_documents")
-            refund_dict["fileId"] = file_id
-
-        refund_request = await refund_manager.create_refund_request(refund_dict)
-        return refund_request
-    except ValueError as e:
-        print(f"ValueError in create_refund_request: {str(e)}")
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        print(f"Error in create_refund_request: {str(e)}")
-        import traceback
-        traceback.print_exc()
-        raise HTTPException(
-            status_code=500, detail=f"Failed to create refund request: {str(e)}")
-
-
-@router.get("/refunds/user", response_model=List[RefundRequest])
-async def get_user_refund_requests(
-    current_user_data: dict = Depends(get_current_user)
-):
-    """Get refund requests for current user"""
-    refunds = await refund_manager.get_user_refund_requests(current_user_data["id"])
-    return refunds
-
-
-@router.get("/refunds/expert", response_model=List[RefundRequest])
-async def get_expert_refund_requests(
-    current_user_data: dict = Depends(get_current_user)
-):
-    """Get refund requests for current expert"""
-    if current_user_data.get("role") != "expert":
-        raise HTTPException(
-            status_code=403, detail="Only experts can access this endpoint")
-
-    if not current_user_data.get("expertId"):
-        raise HTTPException(
-            status_code=400, detail="User is not linked to an expert profile")
-
-    refunds = await refund_manager.get_expert_refund_requests(current_user_data["expertId"])
-    return refunds
-
-
-@router.get("/refunds", response_model=List[RefundRequest])
-async def get_all_refund_requests(
-    current_user_data: dict = Depends(require_admin)
-):
-    """Get all refund requests (admin only)"""
-    refunds = await refund_manager.get_all_refund_requests()
-    return refunds
-
-
-@router.put("/refunds/{refund_id}", response_model=RefundRequest)
-async def update_refund_status(
-    refund_id: str,
-    update_data: RefundRequestUpdate,
-    current_user_data: dict = Depends(require_admin)
-):
-    """Update a refund request status (admin only)"""
-    try:
-        refund = await refund_manager.update_refund_status(
-            refund_id,
-            update_data.status,
-            update_data.adminNotes,
-            current_user_data["id"]
+    # Always verify room exists — old rooms may have been created with wrong
+    # settings (private, enable_recording, etc.). Force re-creation when needed.
+    # The room creation API is idempotent-safe (new name each time).
+    needs_room = True  # Always create a fresh public room for reliability
+    if needs_room:
+        import uuid
+        from app.services.daily_service import create_daily_room as _create_room
+        from app.core.database import get_database
+        room_name = f"meeting-{uuid.uuid4().hex[:12]}"
+        room_data = await _create_room(room_name)
+        daily_room_url = room_data["url"] if room_data else f"https://career-counselor.daily.co/{room_name}"
+        daily_room_name = room_data["name"] if room_data else room_name
+        # Persist so we don't recreate every time
+        db = get_database()
+        from bson import ObjectId as _OID
+        await db.meetings.update_one(
+            {"_id": _OID(meeting_id)},
+            {"$set": {"dailyRoomUrl": daily_room_url, "dailyRoomName": daily_room_name}}
         )
+        meeting["dailyRoomUrl"] = daily_room_url
+        meeting["dailyRoomName"] = daily_room_name
+        room_name = daily_room_name
 
-        if not refund:
-            raise HTTPException(
-                status_code=404, detail="Refund request not found")
+    token = await create_meeting_token(
+        room_name=room_name,
+        user_name=user_name,
+        is_owner=is_expert,  # Expert gets host privileges
+    )
 
-        return refund
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    if not token:
+        raise HTTPException(status_code=500, detail="Failed to generate meeting token")
+
+    return {
+        "token": token,
+        "roomUrl": meeting.get("dailyRoomUrl", ""),
+        "roomName": room_name,
+        "isOwner": is_expert,
+    }
+
+
+@router.post("/meetings/{meeting_id}/cancel")
+async def cancel_meeting(
+    meeting_id: str,
+    user_data: dict = Depends(require_user),
+):
+    """
+    Cancel a meeting. Refunds coins to the student's wallet.
+    """
+    try:
+        from app.managers.user import UserManager
+        user_manager = UserManager()
+        user = await user_manager.get_user_by_email(user_data["email"])
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        success = await meeting_manager.cancel_meeting(meeting_id, user.id)
+        if not success:
+            raise HTTPException(status_code=400, detail="Unable to cancel meeting")
+
+        return {"success": True, "message": "Meeting cancelled. Coins have been refunded."}
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to update refund request: {str(e)}")
+        print(f"Error cancelling meeting: {e}")
+        raise HTTPException(status_code=500, detail="Failed to cancel meeting")
 
 
-@router.get("/transactions/user", response_model=List[Transaction])
-async def get_user_transactions(
-    current_user_data: dict = Depends(get_current_user)
+class ExtendMeetingRequest(BaseModel):
+    durationMinutes: int = 30
+
+
+@router.post("/meetings/{meeting_id}/extend")
+async def extend_meeting(
+    meeting_id: str,
+    request: ExtendMeetingRequest,
+    user_data: dict = Depends(require_user),
 ):
-    """Get transactions for current user"""
-    transactions = await transaction_manager.get_user_transactions(current_user_data["id"])
-    return transactions
+    """
+    Extend a meeting by a certain number of minutes. Costs coins.
+    """
+    try:
+        from app.managers.user import UserManager
+        user_manager = UserManager()
+        user = await user_manager.get_user_by_email(user_data["email"])
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
 
+        success, message = await meeting_manager.extend_meeting(
+            meeting_id, user.id, request.durationMinutes
+        )
+        if not success:
+            raise HTTPException(status_code=400, detail=message)
 
-@router.get("/transactions/expert", response_model=List[Transaction])
-async def get_expert_transactions(
-    current_user_data: dict = Depends(get_current_user)
-):
-    """Get transactions for current expert"""
-    if current_user_data.get("role") != "expert":
-        raise HTTPException(
-            status_code=403, detail="Only experts can access this endpoint")
-
-    if not current_user_data.get("expertId"):
-        raise HTTPException(
-            status_code=400, detail="User is not linked to an expert profile")
-
-    transactions = await transaction_manager.get_expert_transactions(current_user_data["expertId"])
-    return transactions
+        return {"success": True, "message": message}
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error extending meeting: {e}")
+        raise HTTPException(status_code=500, detail="Failed to extend meeting")

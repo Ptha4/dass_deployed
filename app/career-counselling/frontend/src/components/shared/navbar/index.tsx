@@ -115,8 +115,8 @@ export default function Navbar() {
                               typeof user.profile_picture_url === "string"
                                 ? user.profile_picture_url
                                 : typeof user.profileImage === "string"
-                                ? user.profileImage
-                                : ""
+                                  ? user.profileImage
+                                  : ""
                             }
                             alt={`${user.firstName} ${user.lastName}`}
                           />
