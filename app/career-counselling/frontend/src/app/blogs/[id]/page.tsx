@@ -426,7 +426,7 @@ export default function BlogDetailPage() {
             </div>
 
             {/* Related Blogs */}
-            <RelatedBlogs currentBlogId={blog.blogID} category={blog.refType} />
+            <RelatedBlogs currentBlogId={blog.blogID ?? ""} refType={blog.refType} typeId={blog.typeId} />
           </div>
         </div>
 

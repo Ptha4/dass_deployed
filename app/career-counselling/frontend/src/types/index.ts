@@ -16,6 +16,7 @@ export interface Blog {
   updatedAt: string; // ISO date string
   author: Author;
   views: number;
+  likes?: number;
   expertId: string; // Add this field for the follow button
 }
 
@@ -124,6 +125,7 @@ export interface Video {
   description: string;
   youtubeUrl: string;
   userId: string;
+  expertID?: string;
   previewDuration: number;
   views: number;
   likes: number;

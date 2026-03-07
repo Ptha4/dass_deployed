@@ -1,3 +1,5 @@
+"use client";
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Check, X, ArrowUp, ArrowDown, GripVertical, Plus, Trash2 } from "lucide-react";
@@ -95,7 +97,7 @@ export default function CollegeSorting({ sortOptions, onChange }: CollegeSorting
   const toggleFieldOrder = (fieldToToggle: string) => {
     const updatedFields = localSortOptions.fields.map(field => {
       if (field.field === fieldToToggle) {
-        return { ...field, order: field.order === 'asc' ? 'desc' : 'asc' };
+        return { ...field, order: (field.order === 'asc' ? 'desc' : 'asc') as 'asc' | 'desc' };
       }
       return field;
     });

@@ -98,10 +98,7 @@ export default {
         "accordion-up": "accordion-up 0.2s ease-out",
         scroll:
           "scroll var(--animation-duration, 40s) var(--animation-direction, forwards) linear infinite",
-        sparkle: "sparkle 1s ease-in-out forwards",
-        "scale-up": "scale-up 0.4s ease-out forwards",
         "fade-in-out": "fade-in-out 1.5s ease-in-out forwards",
-        "bounce-in": "bounce-in 0.6s ease-out forwards",
         // New animations for comments section
         fadeIn: "fadeIn 0.5s ease-in-out forwards",
         slideIn: "slideIn 0.3s ease-out forwards",

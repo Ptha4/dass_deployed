@@ -97,10 +97,9 @@ const ExpertCard = ({ expert }: { expert: Expert }) => {
                     }`.trim()}
                   </h3>
                   {isVerified && (
-                    <CheckCircle
-                      className="h-5 w-5 fill-blue-600 text-white flex-shrink-0"
-                      title="Verified Expert"
-                    />
+                    <span title="Verified Expert">
+                      <CheckCircle className="h-5 w-5 fill-blue-600 text-white flex-shrink-0" />
+                    </span>
                   )}
                 </div>
                 {expert.rating !== undefined && (

@@ -353,7 +353,7 @@ export default function BranchDetailPage() {
                                 label: function (context) {
                                   return `${
                                     context.dataset.label
-                                  }: ${context.parsed.y.toFixed(2)} LPA`;
+                                  }: ${(context.parsed.y ?? 0).toFixed(2)} LPA`;
                                 },
                               },
                             },
@@ -486,7 +486,7 @@ export default function BranchDetailPage() {
                                   return `${
                                     context.dataset.label
                                   }: ${Math.round(
-                                    context.parsed.y
+                                    context.parsed.y ?? 0
                                   ).toLocaleString()}`;
                                 },
                               },
@@ -643,7 +643,7 @@ export default function BranchDetailPage() {
                                           return `${
                                             context.dataset.label
                                           }: ${Math.round(
-                                            context.parsed.y
+                                            context.parsed.y ?? 0
                                           ).toLocaleString()}`;
                                         },
                                       },

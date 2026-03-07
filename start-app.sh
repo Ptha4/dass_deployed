@@ -98,7 +98,7 @@ trap cleanup SIGINT SIGTERM
 # Start backend in background
 echo -e "${GREEN}Starting backend (FastAPI)...${NC}"
 cd "$BACKEND_DIR"
-source .venv/bin/activate
+source venv/bin/activate
 uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload &
 BACKEND_PID=$!
 echo "Backend PID: $BACKEND_PID"

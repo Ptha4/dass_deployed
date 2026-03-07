@@ -69,10 +69,11 @@ export default function VideoPage() {
     // 4. Override and disable console methods
     const disableConsole = () => {
       const noop = () => undefined;
-      const methods = ['log', 'debug', 'info', 'warn', 'error', 'dir', 'trace'];
+      const methods: (keyof Console)[] = ['log', 'debug', 'info', 'warn', 'error', 'dir', 'trace'];
       
       methods.forEach(method => {
-        console[method] = noop;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (console as any)[method] = noop;
       });
     };
 
