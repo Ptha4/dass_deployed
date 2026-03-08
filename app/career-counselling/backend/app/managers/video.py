@@ -1,7 +1,7 @@
 from typing import List, Optional
 from datetime import datetime
 from bson import ObjectId
-from app.models.video import VideoBase, VideoResponse, VideoCreate
+from app.models.video import VideoBase, Video, VideoResponse, VideoCreate
 from app.models.expert import ExpertResponse
 from app.core.database import get_database
 
@@ -41,8 +41,9 @@ class VideoManager:
 
         result = await self.collection.insert_one(video_dict)
         video_dict["_id"] = str(result.inserted_id)
+        video_dict["videoID"] = str(result.inserted_id)
 
-        return VideoBase(**video_dict)
+        return Video(**video_dict)
 
     async def update_video(self, video_id: str, video_update: dict, user_id: Optional[str] = None):
         """

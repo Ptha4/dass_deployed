@@ -100,7 +100,7 @@ class PostManager:
         return posts
 
     async def get_feed_posts(self, user_id: str, skip: int = 0, limit: int = 30) -> List[PostResponse]:
-        """Return posts from communities the user has joined, sorted newest first."""
+        """Return posts from communities the user has joined, sorted with followed-expert posts first."""
         # Get community IDs the user has joined
         community_docs = self.db.communities.find(
             {"members": user_id}, {"_id": 1}
@@ -113,14 +113,26 @@ class PostManager:
                 return []
             community_ids = [str(general["_id"])]
 
+        # Get IDs of experts this user follows (for ranking boost)
+        user_doc = await self.db.users.find_one({"_id": ObjectId(user_id)}, {"following": 1})
+        followed_ids = set(user_doc.get("following", [])) if user_doc else set()
+
         cursor = (
             self.collection.find({"communityId": {"$in": community_ids}})
             .sort("createdAt", -1)
-            .skip(skip)
-            .limit(limit)
+            .limit(skip + limit)
         )
-        posts = []
+        raw_posts = []
         async for doc in cursor:
+            raw_posts.append(doc)
+
+        # Stable-sort: followed-expert posts first, then the rest
+        raw_posts.sort(key=lambda d: 0 if d.get("authorId") in followed_ids else 1)
+
+        raw_posts = raw_posts[skip:skip + limit]
+
+        posts = []
+        for doc in raw_posts:
             doc["postId"] = str(doc["_id"])
             await self._enrich(doc, doc.get("authorId", ""), doc.get("communityId", ""))
             doc["commentsCount"] = await self.db.comments.count_documents(

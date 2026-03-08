@@ -57,7 +57,6 @@ class UserBase(BaseModel):
     career_goals: Optional[str] = None
     onboarding_completed: bool = False
     recently_viewed: List[Dict[str, Any]] = []  # [{type, itemId, title, viewedAt}]
-    profile_picture_url: Optional[str] = None
 
 
 class User(UserBase):

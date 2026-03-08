@@ -4,9 +4,10 @@ from app.models.base import DBModelMixin
 
 
 class Follow(DBModelMixin):
-    followerId: str  # The user doing the following
-    # The user being followed (expert's userId in this context)
-    followedId: str
+    followerId: str  # The user doing the following (requester_id)
+    followedId: str  # The expert being followed (target_id)
+    relationship_type: str = "follow"
+    status: str = "accepted"
 
     @classmethod
     async def find(cls, query):

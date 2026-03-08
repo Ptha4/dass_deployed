@@ -16,7 +16,6 @@ export interface Blog {
   updatedAt: string; // ISO date string
   author: Author;
   views: number;
-  likes?: number;
   expertId: string; // Add this field for the follow button
 }
 
@@ -36,14 +35,13 @@ export interface User {
   password: string | null;
   wallet: number;
   profilePicture?: string;
-  profile_picture_url?: string | null;
   // Onboarding fields
   grade?: string;
   preferred_stream?: string;
   target_college?: string;
   interests: string[];
   career_goals?: string;
-  onboarding_completed?: boolean;
+  onboarding_completed: boolean;
   following: string[];
   followers: string[];
 }
@@ -111,8 +109,6 @@ export interface Expert {
   rating: number;
   available: boolean;
   studentsGuided: number;
-  profile_video_id?: string | null; // Expert's chosen profile video ID
-  availability?: any; // Native scheduling availability
 
   // Metadata
   createdAt: string; // ISO date string
@@ -126,7 +122,6 @@ export interface Video {
   description: string;
   youtubeUrl: string;
   userId: string;
-  expertID?: string;
   previewDuration: number;
   views: number;
   likes: number;
@@ -234,6 +229,8 @@ export interface Prediction {
 
 export type NotificationType =
   | "new_post"
+  | "new_video"
+  | "new_blog"
   | "like_post"
   | "comment"
   | "follow"

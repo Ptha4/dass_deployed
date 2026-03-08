@@ -388,6 +388,13 @@ async def follow_user(
             detail="Target user not found"
         )
 
+    # Enforce expert-only follow
+    if not target_user.isExpert:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You can only follow expert users"
+        )
+
     # Prevent following yourself
     if current_user.id == target_id:
         raise HTTPException(
@@ -529,22 +536,6 @@ async def update_user_profile(user_id: str, user_update: UserProfileUpdate):
         )
 
     return updated_user
-
-
-@router.get("/users/{user_id}", response_model=User)
-async def get_user(user_id: str):
-    """
-    Get a specific user by ID.
-
-    Returns the user if found, raises 404 if not found.
-    """
-    user = await user_manager.get_user(user_id)
-    if not user:
-        raise HTTPException(
-            status_code=404,
-            detail="User not found"
-        )
-    return user
 
 
 @router.get("/role")

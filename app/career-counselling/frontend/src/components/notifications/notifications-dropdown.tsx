@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Bell } from "lucide-react";
 import axios from "axios";
 import { useRouter } from "next/navigation";
-import { Notification } from "@/types";
+import { Notification, NotificationType } from "@/types";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { formatDistanceToNow } from "date-fns";
 import { useAuth } from "@/contexts/AuthContext";
@@ -80,12 +80,25 @@ export default function NotificationsDropdown() {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      setNotifications(response.data);
-      setUnreadCount(response.data.filter((n: Notification) => !n.read).length);
+      const incoming: Notification[] = response.data;
+
+      // Show toast for new expert-content notifications that arrived since last fetch
+      setNotifications((prev) => {
+        const existingIds = new Set(prev.map((n) => n.notificationId));
+        const contentTypes: NotificationType[] = ["new_post", "new_video", "new_blog"];
+        incoming
+          .filter((n) => !existingIds.has(n.notificationId) && contentTypes.includes(n.type))
+          .forEach((n) => {
+            toast({ title: "New from an expert you follow", description: n.content });
+          });
+        return incoming;
+      });
+
+      setUnreadCount(incoming.filter((n: Notification) => !n.read).length);
     } catch (error) {
       console.error("Failed to fetch notifications:", error);
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, toast]);
 
   const fetchExpertIdByUserId = async (
     userId: string
@@ -313,21 +326,18 @@ export default function NotificationsDropdown() {
             notifications.map((notification) => (
               <div
                 key={notification.notificationId}
-                className={`px-4 py-3 hover:bg-slate-50 cursor-pointer border-b last:border-b-0 transition-colors ${
-                  !notification.read ? "bg-blue-50" : ""
-                }`}
+                className={`px-4 py-3 hover:bg-slate-50 cursor-pointer border-b last:border-b-0 transition-colors ${!notification.read ? "bg-blue-50" : ""
+                  }`}
                 onClick={() => handleNotificationClick(notification)}
               >
                 <div className="flex gap-3">
                   <div
-                    className={`w-2 h-2 mt-2 rounded-full ${
-                      !notification.read ? "bg-blue-600" : "bg-transparent"
-                    }`}
+                    className={`w-2 h-2 mt-2 rounded-full ${!notification.read ? "bg-blue-600" : "bg-transparent"
+                      }`}
                   />
                   <div className="flex-1">
-                    <p className={`text-sm line-clamp-2 ${
-                      notification.referenceType === 'post' ? 'break-all' : 'break-word'
-                    }`}>
+                    <p className={`text-sm line-clamp-2 ${notification.referenceType === 'post' ? 'break-all' : 'break-word'
+                      }`}>
                       {stripMarkdown(notification.content)}{" "}
                     </p>
                     <p className="text-xs text-gray-500 mt-1">

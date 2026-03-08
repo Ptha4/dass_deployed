@@ -151,7 +151,8 @@ function PostsSection() {
         .get(`/api/posts?limit=50`)
         .then((res) => {
           const data: Post[] = Array.isArray(res.data) ? res.data : res.data.posts || [];
-          setPosts(data.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+          const unique = Array.from(new Map(data.map((p) => [p.postId, p])).values());
+          setPosts(unique.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
         })
         .catch(() => setPosts([]))
         .finally(() => setLoading(false));

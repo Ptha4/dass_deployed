@@ -238,6 +238,64 @@ class NotificationManager:
             print(f"Error creating post notifications: {e}")
             return 0
 
+    async def create_video_notification_for_followers(
+        self, expert_user_id: str, video_id: str, video_title: str
+    ) -> int:
+        """Create NEW_VIDEO notifications for all followers when an expert uploads a video."""
+        try:
+            expert = await self.user_manager.get_user(expert_user_id)
+            if not expert or not expert.followers:
+                return 0
+            expert_id = expert.expertId if hasattr(expert, "expertId") else None
+            content = f"{expert.firstName} {expert.lastName} uploaded a new video: {video_title}"
+            count = 0
+            for follower_id in expert.followers:
+                notification = Notification(
+                    targetUserId=follower_id,
+                    sourceUserId=expert_user_id,
+                    type=NotificationType.NEW_VIDEO,
+                    content=content,
+                    referenceId=video_id,
+                    referenceType="video",
+                    read=False,
+                    expertId=expert_id,
+                )
+                await self.create_notification(notification)
+                count += 1
+            return count
+        except Exception as e:
+            print(f"Error creating video notifications: {e}")
+            return 0
+
+    async def create_blog_notification_for_followers(
+        self, expert_user_id: str, blog_id: str, blog_heading: str
+    ) -> int:
+        """Create NEW_BLOG notifications for all followers when an expert publishes a blog."""
+        try:
+            expert = await self.user_manager.get_user(expert_user_id)
+            if not expert or not expert.followers:
+                return 0
+            expert_id = expert.expertId if hasattr(expert, "expertId") else None
+            content = f"{expert.firstName} {expert.lastName} published a new blog: {blog_heading}"
+            count = 0
+            for follower_id in expert.followers:
+                notification = Notification(
+                    targetUserId=follower_id,
+                    sourceUserId=expert_user_id,
+                    type=NotificationType.NEW_BLOG,
+                    content=content,
+                    referenceId=blog_id,
+                    referenceType="blog",
+                    read=False,
+                    expertId=expert_id,
+                )
+                await self.create_notification(notification)
+                count += 1
+            return count
+        except Exception as e:
+            print(f"Error creating blog notifications: {e}")
+            return 0
+
     async def delete_notification(self, notification_id: str) -> bool:
         """
         Delete a notification.

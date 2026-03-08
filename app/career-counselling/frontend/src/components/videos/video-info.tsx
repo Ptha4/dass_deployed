@@ -1,5 +1,3 @@
-"use client";
-
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Heart, Share2, Flag, Edit, Trash2 } from "lucide-react";
@@ -161,24 +159,17 @@ export default function VideoInfo({ video }: VideoInfoProps) {
             <Link href={`/profile/${video.userId}`}>
               <Avatar className="cursor-pointer hover:opacity-80 transition-opacity">
                 <AvatarFallback>
-                  {video.expertDetails?.userDetails
-                    ? `${video.expertDetails.userDetails.firstName?.[0] ?? ""}${video.expertDetails.userDetails.lastName?.[0] ?? ""}`
-                    : "?"}
+                  {`${video.expertDetails.userDetails.firstName[0]}${video.expertDetails.userDetails.lastName[0]}`}
                 </AvatarFallback>
               </Avatar>
             </Link>
             <div>
-              {video.expertDetails ? (
-                <ExpertHoverCard expertId={video.expertDetails.expertID}>
-                  <Link href={`/profile/${video.userId}`} className="font-semibold hover:text-indigo-600 transition-colors">
-                    {`${video.expertDetails.userDetails?.firstName ?? ""} ${video.expertDetails.userDetails?.lastName ?? ""}`.trim()}
-                  </Link>
-                </ExpertHoverCard>
-              ) : (
+              {/* Details of the expert who is featured in the video with hover card */}
+              <ExpertHoverCard expertId={video.expertDetails.expertID}>
                 <Link href={`/profile/${video.userId}`} className="font-semibold hover:text-indigo-600 transition-colors">
-                  Expert
+                  {`${video.expertDetails.userDetails.firstName} ${video.expertDetails.userDetails.lastName}`}
                 </Link>
-              )}
+              </ExpertHoverCard>
             </div>
           </div>
         </div>

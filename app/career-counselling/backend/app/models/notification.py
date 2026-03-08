@@ -7,6 +7,8 @@ from app.models.base import DBModelMixin
 
 class NotificationType(str, Enum):
     NEW_POST = "new_post"
+    NEW_VIDEO = "new_video"
+    NEW_BLOG = "new_blog"
     LIKE_POST = "like_post"
     COMMENT = "comment"
     FOLLOW = "follow"

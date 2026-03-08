@@ -6,6 +6,7 @@ from app.models.comment import Comment, CommentCreate, CommentResponse
 from app.managers.post import PostManager
 from app.managers.comment import CommentManager
 from app.managers.community import CommunityManager
+from app.managers.notification import NotificationManager
 from app.core.auth_utils import get_current_user, require_user, get_optional_user
 from datetime import datetime
 
@@ -13,6 +14,7 @@ router = APIRouter()
 post_manager = PostManager()
 comment_manager = CommentManager()
 community_manager = CommunityManager()
+notification_manager = NotificationManager()
 
 
 class PostCommentCreate(BaseModel):
@@ -62,6 +64,15 @@ async def create_general_post(
             tags=post_data.tags or [],
         )
         await community_manager.increment_post_count(general_id)
+
+        # Notify followers if the author is an expert
+        if user_data.get("role") == "expert":
+            await notification_manager.create_post_notification_for_followers(
+                expert_user_id=user_data["id"],
+                post_id=post.postId,
+                post_content=post_data.content,
+            )
+
         return post
     except HTTPException:
         raise
