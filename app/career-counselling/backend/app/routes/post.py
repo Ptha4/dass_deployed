@@ -5,16 +5,12 @@ from app.models.post import PostResponse
 from app.models.comment import Comment, CommentCreate, CommentResponse
 from app.managers.post import PostManager
 from app.managers.comment import CommentManager
-from app.managers.community import CommunityManager
-from app.managers.notification import NotificationManager
 from app.core.auth_utils import get_current_user, require_user, get_optional_user
 from datetime import datetime
 
 router = APIRouter()
 post_manager = PostManager()
 comment_manager = CommentManager()
-community_manager = CommunityManager()
-notification_manager = NotificationManager()
 
 
 class PostCommentCreate(BaseModel):
@@ -26,59 +22,6 @@ class PostEditData(BaseModel):
     title: Optional[str] = None
     content: Optional[str] = None
     tags: Optional[List[str]] = None
-
-
-class GeneralPostCreate(BaseModel):
-    content: str
-    title: Optional[str] = None
-    tags: Optional[List[str]] = []
-
-
-@router.post("/posts", response_model=PostResponse)
-async def create_general_post(
-    post_data: GeneralPostCreate,
-    user_data: dict = Depends(require_user),
-):
-    """Create a post in c/general. Auto-joins the user to general if not already a member."""
-    try:
-        general = await community_manager.get_community("general")
-        if not general:
-            raise HTTPException(status_code=503, detail="c/general community not found. Please contact an admin.")
-
-        general_id = general.communityId
-
-        # Auto-join the user to c/general if not already a member
-        await community_manager.join_community(general_id, user_data["id"])
-
-        # Use provided title or derive one from content
-        title = (post_data.title or "").strip()
-        if not title:
-            words = post_data.content.split()
-            title = " ".join(words[:12]) + ("…" if len(words) > 12 else "")
-
-        post = await post_manager.create_community_post(
-            community_id=general_id,
-            author_id=user_data["id"],
-            title=title,
-            content=post_data.content,
-            tags=post_data.tags or [],
-        )
-        await community_manager.increment_post_count(general_id)
-
-        # Notify followers if the author is an expert
-        if user_data.get("role") == "expert":
-            await notification_manager.create_post_notification_for_followers(
-                expert_user_id=user_data["id"],
-                post_id=post.postId,
-                post_content=post_data.content,
-            )
-
-        return post
-    except HTTPException:
-        raise
-    except Exception as e:
-        print(f"create_general_post error: {e}")
-        raise HTTPException(status_code=500, detail="Failed to create post")
 
 
 @router.get("/posts", response_model=List[PostResponse])

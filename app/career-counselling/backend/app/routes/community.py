@@ -6,12 +6,14 @@ from app.models.community import CommunityCreate, CommunityResponse
 from app.managers.community import CommunityManager
 from app.managers.post import PostManager
 from app.managers.file import FileManager
+from app.managers.notification import NotificationManager
 from app.core.auth_utils import get_current_user, require_user, get_optional_user
 
 router = APIRouter()
 community_manager = CommunityManager()
 post_manager = PostManager()
 file_manager = FileManager()
+notification_manager = NotificationManager()
 
 
 # ── Community endpoints ───────────────────────────────────────────────────────
@@ -160,6 +162,19 @@ async def create_community_post(
 
         # Update post count on community
         await community_manager.increment_post_count(actual_community_id)
+
+        # Notify community members if the poster is an expert
+        if user_data.get("role") == "expert":
+            comm_doc = community_doc or await community_manager.collection.find_one(
+                {"_id": ObjectId(actual_community_id)}
+            )
+            if comm_doc:
+                member_ids = comm_doc.get("members", [])
+                await notification_manager.create_community_post_notification_for_members(
+                    expert_user_id=user_data["id"],
+                    post_id=post.postId,
+                    member_ids=member_ids,
+                )
 
         return post
     except HTTPException:

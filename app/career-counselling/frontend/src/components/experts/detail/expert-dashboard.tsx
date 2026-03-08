@@ -65,7 +65,6 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import type { Expert } from "@/types";
-import CreatePost from "@/components/experts/detail/create-post";
 import ExpertPosts from "@/components/experts/detail/expert-posts";
 import MarkdownViewer from "@/components/shared/markdown-viewer";
 import UpcomingMeetings from "@/components/experts/detail/upcoming-meetings";
@@ -141,7 +140,6 @@ export default function ExpertDashboard({
   const [isSubmittingBlog, setIsSubmittingBlog] = useState(false);
   const [blogError, setBlogError] = useState<string | null>(null);
   const [showBlogDialog, setShowBlogDialog] = useState(false);
-  const [showPostDialog, setShowPostDialog] = useState(false);
   // Track refund requests to accurately calculate earnings
   const [refundRequests, setRefundRequests] = useState<Record<string, string>>(
     {}
@@ -152,10 +150,6 @@ export default function ExpertDashboard({
     thisMonth: 0,
     completedSessions: 0,
   });
-
-  const handlePostCreated = () => {
-    setPostRefreshTrigger((prev) => prev + 1);
-  };
 
   const handleBlogSubmit = async () => {
     if (!blogContent.heading.trim() || !blogContent.body.trim()) {
@@ -876,15 +870,6 @@ export default function ExpertDashboard({
               <Button
                 className="w-full justify-start hover:bg-blue-50"
                 variant="outline"
-                onClick={() => setShowPostDialog(true)}
-              >
-                <MessageSquare className="h-4 w-4 mr-2" />
-                Create New Post
-              </Button>
-
-              <Button
-                className="w-full justify-start hover:bg-blue-50"
-                variant="outline"
                 onClick={() => (window.location.href = "/blogs/create")}
               >
                 <FilePlus className="h-4 w-4 mr-2" />
@@ -985,27 +970,7 @@ export default function ExpertDashboard({
         />
       </div>
 
-      {/* Create Post Modal */}
-      <Dialog open={showPostDialog} onOpenChange={setShowPostDialog}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Create New Post</DialogTitle>
-            <DialogDescription>
-              Share your insights and expertise with your followers
-            </DialogDescription>
-          </DialogHeader>
-          <div className="mt-4">
-            <CreatePost
-              expertId={expert.expertID}
-              expertInitials={expertInitials}
-              onPostCreated={() => {
-                handlePostCreated();
-                setShowPostDialog(false);
-              }}
-            />
-          </div>
-        </DialogContent>
-      </Dialog>
+
     </div>
   );
 }

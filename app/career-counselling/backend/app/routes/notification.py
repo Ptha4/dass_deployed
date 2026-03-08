@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Query, Depends, status
 from typing import List
-from app.models.notification import NotificationResponse, NotificationUpdate
+from app.models.notification import NotificationResponse, NotificationUpdate, NotificationBatchResponse
 from app.managers.notification import NotificationManager
 from app.core.auth_utils import require_user
 
@@ -188,3 +188,49 @@ async def delete_notification(notification_id: str, user_data: dict = Depends(re
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to delete notification"
         )
+
+
+# ---------------------------------------------------------------------------
+# Batched notification endpoints
+# ---------------------------------------------------------------------------
+
+@router.get("/notifications/batches", response_model=List[NotificationBatchResponse])
+async def get_user_notification_batches(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=100),
+    user_data: dict = Depends(require_user),
+):
+    """Return all batched notifications for the current user (lazily expires old windows)."""
+    try:
+        return await notification_manager.get_user_batches(user_data["id"], skip=skip, limit=limit)
+    except Exception as e:
+        print(f"Error retrieving notification batches: {e}")
+        raise HTTPException(status_code=500, detail="Failed to retrieve notification batches")
+
+
+@router.put("/notifications/batches/{batch_id}/read", response_model=NotificationBatchResponse)
+async def mark_batch_as_read(batch_id: str, user_data: dict = Depends(require_user)):
+    """Mark a specific notification batch as read."""
+    try:
+        batch = await notification_manager.mark_batch_as_read(batch_id)
+        if not batch:
+            raise HTTPException(status_code=404, detail="Batch not found")
+        if batch.targetUserId != user_data["id"]:
+            raise HTTPException(status_code=403, detail="Forbidden")
+        return batch
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error marking batch as read: {e}")
+        raise HTTPException(status_code=500, detail="Failed to mark batch as read")
+
+
+@router.post("/notifications/batches/read-all", response_model=dict)
+async def mark_all_batches_as_read(user_data: dict = Depends(require_user)):
+    """Mark all notification batches for the current user as read."""
+    try:
+        count = await notification_manager.mark_all_batches_as_read(user_data["id"])
+        return {"message": f"Marked {count} batches as read"}
+    except Exception as e:
+        print(f"Error marking all batches as read: {e}")
+        raise HTTPException(status_code=500, detail="Failed to mark all batches as read")

@@ -157,3 +157,4 @@ wikipedia==1.4.0
 wptools==0.4.17
 wsproto==1.2.0
 yarl==1.19.0
+python-socketio

@@ -1,10 +1,15 @@
-from typing import List, Optional
-from datetime import datetime
+import asyncio
+from typing import List, Optional, Tuple
+from datetime import datetime, timedelta
 from bson import ObjectId
 
-from app.models.notification import Notification, NotificationResponse, NotificationUpdate, NotificationType
+from app.models.notification import (
+    Notification, NotificationResponse, NotificationUpdate, NotificationType,
+    NotificationBatch, NotificationBatchResponse, BATCH_WINDOW_MINUTES,
+)
 from app.core.database import get_database
 from app.managers.user import UserManager
+from app.core.socket_manager import sio
 
 
 class NotificationManager:
@@ -44,7 +49,19 @@ class NotificationManager:
                 "avatar": source_user.avatar if hasattr(source_user, "avatar") else "/default-avatar.png"
             }
 
-        return NotificationResponse(**notification_dict)
+        response = NotificationResponse(**notification_dict)
+
+        # Push to the target user's socket room in real time
+        try:
+            await sio.emit(
+                "notification",
+                response.model_dump(mode="json"),
+                room=notification.targetUserId,
+            )
+        except Exception as emit_err:
+            print(f"Socket emit error (non-fatal): {emit_err}")
+
+        return response
 
     async def get_notification(self, notification_id: str) -> Optional[NotificationResponse]:
         """
@@ -182,118 +199,252 @@ class NotificationManager:
             print(f"Error marking notifications as read: {e}")
             return 0
 
-    async def create_post_notification_for_followers(
-        self, expert_user_id: str, post_id: str, post_content: str
+    # ------------------------------------------------------------------
+    # Batched fan-out helpers
+    # ------------------------------------------------------------------
+
+    async def upsert_follower_batch(
+        self,
+        target_user_id: str,
+        actor_id: str,
+        actor_name: str,
+        actor_expert_id: Optional[str],
+        event_type: NotificationType,
+        entity_id: str,
+        reference_type: str,
+    ) -> Tuple[NotificationBatchResponse, bool]:
+        """
+        Upsert a batch notification for one follower.
+        Returns (batch, is_new) where is_new=True means a fresh batch was created
+        (frontend should show a toast), False means an existing batch was updated
+        (frontend should silently update the count).
+        """
+        now = datetime.utcnow()
+        batch_key = f"{actor_id}:{event_type.value}"
+
+        # Look for an open batch within the current window
+        existing = await self.db.notification_batches.find_one({
+            "targetUserId": target_user_id,
+            "batchKey": batch_key,
+            "isOpen": True,
+            "windowExpiresAt": {"$gt": now},
+        })
+
+        if existing:
+            # Append entity_id (avoid duplicates) and bump updatedAt
+            await self.db.notification_batches.update_one(
+                {"_id": existing["_id"]},
+                {
+                    "$addToSet": {"entityIds": entity_id},
+                    "$set": {"updatedAt": now},
+                },
+            )
+            existing["entityIds"] = list(set(existing["entityIds"] + [entity_id]))
+            existing["updatedAt"] = now
+            existing["batchId"] = str(existing["_id"])
+            existing["_id"] = str(existing["_id"])
+            return NotificationBatchResponse(**existing), False
+        else:
+            # Create a new batch for this window
+            window_expires = now + timedelta(minutes=BATCH_WINDOW_MINUTES)
+            doc = {
+                "targetUserId": target_user_id,
+                "actorId": actor_id,
+                "actorName": actor_name,
+                "actorExpertId": actor_expert_id,
+                "eventType": event_type.value,
+                "entityIds": [entity_id],
+                "referenceType": reference_type,
+                "batchKey": batch_key,
+                "isRead": False,
+                "isOpen": True,
+                "windowExpiresAt": window_expires,
+                "createdAt": now,
+                "updatedAt": now,
+            }
+            result = await self.db.notification_batches.insert_one(doc)
+            doc["batchId"] = str(result.inserted_id)
+            doc["_id"] = str(result.inserted_id)
+            return NotificationBatchResponse(**doc), True
+
+    async def _fan_out_batch(
+        self,
+        expert_user_id: str,
+        entity_id: str,
+        event_type: NotificationType,
+        reference_type: str,
     ) -> int:
-        """
-        Create notifications for all followers when an expert creates a new post.
-
-        Args:
-            expert_user_id (str): ID of the expert user
-            post_id (str): ID of the created post
-            post_content (str): Content of the post (for preview)
-
-        Returns:
-            int: Number of notifications created
-        """
+        """Generic parallel fan-out for batched follower notifications."""
         try:
-            # Get the expert's details
             expert = await self.user_manager.get_user(expert_user_id)
-            if not expert:
+            if not expert or not expert.followers:
                 return 0
+            expert_id = expert.expertId if hasattr(expert, "expertId") else None
+            actor_name = f"{expert.firstName} {expert.lastName}"
 
-            # Get expert's followers
-            followers = expert.followers
-            if not followers:
-                return 0
-
-            # Get the expert ID if available
-            expert_id = None
-            if hasattr(expert, 'expertId'):
-                expert_id = expert.expertId
-
-            # Create a short preview of the post content
-            content_preview = post_content[:100] + \
-                "..." if len(post_content) > 100 else post_content
-            notification_content = f"{expert.firstName} {expert.lastName} posted: {content_preview}"
-
-            # Create notifications for each follower
-            notification_count = 0
-            for follower_id in followers:
-                notification = Notification(
-                    targetUserId=follower_id,
-                    sourceUserId=expert_user_id,
-                    type=NotificationType.NEW_POST,
-                    content=notification_content,
-                    referenceId=post_id,
-                    referenceType="post",
-                    read=False,
-                    expertId=expert_id  # Add expert ID to notification
+            tasks = [
+                self.upsert_follower_batch(
+                    target_user_id=follower_id,
+                    actor_id=expert_user_id,
+                    actor_name=actor_name,
+                    actor_expert_id=expert_id,
+                    event_type=event_type,
+                    entity_id=entity_id,
+                    reference_type=reference_type,
                 )
-                await self.create_notification(notification)
-                notification_count += 1
+                for follower_id in expert.followers
+            ]
 
-            return notification_count
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+
+            for result in results:
+                if isinstance(result, Exception):
+                    print(f"Batch upsert error (non-fatal): {result}")
+                    continue
+                batch, is_new = result
+                event_name = "notification_batch_new" if is_new else "notification_batch_updated"
+                try:
+                    await sio.emit(
+                        event_name,
+                        batch.model_dump(mode="json"),
+                        room=batch.targetUserId,
+                    )
+                except Exception as emit_err:
+                    print(f"Socket emit error (non-fatal): {emit_err}")
+
+            return len(expert.followers)
         except Exception as e:
-            print(f"Error creating post notifications: {e}")
+            print(f"Fan-out error: {e}")
             return 0
 
     async def create_video_notification_for_followers(
         self, expert_user_id: str, video_id: str, video_title: str
     ) -> int:
-        """Create NEW_VIDEO notifications for all followers when an expert uploads a video."""
-        try:
-            expert = await self.user_manager.get_user(expert_user_id)
-            if not expert or not expert.followers:
-                return 0
-            expert_id = expert.expertId if hasattr(expert, "expertId") else None
-            content = f"{expert.firstName} {expert.lastName} uploaded a new video: {video_title}"
-            count = 0
-            for follower_id in expert.followers:
-                notification = Notification(
-                    targetUserId=follower_id,
-                    sourceUserId=expert_user_id,
-                    type=NotificationType.NEW_VIDEO,
-                    content=content,
-                    referenceId=video_id,
-                    referenceType="video",
-                    read=False,
-                    expertId=expert_id,
-                )
-                await self.create_notification(notification)
-                count += 1
-            return count
-        except Exception as e:
-            print(f"Error creating video notifications: {e}")
-            return 0
+        """Batch NEW_VIDEO notifications for all followers."""
+        return await self._fan_out_batch(
+            expert_user_id=expert_user_id,
+            entity_id=video_id,
+            event_type=NotificationType.NEW_VIDEO,
+            reference_type="video",
+        )
 
     async def create_blog_notification_for_followers(
         self, expert_user_id: str, blog_id: str, blog_heading: str
     ) -> int:
-        """Create NEW_BLOG notifications for all followers when an expert publishes a blog."""
+        """Batch NEW_BLOG notifications for all followers."""
+        return await self._fan_out_batch(
+            expert_user_id=expert_user_id,
+            entity_id=blog_id,
+            event_type=NotificationType.NEW_BLOG,
+            reference_type="blog",
+        )
+
+    async def create_community_post_notification_for_members(
+        self,
+        expert_user_id: str,
+        post_id: str,
+        member_ids: List[str],
+    ) -> int:
+        """Batch NEW_POST notifications for all community members when an expert posts."""
         try:
             expert = await self.user_manager.get_user(expert_user_id)
-            if not expert or not expert.followers:
+            if not expert:
                 return 0
-            expert_id = expert.expertId if hasattr(expert, "expertId") else None
-            content = f"{expert.firstName} {expert.lastName} published a new blog: {blog_heading}"
-            count = 0
-            for follower_id in expert.followers:
-                notification = Notification(
-                    targetUserId=follower_id,
-                    sourceUserId=expert_user_id,
-                    type=NotificationType.NEW_BLOG,
-                    content=content,
-                    referenceId=blog_id,
-                    referenceType="blog",
-                    read=False,
-                    expertId=expert_id,
+            expert_profile_id = expert.expertId if hasattr(expert, "expertId") else None
+            actor_name = f"{expert.firstName} {expert.lastName}"
+
+            targets = [m for m in member_ids if m != expert_user_id]
+            if not targets:
+                return 0
+
+            tasks = [
+                self.upsert_follower_batch(
+                    target_user_id=member_id,
+                    actor_id=expert_user_id,
+                    actor_name=actor_name,
+                    actor_expert_id=expert_profile_id,
+                    event_type=NotificationType.NEW_POST,
+                    entity_id=post_id,
+                    reference_type="post",
                 )
-                await self.create_notification(notification)
-                count += 1
-            return count
+                for member_id in targets
+            ]
+
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+
+            for result in results:
+                if isinstance(result, Exception):
+                    print(f"Community post batch upsert error (non-fatal): {result}")
+                    continue
+                batch, is_new = result
+                event_name = "notification_batch_new" if is_new else "notification_batch_updated"
+                try:
+                    await sio.emit(
+                        event_name,
+                        batch.model_dump(mode="json"),
+                        room=batch.targetUserId,
+                    )
+                except Exception as emit_err:
+                    print(f"Socket emit error (non-fatal): {emit_err}")
+
+            return len(targets)
         except Exception as e:
-            print(f"Error creating blog notifications: {e}")
+            print(f"Community post fan-out error: {e}")
+            return 0
+
+    # ------------------------------------------------------------------
+    # Batch CRUD helpers (used by routes)
+    # ------------------------------------------------------------------
+
+    async def get_user_batches(
+        self, user_id: str, skip: int = 0, limit: int = 50
+    ) -> List[NotificationBatchResponse]:
+        """Return all batches for a user (lazily closes expired ones)."""
+        now = datetime.utcnow()
+        # Lazily mark expired-open batches as closed
+        await self.db.notification_batches.update_many(
+            {"targetUserId": user_id, "isOpen": True, "windowExpiresAt": {"$lte": now}},
+            {"$set": {"isOpen": False}},
+        )
+        cursor = (
+            self.db.notification_batches
+            .find({"targetUserId": user_id})
+            .sort("updatedAt", -1)
+            .skip(skip)
+            .limit(limit)
+        )
+        batches = []
+        async for doc in cursor:
+            doc["batchId"] = str(doc["_id"])
+            doc["_id"] = str(doc["_id"])
+            batches.append(NotificationBatchResponse(**doc))
+        return batches
+
+    async def mark_batch_as_read(self, batch_id: str) -> Optional[NotificationBatchResponse]:
+        try:
+            await self.db.notification_batches.update_one(
+                {"_id": ObjectId(batch_id)},
+                {"$set": {"isRead": True}},
+            )
+            doc = await self.db.notification_batches.find_one({"_id": ObjectId(batch_id)})
+            if doc:
+                doc["batchId"] = str(doc["_id"])
+                doc["_id"] = str(doc["_id"])
+                return NotificationBatchResponse(**doc)
+            return None
+        except Exception as e:
+            print(f"Error marking batch as read: {e}")
+            return None
+
+    async def mark_all_batches_as_read(self, user_id: str) -> int:
+        try:
+            result = await self.db.notification_batches.update_many(
+                {"targetUserId": user_id, "isRead": False},
+                {"$set": {"isRead": True}},
+            )
+            return result.modified_count
+        except Exception as e:
+            print(f"Error marking all batches as read: {e}")
             return 0
 
     async def delete_notification(self, notification_id: str) -> bool:

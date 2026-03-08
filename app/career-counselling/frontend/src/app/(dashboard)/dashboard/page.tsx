@@ -22,10 +22,12 @@ import {
   User,
   Search,
   Star,
+  Plus,
 } from "lucide-react";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { useAuth } from "@/contexts/AuthContext";
-import { Blog, Video as VideoType } from "@/types";
+import { Blog, Video as VideoType, Post as ApiPost } from "@/types";
+import PostItem from "@/components/communities/post-item";
 import axios from "axios";
 import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
@@ -163,7 +165,7 @@ function PostsSection() {
     fetch("/api/activity/recent", { headers: token ? { Authorization: `Bearer ${token}` } : {} })
       .then((r) => (r.ok ? r.json() : []))
       .then((data: HistoryItem[]) => {
-        const items = data.filter((h) => h.type === "post");
+        const items = Array.from(new Map(data.filter((h) => h.type === "post").map((h) => [h.itemId, h])).values());
         if (items.length > 0) { setHistory(items); setUseHistory(true); setLoading(false); }
         else loadGlobal();
       })
@@ -297,7 +299,7 @@ function BlogsSection() {
     fetch("/api/activity/recent", { headers: token ? { Authorization: `Bearer ${token}` } : {} })
       .then((r) => (r.ok ? r.json() : []))
       .then((data: HistoryItem[]) => {
-        const items = data.filter((h) => h.type === "blog");
+        const items = Array.from(new Map(data.filter((h) => h.type === "blog").map((h) => [h.itemId, h])).values());
         if (items.length > 0) { setHistory(items); setUseHistory(true); setLoading(false); }
         else loadGlobal();
       })
@@ -410,7 +412,7 @@ function VideosSection() {
     fetch("/api/activity/recent", { headers: token ? { Authorization: `Bearer ${token}` } : {} })
       .then((r) => (r.ok ? r.json() : []))
       .then((data: HistoryItem[]) => {
-        const items = data.filter((h) => h.type === "video");
+        const items = Array.from(new Map(data.filter((h) => h.type === "video").map((h) => [h.itemId, h])).values());
         if (items.length > 0) { setHistory(items); setUseHistory(true); setLoading(false); }
         else loadGlobal();
       })
@@ -481,6 +483,176 @@ function VideosSection() {
         </div>
       )}
     </FeedSection>
+  );
+}
+
+/* ─── My Feed (user's own posts/blogs/videos) ────────────────── */
+function MyFeedSection() {
+  const { user } = useAuth();
+  const [posts, setPosts] = useState<ApiPost[]>([]);
+  const [blogs, setBlogs] = useState<Blog[]>([]);
+  const [videos, setVideos] = useState<VideoType[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!user?._id) return;
+
+    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+    const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
+
+    const promises: Promise<void>[] = [];
+
+    promises.push(
+      fetch(`/api/users/${user._id}/posts?limit=100`, { headers })
+        .then((r) => (r.ok ? r.json() : []))
+        .then((data) => setPosts(Array.isArray(data) ? data : []))
+        .catch(() => setPosts([]))
+    );
+
+    if (user.isExpert && user.expertId) {
+      promises.push(
+        fetch(`/api/experts/${user.expertId}/blogs?limit=50`, { headers })
+          .then((r) => (r.ok ? r.json() : {}))
+          .then((data) => setBlogs(data.blogs || []))
+          .catch(() => setBlogs([]))
+      );
+      promises.push(
+        fetch(`/api/experts/${user.expertId}/videos?limit=50`, { headers })
+          .then((r) => (r.ok ? r.json() : {}))
+          .then((data) => setVideos(data.videos || []))
+          .catch(() => setVideos([]))
+      );
+    }
+
+    Promise.all(promises).finally(() => setLoading(false));
+  }, [user?._id, user?.isExpert, user?.expertId]);
+
+  type FeedEntry =
+    | { kind: "post"; data: ApiPost }
+    | { kind: "blog"; data: Blog }
+    | { kind: "video"; data: VideoType };
+
+  const feed: FeedEntry[] = [
+    ...posts.map((p) => ({ kind: "post" as const, data: p })),
+    ...blogs.map((b) => ({ kind: "blog" as const, data: b })),
+    ...videos.map((v) => ({ kind: "video" as const, data: v })),
+  ].sort(
+    (a, b) =>
+      new Date(b.data.createdAt).getTime() - new Date(a.data.createdAt).getTime()
+  );
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-5">
+        <div>
+          <h2 className="text-xl font-bold text-gray-900">My Posts</h2>
+          <p className="text-sm text-gray-400 mt-0.5">
+            {feed.length} {feed.length === 1 ? "item" : "items"}
+          </p>
+        </div>
+        <Link href="/forums">
+          <button className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold px-4 py-2 rounded-xl shadow-sm transition-colors">
+            <Plus className="h-4 w-4" />
+            New Post
+          </button>
+        </Link>
+      </div>
+
+      {loading ? (
+        <div className="flex justify-center py-16">
+          <Loader2 className="h-6 w-6 animate-spin text-indigo-400" />
+        </div>
+      ) : feed.length === 0 ? (
+        <div className="bg-white rounded-2xl border border-dashed border-gray-200 p-12 text-center">
+          <MessageSquare className="h-10 w-10 text-gray-300 mx-auto mb-3" />
+          <p className="text-gray-600 font-medium mb-1">No posts yet</p>
+          <p className="text-sm text-gray-400 mb-5">
+            Share your thoughts with the community
+          </p>
+          <Link href="/forums">
+            <button className="inline-flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold px-5 py-2.5 rounded-xl shadow-sm transition-colors">
+              <Plus className="h-4 w-4" />
+              Create your first post
+            </button>
+          </Link>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {feed.map((entry) => {
+            if (entry.kind === "post") {
+              return (
+                <PostItem key={entry.data.postId} post={entry.data} showCommunity />
+              );
+            }
+            if (entry.kind === "blog") {
+              const blog = entry.data;
+              const readTime = Math.max(1, Math.ceil(blog.body.split(/\s+/).length / 200));
+              const excerpt = blog.body.replace(/[#*_`>[\]]/g, "").slice(0, 120).trim();
+              return (
+                <Link key={blog.blogID} href={`/blogs/${blog.blogID}`}>
+                  <div className="group bg-white border border-gray-100 hover:border-emerald-200 rounded-2xl shadow-sm hover:shadow-md transition-all p-5">
+                    <div className="flex items-center gap-2 mb-3 text-xs text-gray-400">
+                      <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
+                        <BookOpen className="h-3 w-3" /> Blog · {readTime} min read
+                      </span>
+                      <span className="ml-auto flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        {formatDistanceToNow(new Date(blog.createdAt), { addSuffix: true })}
+                      </span>
+                    </div>
+                    <h3 className="font-semibold text-gray-900 group-hover:text-emerald-700 transition-colors mb-1.5 line-clamp-2">
+                      {blog.heading}
+                    </h3>
+                    {excerpt && (
+                      <p className="text-sm text-gray-500 line-clamp-2 mb-3">
+                        {excerpt}{excerpt.length === 120 ? "…" : ""}
+                      </p>
+                    )}
+                    <div className="flex items-center gap-1 text-xs text-gray-400">
+                      <Eye className="h-3.5 w-3.5" />
+                      <span>{blog.views || 0} views</span>
+                    </div>
+                  </div>
+                </Link>
+              );
+            }
+            if (entry.kind === "video") {
+              const video = entry.data;
+              return (
+                <Link key={video.videoID} href={`/videos/${video.videoID}`}>
+                  <div className="group bg-white border border-gray-100 hover:border-violet-200 rounded-2xl shadow-sm hover:shadow-md transition-all p-5">
+                    <div className="flex items-center gap-2 mb-3 text-xs text-gray-400">
+                      <span className="inline-flex items-center gap-1 text-xs font-medium text-violet-700 bg-violet-100 px-2 py-0.5 rounded-full">
+                        <Video className="h-3 w-3" /> Video
+                      </span>
+                      <span className="ml-auto flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        {formatDistanceToNow(new Date(video.createdAt), { addSuffix: true })}
+                      </span>
+                    </div>
+                    <h3 className="font-semibold text-gray-900 group-hover:text-violet-700 transition-colors mb-1.5 line-clamp-2">
+                      {video.title}
+                    </h3>
+                    {video.description && (
+                      <p className="text-sm text-gray-500 line-clamp-2 mb-3">{video.description}</p>
+                    )}
+                    <div className="flex items-center gap-3 text-xs text-gray-400">
+                      <span className="flex items-center gap-1">
+                        <Eye className="h-3.5 w-3.5" />{video.views || 0} views
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Heart className="h-3.5 w-3.5" />{video.likes || 0}
+                      </span>
+                    </div>
+                  </div>
+                </Link>
+              );
+            }
+            return null;
+          })}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -571,11 +743,9 @@ export default function UserDashboard() {
       {/* Main Grid */}
       <div className="flex-1 w-full max-w-[1800px] px-6 sm:px-8 lg:px-12 pb-40">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
-          {/* Left Column — Mixed Feed */}
+          {/* Left Column — My Feed */}
           <div className="lg:col-span-2">
-            <PostsSection />
-            <BlogsSection />
-            <VideosSection />
+            <MyFeedSection />
           </div>
 
           {/* Right Column — Sidebar Widgets */}
@@ -587,6 +757,11 @@ export default function UserDashboard() {
             {stats && stats.weeklyGoals.length > 0 && (
               <WeeklyGoalsWidget goals={stats.weeklyGoals} />
             )}
+
+            {/* Recently Viewed */}
+            <PostsSection />
+            <BlogsSection />
+            <VideosSection />
           </div>
         </div>
       </div>

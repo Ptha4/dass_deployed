@@ -255,6 +255,27 @@ export interface Notification {
   sourceUserDetails?: SourceUserDetails;
 }
 
+/**
+ * A batched notification that groups multiple fan-out events (new_video, new_blog)
+ * from the same expert within a 60-minute window into a single visible entry.
+ */
+export interface NotificationBatch {
+  batchId: string;
+  targetUserId: string;
+  actorId: string;
+  actorName: string;
+  actorExpertId?: string;
+  eventType: NotificationType;
+  entityIds: string[];
+  referenceType: string;   // "video" | "blog"
+  batchKey: string;
+  isRead: boolean;
+  isOpen: boolean;
+  windowExpiresAt: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Comment {
   commentID: string;
   user: {
