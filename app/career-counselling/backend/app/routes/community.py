@@ -163,18 +163,28 @@ async def create_community_post(
         # Update post count on community
         await community_manager.increment_post_count(actual_community_id)
 
-        # Notify community members if the poster is an expert
+        # Notify community members who follow the expert (expert posts only)
         if user_data.get("role") == "expert":
             comm_doc = community_doc or await community_manager.collection.find_one(
                 {"_id": ObjectId(actual_community_id)}
             )
             if comm_doc:
-                member_ids = comm_doc.get("members", [])
-                await notification_manager.create_community_post_notification_for_members(
-                    expert_user_id=user_data["id"],
-                    post_id=post.postId,
-                    member_ids=member_ids,
+                from app.core.database import get_database
+                db = get_database()
+                expert_doc = await db.users.find_one(
+                    {"_id": ObjectId(user_data["id"])},
+                    {"followers": 1},
                 )
+                expert_followers = set(expert_doc.get("followers", [])) if expert_doc else set()
+                member_ids = comm_doc.get("members", [])
+                # Only notify members who are also following the expert
+                target_ids = [m for m in member_ids if m in expert_followers]
+                if target_ids:
+                    await notification_manager.create_community_post_notification_for_members(
+                        expert_user_id=user_data["id"],
+                        post_id=post.postId,
+                        member_ids=target_ids,
+                    )
 
         return post
     except HTTPException:

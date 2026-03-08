@@ -18,6 +18,9 @@ class NotificationType(str, Enum):
     MEETING_SCHEDULED = "meeting_scheduled"
     MEETING_REMINDER = "meeting_reminder"
     REFUND = "refund"
+    CONNECTION_REQUEST = "connection_request"
+    CONNECTION_ACCEPTED = "connection_accepted"
+    CONNECTION_ACTIVITY = "connection_activity"
 
 
 class NotificationBase(BaseModel):

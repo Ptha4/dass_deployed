@@ -62,6 +62,9 @@ class UserBase(BaseModel):
 class User(UserBase):
     # Change ObjectId to str
     id: Optional[str] = Field(alias="_id", default=None)
+    # Override to Optional so routes can strip sensitive fields for non-connections
+    email: Optional[EmailStr] = None
+    mobileNo: Optional[str] = None
     password: Optional[str] = None
 
     class Config:

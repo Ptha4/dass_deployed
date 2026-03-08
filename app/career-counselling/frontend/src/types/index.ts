@@ -235,7 +235,22 @@ export type NotificationType =
   | "comment"
   | "follow"
   | "meeting_scheduled"
-  | "meeting_reminder";
+  | "meeting_reminder"
+  | "connection_request"
+  | "connection_accepted"
+  | "connection_activity";
+
+export type ConnectionStatus = "pending" | "accepted" | "declined" | "none";
+
+export interface Connection {
+  connectionId: string;
+  requester_id: string;
+  target_id: string;
+  relationship_type: "connect";
+  status: ConnectionStatus;
+  createdAt: string;
+  updatedAt: string;
+}
 
 export interface SourceUserDetails {
   name: string;

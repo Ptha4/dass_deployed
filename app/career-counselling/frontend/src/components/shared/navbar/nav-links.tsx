@@ -16,6 +16,7 @@ import {
   Building2,
   MessageSquare,
   Users2,
+  Network,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
@@ -195,6 +196,22 @@ export default function NavLinks() {
                 </Link>
               </NavigationMenuLink>
             )}
+          </NavigationMenuItem>
+        )}
+
+        {isAuthenticated && (
+          <NavigationMenuItem>
+            <NavigationMenuLink asChild>
+              <Link
+                href="/network"
+                className="inline-flex h-9 w-max items-center justify-center rounded-full px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100/50 transition-all focus:outline-none focus:ring-2 focus:ring-blue-100"
+              >
+                <span className="flex items-center gap-2">
+                  <Network className="h-4 w-4" />
+                  My Network
+                </span>
+              </Link>
+            </NavigationMenuLink>
           </NavigationMenuItem>
         )}
 

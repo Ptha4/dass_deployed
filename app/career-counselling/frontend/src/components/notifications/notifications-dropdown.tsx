@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Bell, Layers } from "lucide-react";
+import { Bell, Layers, UserCheck, X } from "lucide-react";
 import axios from "axios";
 import { useRouter } from "next/navigation";
 import { Notification, NotificationBatch } from "@/types";
@@ -197,6 +197,43 @@ export default function NotificationsDropdown() {
     setIsOpen(false);
   };
 
+  // ── Connection request actions ─────────────────────────────────────────────
+  const [actingOn, setActingOn] = useState<string | null>(null);
+
+  const handleConnectionAction = async (
+    e: React.MouseEvent,
+    notification: Notification,
+    accept: boolean
+  ) => {
+    e.stopPropagation();
+    const connectionId = notification.referenceId;
+    if (!connectionId) return;
+    setActingOn(notification.notificationId);
+    try {
+      const token = localStorage.getItem("token");
+      const headers = { Authorization: `Bearer ${token}` };
+      await axios.post(
+        `/api/connections/${connectionId}/${accept ? "accept" : "decline"}`,
+        {},
+        { headers }
+      );
+      // Mark the notification read and update its content locally
+      markRead(notification.notificationId);
+      axios.put(`/api/notifications/${notification.notificationId}`, { read: true }, { headers }).catch(() => {});
+      setNotifications(
+        liveNotifications.map((n) =>
+          n.notificationId === notification.notificationId
+            ? { ...n, read: true, content: accept ? "Connection accepted." : "Connection declined." }
+            : n
+        )
+      );
+    } catch {
+      toast({ title: "Error", description: "Failed to respond to request.", variant: "destructive" });
+    } finally {
+      setActingOn(null);
+    }
+  };
+
   // ── Mark all as read ─────────────────────────────────────────────────────────
   const markAllAsRead = async () => {
     if (unreadCount === 0) return;
@@ -283,9 +320,6 @@ export default function NotificationsDropdown() {
                         )}
                         <p className="text-xs text-gray-500 mt-1">
                           {formatDistanceToNow(new Date(batch.updatedAt), { addSuffix: true })}
-                          {!batch.isOpen && (
-                            <span className="ml-1 text-gray-400">(window closed)</span>
-                          )}
                         </p>
                       </div>
                     </div>
@@ -313,6 +347,29 @@ export default function NotificationsDropdown() {
                       <p className="text-xs text-gray-500 mt-1">
                         {formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true })}
                       </p>
+                      {notification.type === "connection_request" && notification.read === false && (
+                        <div className="flex gap-2 mt-2" onClick={(e) => e.stopPropagation()}>
+                          <Button
+                            size="sm"
+                            className="h-7 px-3 text-xs"
+                            disabled={actingOn === notification.notificationId}
+                            onClick={(e) => handleConnectionAction(e, notification, true)}
+                          >
+                            <UserCheck className="h-3 w-3 mr-1" />
+                            Accept
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 px-3 text-xs"
+                            disabled={actingOn === notification.notificationId}
+                            onClick={(e) => handleConnectionAction(e, notification, false)}
+                          >
+                            <X className="h-3 w-3 mr-1" />
+                            Decline
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>

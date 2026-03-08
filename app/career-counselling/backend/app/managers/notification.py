@@ -118,21 +118,35 @@ class NotificationManager:
         cursor.sort("createdAt", -1)  # Sort by creation time, newest first
         cursor.skip(skip).limit(limit)
 
-        notifications = []
+        # Collect all docs first so we can batch-fetch source users in one query
+        raw_docs = []
         async for notification in cursor:
             notification["notificationId"] = str(notification["_id"])
-            # Convert _id to string
             notification["_id"] = str(notification["_id"])
+            raw_docs.append(notification)
 
-            # Get source user details
-            source_user = await self.user_manager.get_user(notification['sourceUserId'])
-            if source_user:
-                notification["sourceUserDetails"] = {
-                    "name": f"{source_user.firstName} {source_user.lastName}".strip(),
-                    "avatar": source_user.avatar if hasattr(source_user, "avatar") else "/default-avatar.png"
-                }
+        # Batch-fetch all unique source users — 1 query instead of N
+        user_ids = list({doc["sourceUserId"] for doc in raw_docs if doc.get("sourceUserId")})
+        user_map: dict = {}
+        if user_ids:
+            try:
+                user_cursor = self.db.users.find(
+                    {"_id": {"$in": [ObjectId(uid) for uid in user_ids]}},
+                    {"_id": 1, "firstName": 1, "lastName": 1, "avatar": 1},
+                )
+                async for u in user_cursor:
+                    user_map[str(u["_id"])] = {
+                        "name": f"{u.get('firstName', '')} {u.get('lastName', '')}".strip(),
+                        "avatar": u.get("avatar") or "/default-avatar.png",
+                    }
+            except Exception as e:
+                print(f"Batch user fetch error (non-fatal): {e}")
 
-            notifications.append(NotificationResponse(**notification))
+        notifications = []
+        for doc in raw_docs:
+            if doc.get("sourceUserId") in user_map:
+                doc["sourceUserDetails"] = user_map[doc["sourceUserId"]]
+            notifications.append(NotificationResponse(**doc))
 
         return notifications
 

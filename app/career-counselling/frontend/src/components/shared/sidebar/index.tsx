@@ -13,6 +13,7 @@ import {
   ChevronRight,
   MessageSquare,
   Calendar,
+  Network,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSidebar } from "./sidebar-context";
@@ -170,6 +171,18 @@ export default function Sidebar() {
             {isAuthenticated && (
               <NavLink
                 item={{
+                  title: "My Network",
+                  href: "/network",
+                  icon: <Network className="h-5 w-5" />,
+                }}
+                isCollapsed={isCollapsed}
+                active={pathname === "/network"}
+              />
+            )}
+
+            {isAuthenticated && (
+              <NavLink
+                item={{
                   title: "Dashboard",
                   href: "/dashboard",
                   icon: <LayoutDashboard className="h-5 w-5" />,
@@ -269,6 +282,24 @@ function MobileSidebar({
                 </Link>
               );
             })}
+
+            {isAuthenticated && (
+              <Link
+                href="/network"
+                onClick={() => setIsCollapsed(true)}
+                className={cn(
+                  "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors",
+                  pathname === "/network"
+                    ? "bg-blue-50 text-blue-700"
+                    : "text-gray-700 hover:bg-gray-50"
+                )}
+              >
+                <span className={pathname === "/network" ? "text-blue-700" : "text-gray-500"}>
+                  <Network className="h-5 w-5" />
+                </span>
+                <span className="text-sm font-medium">My Network</span>
+              </Link>
+            )}
 
             {isAuthenticated && (
               <Link

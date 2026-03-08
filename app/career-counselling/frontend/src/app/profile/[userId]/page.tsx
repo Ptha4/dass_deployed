@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import axios from "axios";
 import {
   Loader2, User as UserIcon, Calendar, MapPin, Mail, Phone, Briefcase,
-  GraduationCap, Star, Clock,
+  GraduationCap, Star, Clock, Users,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,8 @@ import { User, Post, Expert } from "@/types";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
 import FollowButton from "@/components/experts/follow";
+import ConnectButton from "@/components/shared/connect-button";
+import { useConnectionStatus } from "@/hooks/use-connection";
 import ExpertOverview from "@/components/experts/detail/expert-overview";
 import ExpertVideos from "@/components/experts/detail/expert-videos";
 import ExpertBlogs from "@/components/experts/detail/expert-blogs";
@@ -35,9 +37,14 @@ export default function UserProfilePage() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [mutualCount, setMutualCount] = useState<number | null>(null);
 
   const { loading: authLoading } = useAuth();
   const isOwnProfile = !!authUser && authUser._id === (userId as string);
+
+  // Connection status (used to gate contact details)
+  const { status: connStatus } = useConnectionStatus(isOwnProfile ? "" : (userId as string));
+  const isConnected = connStatus === "accepted";
 
   // Once auth is resolved, redirect immediately if viewing own profile
   useEffect(() => {
@@ -89,6 +96,13 @@ export default function UserProfilePage() {
     if (userId) {
       fetchUserProfile();
       fetchUserPosts();
+      // Fetch mutual connections count
+      axios
+        .get(`/api/connections/mutual/${userId}`, {
+          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+        })
+        .then((res) => setMutualCount(res.data.count ?? null))
+        .catch(() => setMutualCount(null));
     }
   }, [userId, authLoading, isOwnProfile, fetchUserProfile, fetchUserPosts]);
 
@@ -207,12 +221,20 @@ export default function UserProfilePage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                 <div className="flex items-center gap-2">
                   <Mail className="h-4 w-4 text-gray-500" />
-                  <span className="text-gray-700">{user.email}</span>
+                  {user.email ? (
+                    <span className="text-gray-700">{user.email}</span>
+                  ) : (
+                    <span className="text-gray-400 italic">Connect to view email</span>
+                  )}
                 </div>
-                {user.mobileNo && (
+                {(user.mobileNo || !isConnected) && (
                   <div className="flex items-center gap-2">
                     <Phone className="h-4 w-4 text-gray-500" />
-                    <span className="text-gray-700">{user.mobileNo}</span>
+                    {user.mobileNo ? (
+                      <span className="text-gray-700">{user.mobileNo}</span>
+                    ) : (
+                      <span className="text-gray-400 italic">Connect to view phone</span>
+                    )}
                   </div>
                 )}
                 {user.home_state && (
@@ -229,12 +251,25 @@ export default function UserProfilePage() {
                 )}
               </div>
 
+              {/* Mutual connections */}
+              {mutualCount !== null && mutualCount > 0 && (
+                <div className="flex items-center gap-1.5 text-sm text-gray-500">
+                  <Users className="h-4 w-4" />
+                  <span>{mutualCount} mutual connection{mutualCount !== 1 ? "s" : ""}</span>
+                </div>
+              )}
+
               {/* Social links + Follow (expert only, non-owner) */}
               {expert && (
                 <div className="flex items-center gap-3 flex-wrap">
                   <SocialLinksDrawer socialLinks={expert.socialLinks} />
                   <FollowButton targetUserId={userId as string} />
                 </div>
+              )}
+
+              {/* Connect button — available for any user profile (non-owner) */}
+              {!isOwnProfile && (
+                <ConnectButton targetUserId={userId as string} />
               )}
 
               {/* Onboarding Info (non-expert users) */}

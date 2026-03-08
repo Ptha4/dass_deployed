@@ -99,6 +99,29 @@ class PostManager:
                 print(f"PostResponse parse error: {e}")
         return posts
 
+    async def get_posts_by_authors(self, author_ids: List[str], skip: int = 0, limit: int = 30) -> List[PostResponse]:
+        """Return posts authored by any of the given user IDs, newest first."""
+        if not author_ids:
+            return []
+        cursor = (
+            self.collection.find({"authorId": {"$in": author_ids}})
+            .sort("createdAt", -1)
+            .skip(skip)
+            .limit(limit)
+        )
+        posts = []
+        async for doc in cursor:
+            doc["postId"] = str(doc["_id"])
+            await self._enrich(doc, doc.get("authorId", ""), doc.get("communityId", ""))
+            doc["commentsCount"] = await self.db.comments.count_documents(
+                {"page_id": doc["postId"], "type": "post"}
+            )
+            try:
+                posts.append(PostResponse(**doc))
+            except Exception as e:
+                print(f"PostResponse parse error: {e}")
+        return posts
+
     async def get_feed_posts(self, user_id: str, skip: int = 0, limit: int = 30) -> List[PostResponse]:
         """Return posts from communities the user has joined, sorted with followed-expert posts first."""
         # Get community IDs the user has joined

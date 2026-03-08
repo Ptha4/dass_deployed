@@ -1,6 +1,7 @@
 from typing import List, Optional
 from datetime import datetime
 from bson import ObjectId
+from pymongo import UpdateOne
 from app.models.community import Community, CommunityCreate, CommunityResponse
 from app.core.database import get_database
 
@@ -172,17 +173,18 @@ class CommunityManager:
             {"name": "higher-education", "displayName": "Higher Education", "description": "Discussions about master's programs, PhD opportunities, and further education choices.", "iconColor": "#14b8a6"},
         ]
         now = datetime.utcnow()
+        # Single bulk_write with upserts — one round-trip instead of 9 serial find+insert pairs
+        ops = []
         for comm in DEFAULT_COMMUNITIES:
-            existing = await self.collection.find_one({"name": comm["name"]})
-            if not existing:
-                doc = {
-                    **comm,
-                    "createdBy": "system",
-                    "memberCount": 0,
-                    "postCount": 0,
-                    "members": [],
-                    "createdAt": now,
-                    "updatedAt": now,
-                }
-                await self.collection.insert_one(doc)
-                print(f"Seeded community: {comm['name']}")
+            doc = {
+                **comm,
+                "createdBy": "system",
+                "memberCount": 0,
+                "postCount": 0,
+                "members": [],
+                "createdAt": now,
+                "updatedAt": now,
+            }
+            ops.append(UpdateOne({"name": comm["name"]}, {"$setOnInsert": doc}, upsert=True))
+        if ops:
+            await self.collection.bulk_write(ops, ordered=False)

@@ -21,6 +21,7 @@ import ExpertPosts from "@/components/experts/detail/expert-posts";
 import ExpertRatings from "@/components/experts/detail/expert-ratings";
 import BookingCalendar from "@/components/experts/detail/booking-calendar";
 import FollowButton from "@/components/experts/follow";
+import ConnectButton from "@/components/shared/connect-button";
 import RateExpert from "@/components/experts/detail/rate-expert";
 import ProfileVideoPlayer from "@/components/experts/detail/profile-video-player";
 import type { Expert } from "@/types/index";
@@ -246,6 +247,12 @@ export default function ExpertDetailPage() {
                       <SocialLinksDrawer socialLinks={expert.socialLinks} />
                       {!isExpertLoggedIn && (
                         <FollowButton
+                          targetUserId={expert.userId}
+                          className="flex-1 md:flex-none"
+                        />
+                      )}
+                      {!isExpertLoggedIn && (
+                        <ConnectButton
                           targetUserId={expert.userId}
                           className="flex-1 md:flex-none"
                         />
