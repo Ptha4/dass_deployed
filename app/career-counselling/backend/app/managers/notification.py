@@ -477,3 +477,76 @@ class NotificationManager:
         except Exception as e:
             print(f"Error deleting notification: {e}")
             return False
+
+    # ------------------------------------------------------------------
+    # Community / social notification helpers
+    # ------------------------------------------------------------------
+
+    async def create_reply_notification(
+        self,
+        replier_id: str,
+        parent_author_id: str,
+        comment_id: str,
+        post_id: str,
+    ) -> None:
+        """Notify the author of a comment that someone replied to them."""
+        if replier_id == parent_author_id:
+            return
+        try:
+            replier = await self.user_manager.get_user(replier_id)
+            name = f"{replier.firstName} {replier.lastName}".strip() if replier else "Someone"
+            notif = Notification(
+                targetUserId=parent_author_id,
+                sourceUserId=replier_id,
+                type=NotificationType.COMMENT_REPLY,
+                content=f"{name} replied to your comment",
+                referenceId=post_id,
+                referenceType="post",
+                read=False,
+                createdAt=datetime.utcnow(),
+                updatedAt=datetime.utcnow(),
+            )
+            await self.create_notification(notif)
+        except Exception as e:
+            print(f"create_reply_notification error (non-fatal): {e}")
+
+    async def create_community_post_for_all_members(
+        self,
+        poster_id: str,
+        post_id: str,
+        community_id: str,
+        community_display_name: str,
+    ) -> int:
+        """Notify all community members (except poster) about a new post."""
+        try:
+            from app.core.database import get_database
+            db = get_database()
+            comm_doc = await db.communities.find_one({"_id": ObjectId(community_id)}, {"members": 1})
+            if not comm_doc:
+                return 0
+            members = [m for m in comm_doc.get("members", []) if m != poster_id]
+            if not members:
+                return 0
+            poster = await self.user_manager.get_user(poster_id)
+            name = f"{poster.firstName} {poster.lastName}".strip() if poster else "Someone"
+            now = datetime.utcnow()
+            notifs = [
+                {
+                    "targetUserId": m,
+                    "sourceUserId": poster_id,
+                    "type": NotificationType.COMMUNITY_POST.value,
+                    "content": f"{name} posted in {community_display_name}",
+                    "referenceId": post_id,
+                    "referenceType": "post",
+                    "read": False,
+                    "createdAt": now,
+                    "updatedAt": now,
+                }
+                for m in members
+            ]
+            if notifs:
+                await self.collection.insert_many(notifs)
+            return len(notifs)
+        except Exception as e:
+            print(f"create_community_post_for_all_members error (non-fatal): {e}")
+            return 0

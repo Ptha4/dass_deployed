@@ -175,7 +175,8 @@ class PostManager:
             if not doc:
                 return None
 
-            if user_id in doc.get("likedBy", []):
+            already_liked = user_id in doc.get("likedBy", [])
+            if already_liked:
                 update = {
                     "$pull": {"likedBy": user_id},
                     "$inc": {"likes": -1},
@@ -190,6 +191,37 @@ class PostManager:
 
             result = await self.collection.update_one({"_id": ObjectId(post_id)}, update)
             if result.modified_count:
+                # Send POST_LIKED notification to author (only on new like, not unlike)
+                if not already_liked:
+                    author_id = doc.get("authorId", "")
+                    if author_id and author_id != user_id:
+                        try:
+                            from app.managers.notification import NotificationManager
+                            from app.models.notification import Notification, NotificationType
+                            nm = NotificationManager()
+                            # increment author's reputation
+                            await self.db.users.update_one(
+                                {"_id": ObjectId(author_id)},
+                                {"$inc": {"reputation": 1}},
+                            )
+                            liker_doc = await self.db.users.find_one(
+                                {"_id": ObjectId(user_id)}, {"firstName": 1, "lastName": 1}
+                            )
+                            liker_name = f"{liker_doc.get('firstName','')} {liker_doc.get('lastName','')}".strip() if liker_doc else "Someone"
+                            notif = Notification(
+                                targetUserId=author_id,
+                                sourceUserId=user_id,
+                                type=NotificationType.POST_LIKED,
+                                content=f"{liker_name} liked your post",
+                                referenceId=post_id,
+                                referenceType="post",
+                                read=False,
+                                createdAt=datetime.utcnow(),
+                                updatedAt=datetime.utcnow(),
+                            )
+                            await nm.create_notification(notif)
+                        except Exception as notif_err:
+                            print(f"like notification error (non-fatal): {notif_err}")
                 return await self.get_post(post_id)
             return None
         except Exception as e:
@@ -198,12 +230,23 @@ class PostManager:
 
     # ── Delete ────────────────────────────────────────────────────────────────
 
-    async def delete_post(self, post_id: str, author_id: str) -> bool:
-        """Any user can delete their own post."""
+    async def delete_post(self, post_id: str, author_id: str, community_id: Optional[str] = None) -> bool:
+        """Author or community moderator can delete a post."""
         try:
             doc = await self.collection.find_one({"_id": ObjectId(post_id)})
-            if not doc or doc.get("authorId") != author_id:
+            if not doc:
                 return False
+            # allow if author OR if caller is a community moderator
+            is_author = doc.get("authorId") == author_id
+            if not is_author:
+                from app.managers.community import CommunityManager
+                cid = community_id or doc.get("communityId", "")
+                if cid:
+                    cm = CommunityManager()
+                    if not await cm.is_moderator(cid, author_id):
+                        return False
+                else:
+                    return False
             result = await self.collection.delete_one({"_id": ObjectId(post_id)})
             return result.deleted_count > 0
         except Exception as e:
@@ -242,7 +285,7 @@ class PostManager:
     # ── Helpers ───────────────────────────────────────────────────────────────
 
     async def _enrich(self, doc: dict, author_id: str, community_id: str) -> None:
-        """Attach author name and community name to a post dict in-place."""
+        """Attach author name, credentials, pinned status, and community name to a post dict in-place."""
         # Author info
         try:
             if author_id:
@@ -254,29 +297,37 @@ class PostManager:
                     doc["authorInitials"] = (
                         (fn[0] if fn else "") + (ln[0] if ln else "")
                     ).upper() or "U"
+                    doc["authorCredentials"] = user.get("credentials", [])
                 else:
                     doc["authorName"] = "Anonymous"
                     doc["authorInitials"] = "U"
+                    doc["authorCredentials"] = []
             else:
                 doc["authorName"] = "Anonymous"
                 doc["authorInitials"] = "U"
+                doc["authorCredentials"] = []
         except Exception:
             doc["authorName"] = "Anonymous"
             doc["authorInitials"] = "U"
+            doc["authorCredentials"] = []
 
-        # Community info
+        # Community info + pinned status
         try:
             if community_id:
                 comm = await self.db.communities.find_one({"_id": ObjectId(community_id)})
                 if comm:
                     doc["communityName"] = comm.get("name", "")
                     doc["communityDisplayName"] = comm.get("displayName", "")
+                    post_id = doc.get("postId", "")
+                    doc["isPinned"] = post_id in comm.get("pinnedPosts", []) if post_id else False
                 else:
                     doc["communityName"] = ""
                     doc["communityDisplayName"] = ""
+                    doc["isPinned"] = False
         except Exception:
             doc["communityName"] = ""
             doc["communityDisplayName"] = ""
+            doc["isPinned"] = False
 
         # Top comment (most recent parent comment)
         try:

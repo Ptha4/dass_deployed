@@ -57,6 +57,8 @@ class UserBase(BaseModel):
     career_goals: Optional[str] = None
     onboarding_completed: bool = False
     recently_viewed: List[Dict[str, Any]] = []  # [{type, itemId, title, viewedAt}]
+    credentials: List[str] = []  # admin-assigned verification badges e.g. ["Verified", "Professor"]
+    reputation: int = 0          # engagement score (incremented on post likes received)
 
 
 class User(UserBase):

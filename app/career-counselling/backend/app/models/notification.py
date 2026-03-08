@@ -21,6 +21,10 @@ class NotificationType(str, Enum):
     CONNECTION_REQUEST = "connection_request"
     CONNECTION_ACCEPTED = "connection_accepted"
     CONNECTION_ACTIVITY = "connection_activity"
+    COMMENT_REPLY = "comment_reply"    # reply to your comment
+    POST_LIKED = "post_liked"          # someone liked your post
+    COMMUNITY_POST = "community_post"  # new post in a joined community
+    MENTION = "mention"                # mentioned via @username
 
 
 class NotificationBase(BaseModel):

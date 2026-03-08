@@ -219,7 +219,7 @@ export default function NotificationsDropdown() {
       );
       // Mark the notification read and update its content locally
       markRead(notification.notificationId);
-      axios.put(`/api/notifications/${notification.notificationId}`, { read: true }, { headers }).catch(() => {});
+      axios.put(`/api/notifications/${notification.notificationId}`, { read: true }, { headers }).catch(() => { });
       setNotifications(
         liveNotifications.map((n) =>
           n.notificationId === notification.notificationId

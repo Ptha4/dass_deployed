@@ -72,11 +72,11 @@ export default function ForumsPage() {
       const items: Blog[] = Array.isArray(r.data) ? r.data : r.data.blogs || [];
       // Shuffle so different ones appear each session
       setPromoBlogs(items.sort(() => Math.random() - 0.5));
-    }).catch(() => {});
+    }).catch(() => { });
     axios.get("/api/videos?limit=20").then((r) => {
       const items: Video[] = Array.isArray(r.data) ? r.data : r.data.videos || [];
       setPromoVideos(items.sort(() => Math.random() - 0.5));
-    }).catch(() => {});
+    }).catch(() => { });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [appliedFilters, authLoading]);
 

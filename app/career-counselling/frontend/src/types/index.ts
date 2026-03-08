@@ -44,6 +44,9 @@ export interface User {
   onboarding_completed: boolean;
   following: string[];
   followers: string[];
+  // Community / social features
+  credentials?: string[];   // admin-assigned verification badges
+  reputation?: number;      // engagement score from post likes
 }
 
 interface Person {
@@ -147,6 +150,7 @@ export interface Post {
   authorId: string;
   authorName?: string;
   authorInitials?: string;
+  authorCredentials?: string[];
   communityId: string;
   communityName?: string;
   communityDisplayName?: string;
@@ -158,6 +162,7 @@ export interface Post {
   tags?: string[];
   media?: PostMedia[];
   commentsCount?: number;
+  isPinned?: boolean;
   topComment?: {
     content: string;
     authorName: string;
@@ -176,7 +181,11 @@ export interface Community {
   memberCount: number;
   postCount: number;
   members: string[];
+  community_roles?: Record<string, string>;
+  pinnedPosts?: string[];
+  bannedUsers?: string[];
   isJoined?: boolean;
+  isModerator?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -238,7 +247,11 @@ export type NotificationType =
   | "meeting_reminder"
   | "connection_request"
   | "connection_accepted"
-  | "connection_activity";
+  | "connection_activity"
+  | "comment_reply"
+  | "post_liked"
+  | "community_post"
+  | "mention";
 
 export type ConnectionStatus = "pending" | "accepted" | "declined" | "none";
 

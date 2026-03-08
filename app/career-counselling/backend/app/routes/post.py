@@ -105,9 +105,9 @@ async def get_post_comments(post_id: str, skip: int = 0, limit: int = 50):
 
 
 @router.delete("/posts/{post_id}")
-async def delete_post(post_id: str, user_data: dict = Depends(require_user)):
-    """Delete a post. Any user can delete their own posts."""
-    success = await post_manager.delete_post(post_id, user_data["id"])
+async def delete_post(post_id: str, community_id: Optional[str] = None, user_data: dict = Depends(require_user)):
+    """Delete a post. Author or community moderator can delete."""
+    success = await post_manager.delete_post(post_id, user_data["id"], community_id)
     if not success:
         raise HTTPException(
             status_code=404,

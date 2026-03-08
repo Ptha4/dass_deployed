@@ -1010,6 +1010,7 @@ export default function AdminDashboard() {
 }
 
 // Dialog components for user management
+
 function AddUserDialog() {
   const [formData, setFormData] = useState({
     firstName: "",

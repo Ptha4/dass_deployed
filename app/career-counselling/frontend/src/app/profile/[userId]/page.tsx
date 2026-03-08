@@ -259,6 +259,25 @@ export default function UserProfilePage() {
                 </div>
               )}
 
+              {/* Verification credentials */}
+              {user.credentials && user.credentials.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {user.credentials.map((cred) => (
+                    <span key={cred} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">
+                      ✓ {cred}
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              {/* Reputation score */}
+              {typeof user.reputation === "number" && user.reputation > 0 && (
+                <div className="flex items-center gap-1.5 text-sm text-amber-600 font-medium">
+                  <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
+                  <span>{user.reputation} reputation</span>
+                </div>
+              )}
+
               {/* Social links + Follow (expert only, non-owner) */}
               {expert && (
                 <div className="flex items-center gap-3 flex-wrap">

@@ -7,6 +7,8 @@ from app.managers.community import CommunityManager
 from app.managers.post import PostManager
 from app.managers.file import FileManager
 from app.managers.notification import NotificationManager
+from app.managers.report import ReportManager
+from app.models.report import ReportCreate
 from app.core.auth_utils import get_current_user, require_user, get_optional_user
 
 router = APIRouter()
@@ -14,6 +16,7 @@ community_manager = CommunityManager()
 post_manager = PostManager()
 file_manager = FileManager()
 notification_manager = NotificationManager()
+report_manager = ReportManager()
 
 
 # ── Community endpoints ───────────────────────────────────────────────────────
@@ -140,6 +143,11 @@ async def create_community_post(
         # Always use the resolved ObjectId for DB operations
         actual_community_id = community.communityId
 
+        # Reject banned users
+        comm_doc_raw = await community_manager.collection.find_one({"_id": ObjectId(actual_community_id)})
+        if comm_doc_raw and user_data["id"] in comm_doc_raw.get("bannedUsers", []):
+            raise HTTPException(status_code=403, detail="You have been banned from this community")
+
         # Verify user is a member (auto-join for c/general)
         community_doc = await community_manager.collection.find_one(
             {"_id": ObjectId(actual_community_id), "members": user_data["id"]}
@@ -163,7 +171,18 @@ async def create_community_post(
         # Update post count on community
         await community_manager.increment_post_count(actual_community_id)
 
-        # Notify community members who follow the expert (expert posts only)
+        # Notify ALL community members about the new post
+        import asyncio
+        asyncio.create_task(
+            notification_manager.create_community_post_for_all_members(
+                poster_id=user_data["id"],
+                post_id=post.postId,
+                community_id=actual_community_id,
+                community_display_name=community.displayName,
+            )
+        )
+
+        # Also batch-notify followers if poster is an expert
         if user_data.get("role") == "expert":
             comm_doc = community_doc or await community_manager.collection.find_one(
                 {"_id": ObjectId(actual_community_id)}
@@ -177,7 +196,6 @@ async def create_community_post(
                 )
                 expert_followers = set(expert_doc.get("followers", [])) if expert_doc else set()
                 member_ids = comm_doc.get("members", [])
-                # Only notify members who are also following the expert
                 target_ids = [m for m in member_ids if m in expert_followers]
                 if target_ids:
                     await notification_manager.create_community_post_notification_for_members(
@@ -232,3 +250,207 @@ async def upload_post_media(
         "url": f"/api/files/{file_id}",
         "type": media_type,
     }
+
+
+# ── Moderation endpoints ──────────────────────────────────────────────────────
+
+class ModActionBody(BaseModel):
+    userId: str
+
+
+@router.post("/communities/{community_id}/promote")
+async def promote_to_moderator(
+    community_id: str,
+    body: ModActionBody,
+    user_data: dict = Depends(require_user),
+):
+    """Promote a member to moderator (mod-only)."""
+    community = await community_manager.get_community(community_id)
+    if not community:
+        raise HTTPException(status_code=404, detail="Community not found")
+    ok = await community_manager.promote_to_moderator(community.communityId, user_data["id"], body.userId)
+    if not ok:
+        raise HTTPException(status_code=403, detail="Not authorised or user not found")
+    return {"message": "User promoted to moderator"}
+
+
+@router.post("/communities/{community_id}/demote")
+async def demote_moderator(
+    community_id: str,
+    body: ModActionBody,
+    user_data: dict = Depends(require_user),
+):
+    """Demote a moderator back to member (creator-only)."""
+    community = await community_manager.get_community(community_id)
+    if not community:
+        raise HTTPException(status_code=404, detail="Community not found")
+    ok = await community_manager.demote_moderator(community.communityId, user_data["id"], body.userId)
+    if not ok:
+        raise HTTPException(status_code=403, detail="Not authorised")
+    return {"message": "Moderator demoted"}
+
+
+@router.post("/communities/{community_id}/ban")
+async def ban_user(
+    community_id: str,
+    body: ModActionBody,
+    user_data: dict = Depends(require_user),
+):
+    """Ban a user from the community (mod-only)."""
+    community = await community_manager.get_community(community_id)
+    if not community:
+        raise HTTPException(status_code=404, detail="Community not found")
+    ok = await community_manager.ban_user(community.communityId, user_data["id"], body.userId)
+    if not ok:
+        raise HTTPException(status_code=403, detail="Not authorised")
+    return {"message": "User banned from community"}
+
+
+@router.post("/communities/{community_id}/unban")
+async def unban_user(
+    community_id: str,
+    body: ModActionBody,
+    user_data: dict = Depends(require_user),
+):
+    """Lift a ban (mod-only)."""
+    community = await community_manager.get_community(community_id)
+    if not community:
+        raise HTTPException(status_code=404, detail="Community not found")
+    ok = await community_manager.unban_user(community.communityId, user_data["id"], body.userId)
+    if not ok:
+        raise HTTPException(status_code=403, detail="Not authorised")
+    return {"message": "User unbanned"}
+
+
+@router.post("/communities/{community_id}/posts/{post_id}/pin")
+async def pin_post(
+    community_id: str,
+    post_id: str,
+    user_data: dict = Depends(require_user),
+):
+    """Pin a post to the top of the community feed (mod-only)."""
+    community = await community_manager.get_community(community_id)
+    if not community:
+        raise HTTPException(status_code=404, detail="Community not found")
+    ok = await community_manager.pin_post(community.communityId, user_data["id"], post_id)
+    if not ok:
+        raise HTTPException(status_code=403, detail="Not authorised or pin limit reached (max 5)")
+    return {"message": "Post pinned"}
+
+
+@router.post("/communities/{community_id}/posts/{post_id}/unpin")
+async def unpin_post(
+    community_id: str,
+    post_id: str,
+    user_data: dict = Depends(require_user),
+):
+    """Unpin a post (mod-only)."""
+    community = await community_manager.get_community(community_id)
+    if not community:
+        raise HTTPException(status_code=404, detail="Community not found")
+    ok = await community_manager.unpin_post(community.communityId, user_data["id"], post_id)
+    if not ok:
+        raise HTTPException(status_code=403, detail="Not authorised")
+    return {"message": "Post unpinned"}
+
+
+@router.get("/communities/{community_id}/search")
+async def search_community_posts(
+    community_id: str,
+    q: str,
+    skip: int = 0,
+    limit: int = 20,
+):
+    """Search posts within a specific community by title/content/tags."""
+    community = await community_manager.get_community(community_id)
+    if not community:
+        raise HTTPException(status_code=404, detail="Community not found")
+    results = await community_manager.search_posts(community.communityId, q, skip, limit)
+    return results
+
+
+# ── Report endpoints (community-scoped) ──────────────────────────────────────
+
+@router.post("/communities/{community_id}/reports")
+async def create_report(
+    community_id: str,
+    data: ReportCreate,
+    user_data: dict = Depends(require_user),
+):
+    """Submit a report for a post or comment in a community."""
+    community = await community_manager.get_community(community_id)
+    if not community:
+        raise HTTPException(status_code=404, detail="Community not found")
+    data.communityId = community.communityId
+    report = await report_manager.create_report(data, user_data["id"])
+    return report
+
+
+@router.get("/communities/{community_id}/reports")
+async def get_community_reports(
+    community_id: str,
+    skip: int = 0,
+    limit: int = 50,
+    user_data: dict = Depends(require_user),
+):
+    """Get all open reports for a community (mod-only)."""
+    community = await community_manager.get_community(community_id)
+    if not community:
+        raise HTTPException(status_code=404, detail="Community not found")
+    if not await community_manager.is_moderator(community.communityId, user_data["id"]):
+        raise HTTPException(status_code=403, detail="Moderators only")
+    return await report_manager.get_community_reports(community.communityId, skip, limit)
+
+
+@router.post("/communities/{community_id}/reports/{report_id}/resolve")
+async def resolve_report(
+    community_id: str,
+    report_id: str,
+    user_data: dict = Depends(require_user),
+):
+    """Mark a report as resolved (mod-only)."""
+    community = await community_manager.get_community(community_id)
+    if not community:
+        raise HTTPException(status_code=404, detail="Community not found")
+    if not await community_manager.is_moderator(community.communityId, user_data["id"]):
+        raise HTTPException(status_code=403, detail="Moderators only")
+    report = await report_manager.resolve_report(report_id)
+    if not report:
+        raise HTTPException(status_code=404, detail="Report not found")
+    return report
+
+
+# ── Credential management (community mod) ────────────────────────────────────
+
+ALLOWED_CREDENTIALS = ["Verified", "Career Counselor", "Professor", "Industry Expert", "Alumni"]
+
+
+class CredentialBody(BaseModel):
+    credentials: List[str]
+
+
+@router.put("/communities/{community_id}/members/{user_id}/credentials")
+async def set_member_credentials(
+    community_id: str,
+    user_id: str,
+    body: CredentialBody,
+    user_data: dict = Depends(require_user),
+):
+    """Assign verification credential badges to a community member (mod-only)."""
+    community = await community_manager.get_community(community_id)
+    if not community:
+        raise HTTPException(status_code=404, detail="Community not found")
+    if not await community_manager.is_moderator(community.communityId, user_data["id"]):
+        raise HTTPException(status_code=403, detail="Moderators only")
+    invalid = [c for c in body.credentials if c not in ALLOWED_CREDENTIALS]
+    if invalid:
+        raise HTTPException(status_code=400, detail=f"Invalid credentials: {invalid}")
+    from app.core.database import get_database
+    db = get_database()
+    result = await db.users.update_one(
+        {"_id": ObjectId(user_id)},
+        {"$set": {"credentials": body.credentials}},
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="User not found")
+    return {"message": "Credentials updated", "credentials": body.credentials}
