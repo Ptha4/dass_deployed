@@ -7,10 +7,13 @@ import { SidebarProvider } from "@/components/shared/sidebar/sidebar-context";
 import { SidebarContentWrapper } from "@/components/shared/sidebar/sidebar-content-wrapper";
 import Footer from "@/components/shared/footer";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { SocketProvider } from "@/contexts/SocketContext";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as SonnerToaster } from "sonner";
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
+import { BackButton } from "@/components/shared/back-button";
+import OnboardingGate from "@/components/shared/onboarding-gate";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -57,30 +60,34 @@ export default function RootLayout({
       </head>
       <body className={inter.className}>
         <AuthProvider>
-          <SidebarProvider>
-            {/* Collapsible Sidebar – Fixed Left */}
-            <Sidebar />
+          <SocketProvider>
+            <SidebarProvider>
+              {/* Collapsible Sidebar – Fixed Left */}
+              <Sidebar />
 
-            {/* Top Navbar */}
-            <Navbar />
+              {/* Top Navbar */}
+              <Navbar />
 
-            {/* Main Content – offsets left based on sidebar collapsed state */}
-            <SidebarContentWrapper>
-              <main className="min-h-screen pt-[80px] bg-gray-50">
-                <div className="px-6">
-                  {children}
-                </div>
-              </main>
+              {/* Main Content – offsets left based on sidebar collapsed state */}
+              <SidebarContentWrapper>
+                <main className="min-h-screen pt-[80px] bg-gray-50">
+                  <div className="px-6">
+                    <BackButton />
+                    {children}
+                  </div>
+                </main>
 
-              {/* Footer */}
-              <Footer />
-            </SidebarContentWrapper>
-          </SidebarProvider>
+                {/* Footer */}
+                <Footer />
+              </SidebarContentWrapper>
+            </SidebarProvider>
 
-          <Toaster />
-          <Analytics />
-          <SpeedInsights />
-          <SonnerToaster position="bottom-right" richColors />
+            <OnboardingGate />
+            <Toaster />
+            <Analytics />
+            <SpeedInsights />
+            <SonnerToaster position="bottom-right" richColors />
+          </SocketProvider>
         </AuthProvider>
       </body>
     </html>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import Link from "next/link";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -302,18 +303,24 @@ export default function CommentsSection({
               <div key={comment.commentID} className="group">
                 {/* Main comment row */}
                 <div className="flex gap-3 py-4">
-                  <Avatar className="h-9 w-9 shrink-0 mt-0.5">
-                    <AvatarImage src={comment.user?.avatar || "/default-avatar.png"} />
-                    <AvatarFallback className="bg-primary-blue text-white text-sm">
-                      {comment.user?.name?.[0] || "U"}
-                    </AvatarFallback>
-                  </Avatar>
+                  <Link href={comment.user?.userId ? `/profile/${comment.user.userId}` : "#"} onClick={(e) => !comment.user?.userId && e.preventDefault()}>
+                    <Avatar className="h-9 w-9 shrink-0 mt-0.5 cursor-pointer hover:opacity-80 transition-opacity">
+                      <AvatarImage src={comment.user?.avatar || "/default-avatar.png"} />
+                      <AvatarFallback className="bg-primary-blue text-white text-sm">
+                        {comment.user?.name?.[0] || "U"}
+                      </AvatarFallback>
+                    </Avatar>
+                  </Link>
                   <div className="flex-1 min-w-0">
                     {/* Meta row */}
                     <div className="flex items-baseline gap-2 mb-1">
-                      <span className="text-sm font-semibold text-gray-900">
+                      <Link
+                        href={comment.user?.userId ? `/profile/${comment.user.userId}` : "#"}
+                        onClick={(e) => !comment.user?.userId && e.preventDefault()}
+                        className="text-sm font-semibold text-gray-900 hover:text-indigo-600 transition-colors"
+                      >
                         {comment.user?.name || "Unknown"}
-                      </span>
+                      </Link>
                       <span className="text-xs text-gray-400">
                         {new Date(comment.createdAt).toLocaleDateString(undefined, {
                           year: "numeric", month: "short", day: "numeric",
@@ -378,15 +385,23 @@ export default function CommentsSection({
                       <div className="mt-3 space-y-3 border-l-2 border-gray-100 pl-4">
                         {comment.replies.map((reply) => (
                           <div key={reply.commentID} className="flex gap-3">
-                            <Avatar className="h-7 w-7 shrink-0 mt-0.5">
-                              <AvatarImage src={reply.user?.avatar || "/default-avatar.png"} />
-                              <AvatarFallback className="bg-primary-blue text-white text-xs">
-                                {reply.user?.name?.[0] || "U"}
-                              </AvatarFallback>
-                            </Avatar>
+                            <Link href={reply.user?.userId ? `/profile/${reply.user.userId}` : "#"} onClick={(e) => !reply.user?.userId && e.preventDefault()}>
+                              <Avatar className="h-7 w-7 shrink-0 mt-0.5 cursor-pointer hover:opacity-80 transition-opacity">
+                                <AvatarImage src={reply.user?.avatar || "/default-avatar.png"} />
+                                <AvatarFallback className="bg-primary-blue text-white text-xs">
+                                  {reply.user?.name?.[0] || "U"}
+                                </AvatarFallback>
+                              </Avatar>
+                            </Link>
                             <div className="flex-1">
                               <div className="flex items-baseline gap-2 mb-0.5">
-                                <span className="text-xs font-semibold text-gray-900">{reply.user?.name || "Unknown"}</span>
+                                <Link
+                                  href={reply.user?.userId ? `/profile/${reply.user.userId}` : "#"}
+                                  onClick={(e) => !reply.user?.userId && e.preventDefault()}
+                                  className="text-xs font-semibold text-gray-900 hover:text-indigo-600 transition-colors"
+                                >
+                                  {reply.user?.name || "Unknown"}
+                                </Link>
                                 <span className="text-xs text-gray-400">
                                   {new Date(reply.createdAt).toLocaleDateString(undefined, {
                                     year: "numeric", month: "short", day: "numeric",

@@ -33,6 +33,9 @@ class PostResponse(Post):
     communityName: Optional[str] = None
     communityDisplayName: Optional[str] = None
     commentsCount: Optional[int] = 0
+    topComment: Optional[dict] = None
+    authorCredentials: List[str] = []  # verification badges from user profile
+    isPinned: bool = False             # pinned in community
 
 
 class PostCreate(BaseModel):

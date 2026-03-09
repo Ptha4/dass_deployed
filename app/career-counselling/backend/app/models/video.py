@@ -44,6 +44,7 @@ class VideoBase(BaseModel):
     likedBy: List[str] = []
     refType: str = Field(..., pattern="^(college|collegebranch|NA)$")
     typeId: Optional[str] = None  # Will contain collegeId or collegeBranchId based on refType
+    transcript: Optional[str] = None  # Full transcript of the video
 
 
 class Video(VideoBase):

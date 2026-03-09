@@ -45,7 +45,7 @@ export default function CreateCommunityModal({ onClose, onCreated }: CreateCommu
                 iconColor: form.iconColor,
             });
             onCreated();
-            router.push(`/communities/${res.data.communityId}`);
+            router.push(`/communities/${res.data.name}`);
         } catch (err: any) {
             setError(err.response?.data?.detail || "Failed to create community.");
         } finally {

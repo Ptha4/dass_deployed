@@ -113,7 +113,7 @@ def create_updated_csv(original_data, api_responses, output_file):
 def main():
     # Configuration
     input_csv = 'output/college_data_filled.csv'  # Input CSV file path
-    api_url = 'https://dass-deployed.onrender.com/api/colleges/'
+    api_url = 'http://localhost:8000/api/colleges/'
     output_csv = f'output/colleges_with_ids.csv'
 
     print(f"Reading college data from {input_csv}...")

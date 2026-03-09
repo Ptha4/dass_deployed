@@ -34,6 +34,8 @@ import {
   Upload,
   Link as LinkIcon,
   Loader2,
+  Star,
+  StarOff,
 } from "lucide-react";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
@@ -52,13 +54,19 @@ interface VideoData {
   tags?: string[];
 }
 
-export function VideoManagement() {
+interface VideoManagementProps {
+  expertId: string;
+}
+
+export function VideoManagement({ expertId }: VideoManagementProps) {
   const [videos, setVideos] = useState<VideoData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [currentVideo, setCurrentVideo] = useState<VideoData | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [profileVideoId, setProfileVideoId] = useState<string | null>(null);
+  const [settingProfileVideo, setSettingProfileVideo] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
     title: "",
@@ -70,7 +78,20 @@ export function VideoManagement() {
 
   useEffect(() => {
     fetchVideos();
-  }, []);
+    fetchCurrentProfileVideo();
+  }, [expertId]);
+
+  /** Load which video is currently set as the profile video */
+  const fetchCurrentProfileVideo = async () => {
+    try {
+      const res = await fetch(`/api/experts/${expertId}/profile-video`);
+      if (res.status === 204 || !res.ok) return;
+      const data = await res.json();
+      setProfileVideoId(data.videoID ?? null);
+    } catch {
+      // silently ignore — no profile video set
+    }
+  };
 
   const fetchVideos = async () => {
     try {
@@ -91,6 +112,39 @@ export function VideoManagement() {
       toast.error("Failed to load videos");
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  /** Set or unset a video as the profile video */
+  const handleSetProfileVideo = async (videoId: string) => {
+    setSettingProfileVideo(videoId);
+    try {
+      const token = localStorage.getItem("token");
+      // If already the profile video, clear it; otherwise set it
+      const newVideoId = profileVideoId === videoId ? null : videoId;
+
+      const res = await fetch(`/api/experts/${expertId}/profile-video`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ video_id: newVideoId }),
+      });
+
+      if (!res.ok) throw new Error("Failed to update profile video");
+
+      setProfileVideoId(newVideoId);
+      toast.success(
+        newVideoId
+          ? "Profile video set successfully!"
+          : "Profile video cleared."
+      );
+    } catch (error) {
+      console.error("Error setting profile video:", error);
+      toast.error("Failed to update profile video");
+    } finally {
+      setSettingProfileVideo(null);
     }
   };
 
@@ -176,6 +230,8 @@ export function VideoManagement() {
 
       if (!response.ok) throw new Error("Failed to delete video");
 
+      // If the deleted video was the profile video, clear it
+      if (profileVideoId === videoId) setProfileVideoId(null);
       toast.success("Video deleted successfully");
       fetchVideos();
     } catch (error) {
@@ -191,7 +247,9 @@ export function VideoManagement() {
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Video Management</h2>
           <p className="text-sm text-gray-600 mt-1">
-            Upload and manage your educational videos
+            Upload and manage your educational videos. Mark one as your{" "}
+            <span className="text-blue-600 font-medium">Profile Video</span> to
+            feature it at the top of your public profile.
           </p>
         </div>
         <Button onClick={() => handleOpenDialog()} className="gap-2">
@@ -231,96 +289,133 @@ export function VideoManagement() {
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {videos.map((video) => (
-            <Card key={video.id} className="overflow-hidden hover:shadow-lg transition-shadow">
-              {/* Thumbnail */}
-              <div className="relative aspect-video bg-gray-100">
-                {video.thumbnail ? (
-                  <img
-                    src={video.thumbnail}
-                    alt={video.title}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-100 to-purple-100">
-                    <Video className="h-12 w-12 text-gray-400" />
-                  </div>
-                )}
-                {video.duration && (
-                  <div className="absolute bottom-2 right-2 px-2 py-1 bg-black/80 text-white text-xs rounded">
-                    {video.duration}
-                  </div>
-                )}
-              </div>
+          {videos.map((video) => {
+            const isProfileVideo = profileVideoId === video.id;
+            const isSetting = settingProfileVideo === video.id;
 
-              <CardContent className="p-4">
-                {/* Title & Actions */}
-                <div className="flex items-start justify-between gap-2 mb-2">
-                  <h3 className="font-semibold text-gray-900 line-clamp-2 flex-1">
-                    {video.title}
-                  </h3>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                        <MoreVertical className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => handleOpenDialog(video)}>
-                        <Edit className="h-4 w-4 mr-2" />
-                        Edit
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => handleDelete(video.id)}
-                        className="text-red-600"
-                      >
-                        <Trash2 className="h-4 w-4 mr-2" />
-                        Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+            return (
+              <Card
+                key={video.id}
+                className={`overflow-hidden hover:shadow-lg transition-shadow ${
+                  isProfileVideo ? "ring-2 ring-blue-500 ring-offset-1" : ""
+                }`}
+              >
+                {/* Thumbnail */}
+                <div className="relative aspect-video bg-gray-100">
+                  {video.thumbnail ? (
+                    <img
+                      src={video.thumbnail}
+                      alt={video.title}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-100 to-purple-100">
+                      <Video className="h-12 w-12 text-gray-400" />
+                    </div>
+                  )}
+                  {video.duration && (
+                    <div className="absolute bottom-2 right-2 px-2 py-1 bg-black/80 text-white text-xs rounded">
+                      {video.duration}
+                    </div>
+                  )}
+                  {/* Profile video badge */}
+                  {isProfileVideo && (
+                    <div className="absolute top-2 left-2 flex items-center gap-1 bg-blue-600 text-white text-xs font-semibold px-2 py-1 rounded-full shadow">
+                      <Star className="h-3 w-3 fill-white" />
+                      Profile Video
+                    </div>
+                  )}
                 </div>
 
-                {/* Description */}
-                <p className="text-sm text-gray-600 line-clamp-2 mb-3">
-                  {video.description}
-                </p>
+                <CardContent className="p-4">
+                  {/* Title & Actions */}
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    <h3 className="font-semibold text-gray-900 line-clamp-2 flex-1">
+                      {video.title}
+                    </h3>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => handleOpenDialog(video)}>
+                          <Edit className="h-4 w-4 mr-2" />
+                          Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => handleDelete(video.id)}
+                          className="text-red-600"
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
 
-                {/* Tags */}
-                {video.tags && video.tags.length > 0 && (
-                  <div className="flex flex-wrap gap-1 mb-3">
-                    {video.tags.slice(0, 3).map((tag, index) => (
-                      <Badge key={index} variant="secondary" className="text-xs">
-                        {tag}
-                      </Badge>
-                    ))}
-                  </div>
-                )}
+                  {/* Description */}
+                  <p className="text-sm text-gray-600 line-clamp-2 mb-3">
+                    {video.description}
+                  </p>
 
-                {/* Stats */}
-                <div className="flex items-center gap-4 text-xs text-gray-500 mb-2">
-                  <div className="flex items-center gap-1">
-                    <Eye className="h-3 w-3" />
-                    <span>{video.views.toLocaleString()}</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Heart className="h-3 w-3" />
-                    <span>{video.likes}</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <MessageSquare className="h-3 w-3" />
-                    <span>{video.comments}</span>
-                  </div>
-                </div>
+                  {/* Tags */}
+                  {video.tags && video.tags.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mb-3">
+                      {video.tags.slice(0, 3).map((tag, index) => (
+                        <Badge key={index} variant="secondary" className="text-xs">
+                          {tag}
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
 
-                {/* Upload Date */}
-                <div className="flex items-center gap-1 text-xs text-gray-500">
-                  <Clock className="h-3 w-3" />
-                  <span>{formatDistanceToNow(new Date(video.createdAt), { addSuffix: true })}</span>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                  {/* Stats */}
+                  <div className="flex items-center gap-4 text-xs text-gray-500 mb-3">
+                    <div className="flex items-center gap-1">
+                      <Eye className="h-3 w-3" />
+                      <span>{video.views.toLocaleString()}</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Heart className="h-3 w-3" />
+                      <span>{video.likes}</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <MessageSquare className="h-3 w-3" />
+                      <span>{video.comments}</span>
+                    </div>
+                    <div className="flex items-center gap-1 ml-auto">
+                      <Clock className="h-3 w-3" />
+                      <span>{formatDistanceToNow(new Date(video.createdAt), { addSuffix: true })}</span>
+                    </div>
+                  </div>
+
+                  {/* Set as Profile Video button */}
+                  <Button
+                    variant={isProfileVideo ? "default" : "outline"}
+                    size="sm"
+                    className={`w-full gap-2 text-xs ${
+                      isProfileVideo
+                        ? "bg-blue-600 hover:bg-blue-700 text-white"
+                        : "border-blue-300 text-blue-600 hover:bg-blue-50"
+                    }`}
+                    onClick={() => handleSetProfileVideo(video.id)}
+                    disabled={isSetting}
+                  >
+                    {isSetting ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : isProfileVideo ? (
+                      <StarOff className="h-3 w-3" />
+                    ) : (
+                      <Star className="h-3 w-3" />
+                    )}
+                    {isProfileVideo ? "Remove as Profile Video" : "Set as Profile Video"}
+                  </Button>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
 

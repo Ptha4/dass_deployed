@@ -417,3 +417,25 @@ class ExpertManager:
         except Exception as e:
             print(f"Error incrementing students guided count: {e}")
             return False
+
+    async def set_profile_video(self, expert_id: str, video_id: Optional[str]) -> bool:
+        """
+        Set (or clear) the profile_video_id for an expert.
+
+        Args:
+            expert_id (str): ID of the expert to update
+            video_id (Optional[str]): ID of the video to set as profile video,
+                                      or None to clear the selection
+
+        Returns:
+            bool: True if the update was successful, False otherwise
+        """
+        try:
+            result = await self.collection.update_one(
+                {"_id": ObjectId(expert_id)},
+                {"$set": {"profile_video_id": video_id, "updatedAt": datetime.utcnow()}}
+            )
+            return result.matched_count > 0
+        except Exception as e:
+            print(f"Error setting profile video for expert {expert_id}: {e}")
+            return False

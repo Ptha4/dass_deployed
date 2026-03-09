@@ -69,10 +69,11 @@ export default function VideoPage() {
     // 4. Override and disable console methods
     const disableConsole = () => {
       const noop = () => undefined;
-      const methods = ['log', 'debug', 'info', 'warn', 'error', 'dir', 'trace'];
+      const methods: (keyof Console)[] = ['log', 'debug', 'info', 'warn', 'error', 'dir', 'trace'];
       
       methods.forEach(method => {
-        console[method] = noop;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (console as any)[method] = noop;
       });
     };
 
@@ -107,23 +108,18 @@ export default function VideoPage() {
           setIsOwner(true);
         }
 
-        // Track this video in localStorage last-viewed list
-        try {
-          const stored = localStorage.getItem("lastViewedVideos");
-          const existing: { videoID: string; title: string; views: number; createdAt: string }[] =
-            stored ? JSON.parse(stored) : [];
-          const updated = [
-            {
-              videoID: response.data.videoID,
+        // Track in user history (DB-backed, per-user)
+        const _token = localStorage.getItem("token");
+        if (_token && response.data?.title) {
+          fetch("/api/activity/view", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${_token}` },
+            body: JSON.stringify({
+              type: "video",
+              itemId: response.data.videoID || String(params.id),
               title: response.data.title,
-              views: response.data.views ?? 0,
-              createdAt: response.data.createdAt ?? new Date().toISOString(),
-            },
-            ...existing.filter((v) => v.videoID !== response.data.videoID),
-          ].slice(0, 20); // keep last 20
-          localStorage.setItem("lastViewedVideos", JSON.stringify(updated));
-        } catch {
-          // localStorage not available — ignore
+            }),
+          }).catch(() => {});
         }
       } catch (error) {
         console.error(error);

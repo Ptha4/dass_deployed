@@ -25,7 +25,7 @@ def desc_to_blog():
 
 def post_blog(heading, body, refType, typeId, userID, createdAt, updatedAt):
     import requests
-    url = "https://dass-deployed.onrender.com/api/blogs"
+    url = "http://localhost:8000/api/blogs"
     payload = {
         "heading": heading,
         "body": body,

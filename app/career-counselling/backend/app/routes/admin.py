@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Body, Query, Path
 from typing import List, Optional
+from pydantic import BaseModel
 from app.core.auth_utils import require_admin
 from app.managers.user import UserManager
 from app.managers.blog import BlogManager
@@ -284,3 +285,5 @@ async def get_admin_activities(
             status_code=500,
             detail=f"Failed to fetch activities: {str(e)}"
         )
+
+

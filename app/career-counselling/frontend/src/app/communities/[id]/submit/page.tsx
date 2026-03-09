@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import axios from "axios";
 import Link from "next/link";
-import { ArrowLeft, Send, Loader2, Tags, ImagePlus, X, Film } from "lucide-react";
+import { Send, Loader2, Tags, ImagePlus, X, Film, AlertTriangle, BookOpen } from "lucide-react";
 import { Community } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,6 +36,7 @@ export default function SubmitPostPage() {
     const [uploading, setUploading] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
+    const [showWordLimitModal, setShowWordLimitModal] = useState(false);
 
     const wordCount = countWords(form.content);
     const overLimit = wordCount > WORD_LIMIT;
@@ -122,7 +123,7 @@ export default function SubmitPostPage() {
             return;
         }
         if (overLimit) {
-            setError(`Post exceeds the ${WORD_LIMIT}-word limit. Please shorten your content.`);
+            setShowWordLimitModal(true);
             return;
         }
         setLoading(true);
@@ -131,7 +132,9 @@ export default function SubmitPostPage() {
                 .split(",")
                 .map((t) => t.trim())
                 .filter(Boolean);
-            await axios.post(`/api/communities/${id}/posts`, {
+            // Use resolved communityId (ObjectId) for API call, not URL slug
+            const communityApiId = community?.communityId || id;
+            await axios.post(`/api/communities/${communityApiId}/posts`, {
                 title: form.title,
                 content: form.content,
                 tags,
@@ -147,21 +150,42 @@ export default function SubmitPostPage() {
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50/30">
+            {/* Word-limit modal */}
+            {showWordLimitModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+                    <div className="bg-white rounded-2xl shadow-xl border border-gray-100 max-w-md w-full mx-4 p-6">
+                        <div className="flex items-center gap-3 mb-3">
+                            <div className="flex-shrink-0 bg-amber-100 text-amber-600 rounded-full p-2">
+                                <AlertTriangle className="h-5 w-5" />
+                            </div>
+                            <h2 className="text-lg font-bold text-gray-900">Post is too long</h2>
+                        </div>
+                        <p className="text-sm text-gray-600 mb-1">
+                            Your post has <span className="font-semibold text-red-500">{wordCount} words</span>, which exceeds the community limit of <span className="font-semibold">{WORD_LIMIT} words</span>.
+                        </p>
+                        <p className="text-sm text-gray-500 mb-5">
+                            For longer content, consider publishing it as a <span className="font-semibold text-indigo-600">blog post</span> instead — blogs have no word limit and reach a wider audience.
+                        </p>
+                        <div className="flex gap-3">
+                            <Button
+                                variant="outline"
+                                className="flex-1 rounded-xl"
+                                onClick={() => setShowWordLimitModal(false)}
+                            >
+                                Edit post
+                            </Button>
+                            <Button
+                                className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl gap-2"
+                                onClick={() => router.push("/blogs/create")}
+                            >
+                                <BookOpen className="h-4 w-4" />
+                                Write a blog
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
             <div className="max-w-2xl mx-auto px-4 py-10">
-                {/* Back link */}
-                <Link
-                    href={`/communities/${id}`}
-                    className="inline-flex items-center gap-1.5 text-sm text-gray-400 hover:text-indigo-600 transition-colors mb-6"
-                >
-                    <ArrowLeft className="h-4 w-4" />
-                    Back to{" "}
-                    {community ? (
-                        <span className="font-medium text-gray-700">c/{community.name}</span>
-                    ) : (
-                        "community"
-                    )}
-                </Link>
-
                 <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                     {/* Header */}
                     <div
@@ -324,7 +348,7 @@ export default function SubmitPostPage() {
                             </Button>
                             <Button
                                 type="submit"
-                                disabled={loading || overLimit}
+                                disabled={loading}
                                 className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl gap-2"
                             >
                                 {loading ? (

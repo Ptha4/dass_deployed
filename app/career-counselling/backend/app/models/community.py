@@ -1,4 +1,4 @@
-from typing import Optional, List
+from typing import Optional, List, Dict
 from pydantic import BaseModel
 from datetime import datetime
 
@@ -16,6 +16,9 @@ class Community(CommunityCreate):
     memberCount: int = 1
     postCount: int = 0
     members: List[str] = []              # list of userIds
+    community_roles: Dict[str, str] = {}  # {userId: "moderator"|"member"}
+    pinnedPosts: List[str] = []           # list of post IDs pinned to top
+    bannedUsers: List[str] = []           # list of banned userIds
     createdAt: datetime
     updatedAt: datetime
 
@@ -23,3 +26,4 @@ class Community(CommunityCreate):
 class CommunityResponse(Community):
     creatorName: Optional[str] = None
     isJoined: Optional[bool] = False     # whether the requesting user has joined
+    isModerator: Optional[bool] = False  # whether the requesting user is a moderator

@@ -156,17 +156,19 @@ export default function VideoInfo({ video }: VideoInfoProps) {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center space-x-4">
           <div className="flex items-center space-x-3">
-            <Avatar>
-              <AvatarFallback>
-                {`${video.expertDetails.userDetails.firstName[0]}${video.expertDetails.userDetails.lastName[0]}`}
-              </AvatarFallback>
-            </Avatar>
+            <Link href={`/profile/${video.userId}`}>
+              <Avatar className="cursor-pointer hover:opacity-80 transition-opacity">
+                <AvatarFallback>
+                  {`${video.expertDetails.userDetails.firstName[0]}${video.expertDetails.userDetails.lastName[0]}`}
+                </AvatarFallback>
+              </Avatar>
+            </Link>
             <div>
               {/* Details of the expert who is featured in the video with hover card */}
               <ExpertHoverCard expertId={video.expertDetails.expertID}>
-                <h3 className="font-semibold">
+                <Link href={`/profile/${video.userId}`} className="font-semibold hover:text-indigo-600 transition-colors">
                   {`${video.expertDetails.userDetails.firstName} ${video.expertDetails.userDetails.lastName}`}
-                </h3>
+                </Link>
               </ExpertHoverCard>
             </div>
           </div>

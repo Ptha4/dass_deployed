@@ -17,7 +17,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from "next/link";
 import axios from "axios";
 import Image from "next/image";
-import { BadgeCheck, Book, Users, Star, Loader2 } from "lucide-react";
+import { BadgeCheck, Book, Users, Star, Loader2, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
@@ -46,6 +46,15 @@ export default function RegisterPage() {
   const { isAuthenticated, loading } = useAuth();
   const router = useRouter();
 
+  // OTP state
+  const [phone, setPhone] = useState("");
+  const [otp, setOtp] = useState("");
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpVerified, setOtpVerified] = useState(false);
+  const [verificationToken, setVerificationToken] = useState("");
+  const [sendingOtp, setSendingOtp] = useState(false);
+  const [verifyingOtp, setVerifyingOtp] = useState(false);
+
   // Redirect authenticated users to dashboard
   useEffect(() => {
     if (!loading && isAuthenticated) {
@@ -63,7 +72,62 @@ export default function RegisterPage() {
     },
   });
 
+  async function handleSendOtp() {
+    const trimmedPhone = phone.trim();
+    if (!trimmedPhone) {
+      toast.error("Please enter your phone number");
+      return;
+    }
+    // Basic E.164 check: starts with + and 7-15 digits
+    if (!/^\+\d{7,15}$/.test(trimmedPhone)) {
+      toast.error("Use E.164 format, e.g. +919876543210");
+      return;
+    }
+    setSendingOtp(true);
+    try {
+      await axios.post("/api/send-otp", { phone: trimmedPhone });
+      setOtpSent(true);
+      setOtpVerified(false);
+      setVerificationToken("");
+      setOtp("");
+      toast.success("OTP sent via SMS!");
+    } catch (error: unknown) {
+      const detail = (error as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+      if (detail?.includes("already registered")) {
+        toast.error("This phone number is already registered");
+      } else {
+        toast.error(detail || "Failed to send OTP. Please try again.");
+      }
+    } finally {
+      setSendingOtp(false);
+    }
+  }
+
+  async function handleVerifyOtp() {
+    if (!otp.trim()) {
+      toast.error("Please enter the OTP");
+      return;
+    }
+    setVerifyingOtp(true);
+    try {
+      const res = await axios.post("/api/verify-otp", { phone: phone.trim(), otp: otp.trim() });
+      setVerificationToken(res.data.verification_token);
+      setOtpVerified(true);
+      toast.success("Phone number verified!");
+    } catch (error: unknown) {
+      const detail = (error as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+      toast.error(detail || "OTP verification failed. Please try again.");
+    } finally {
+      setVerifyingOtp(false);
+    }
+  }
+
   async function onSubmit(values: z.infer<typeof formSchema>) {
+    if (!otpVerified) {
+      toast.error("Please verify your phone number first");
+      return;
+    }
+
     setIsSubmitting(true);
 
     const nameParts = values.name
@@ -95,6 +159,8 @@ export default function RegisterPage() {
       lastName,
       email: values.email,
       password: values.password,
+      phone: phone.trim(),
+      verification_token: verificationToken,
     };
 
     try {
@@ -105,8 +171,8 @@ export default function RegisterPage() {
       // Show success toast
       toast.success("Account created successfully!");
 
-      // Send new users through the onboarding flow before hitting the dashboard
-      window.location.href = "/onboarding";
+      // Go straight to dashboard — OnboardingGate will show the modal immediately
+      window.location.href = "/dashboard";
     } catch (error: Error | unknown) {
       console.error(
         "Error creating user:",
@@ -123,6 +189,10 @@ export default function RegisterPage() {
 
       if (errorDetail?.includes("email already exists")) {
         toast.error("An account with this email already exists");
+      } else if (errorDetail?.includes("phone verification")) {
+        toast.error("Phone verification expired. Please verify your phone again.");
+        setOtpVerified(false);
+        setVerificationToken("");
       } else if (errorDetail?.includes("lastName")) {
         toast.error("Please provide your last name");
       } else {
@@ -252,10 +322,79 @@ export default function RegisterPage() {
                     </FormItem>
                   )}
                 />
+
+                {/* Phone verification section */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">
+                    Phone Number{" "}
+                    <span className="text-xs text-gray-400">(E.164 format, e.g. +919876543210)</span>
+                  </label>
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="+919876543210"
+                      value={phone}
+                      onChange={(e) => {
+                        setPhone(e.target.value);
+                        setOtpVerified(false);
+                        setOtpSent(false);
+                        setVerificationToken("");
+                      }}
+                      disabled={otpVerified}
+                      className="border-gray-300 focus:border-primary-blue focus:ring focus:ring-primary-blue/20"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleSendOtp}
+                      disabled={sendingOtp || otpVerified}
+                      className="shrink-0"
+                    >
+                      {sendingOtp ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : otpSent ? (
+                        "Resend"
+                      ) : (
+                        "Send OTP"
+                      )}
+                    </Button>
+                  </div>
+
+                  {otpSent && !otpVerified && (
+                    <div className="flex gap-2 mt-2">
+                      <Input
+                        placeholder="Enter 6-digit OTP"
+                        value={otp}
+                        onChange={(e) => setOtp(e.target.value)}
+                        maxLength={6}
+                        className="border-gray-300 focus:border-primary-blue focus:ring focus:ring-primary-blue/20"
+                      />
+                      <Button
+                        type="button"
+                        onClick={handleVerifyOtp}
+                        disabled={verifyingOtp}
+                        className="shrink-0 bg-primary-blue hover:bg-primary-blue/90 text-white"
+                      >
+                        {verifyingOtp ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          "Verify"
+                        )}
+                      </Button>
+                    </div>
+                  )}
+
+                  {otpVerified && (
+                    <p className="flex items-center gap-1 text-sm text-green-600">
+                      <CheckCircle2 className="h-4 w-4" />
+                      Phone verified
+                    </p>
+                  )}
+                </div>
+
                 <Button
                   type="submit"
                   className="w-full bg-primary-blue hover:bg-primary-blue/90 text-white transition-all"
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || !otpVerified}
                 >
                   {isSubmitting ? (
                     <Loader2 className="animate-spin h-5 w-5 mx-auto" />

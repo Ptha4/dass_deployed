@@ -1,7 +1,7 @@
 from typing import List, Optional
 from datetime import datetime
 from bson import ObjectId
-from app.models.video import VideoBase, VideoResponse, VideoCreate
+from app.models.video import VideoBase, Video, VideoResponse, VideoCreate
 from app.models.expert import ExpertResponse
 from app.core.database import get_database
 
@@ -41,8 +41,9 @@ class VideoManager:
 
         result = await self.collection.insert_one(video_dict)
         video_dict["_id"] = str(result.inserted_id)
+        video_dict["videoID"] = str(result.inserted_id)
 
-        return VideoBase(**video_dict)
+        return Video(**video_dict)
 
     async def update_video(self, video_id: str, video_update: dict, user_id: Optional[str] = None):
         """
@@ -719,3 +720,83 @@ class VideoManager:
         except Exception as e:
             print(f"Error getting admin videos: {e}")
             return []
+
+    async def get_profile_video_for_expert(self, expert_id: str) -> Optional[VideoResponse]:
+        """
+        Get the profile video for an expert.
+
+        Logic:
+          1. If the expert has a profile_video_id set, return that video.
+          2. Otherwise, return the most-viewed video uploaded by that expert.
+          3. If the expert has no videos at all, return None.
+
+        Args:
+            expert_id (str): ID of the expert
+
+        Returns:
+            Optional[VideoResponse]: The profile video, or None if no videos exist
+        """
+        try:
+            # Fetch the expert document to check for an explicit profile_video_id
+            expert = await self.db.experts.find_one({"_id": ObjectId(expert_id)})
+            if not expert:
+                return None
+
+            user_id = expert["userId"]
+            profile_video_id = expert.get("profile_video_id")
+
+            # 1. Try the explicitly chosen profile video
+            if profile_video_id:
+                try:
+                    video = await self.collection.find_one(
+                        {"_id": ObjectId(profile_video_id), "userId": user_id}
+                    )
+                    if video:
+                        video["videoID"] = str(video["_id"])
+                        expert_copy = dict(expert)
+                        expert_copy["expertID"] = str(expert_copy["_id"])
+                        user = await self.db.users.find_one({"_id": ObjectId(user_id)})
+                        if user:
+                            user["userID"] = str(user["_id"])
+                            expert_copy["userDetails"] = user
+                            video["expertDetails"] = ExpertResponse(**expert_copy)
+                            return VideoResponse(**video)
+                except Exception:
+                    pass  # profile_video_id may be invalid; fall through to most-viewed
+
+            # 2. Fall back to the most-viewed video by this expert
+            video = await self.collection.find_one(
+                {"userId": user_id},
+                sort=[("views", -1)]
+            )
+            if not video:
+                return None
+
+            video["videoID"] = str(video["_id"])
+            expert_copy = dict(expert)
+            expert_copy["expertID"] = str(expert_copy["_id"])
+            user = await self.db.users.find_one({"_id": ObjectId(user_id)})
+            if user:
+                user["userID"] = str(user["_id"])
+                expert_copy["userDetails"] = user
+                video["expertDetails"] = ExpertResponse(**expert_copy)
+                return VideoResponse(**video)
+
+            return None
+        except Exception as e:
+            print(f"Error getting profile video for expert {expert_id}: {e}")
+            return None
+
+    async def get_video_without_view_increment(self, video_id: str) -> Optional[dict]:
+        """
+        Fetch a raw video document by ID without incrementing the view counter.
+        Used for ownership checks.
+        """
+        try:
+            video = await self.collection.find_one({"_id": ObjectId(video_id)})
+            if video:
+                video["videoID"] = str(video["_id"])
+            return video
+        except Exception as e:
+            print(f"Error fetching video (no view increment): {e}")
+            return None

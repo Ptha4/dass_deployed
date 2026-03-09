@@ -43,11 +43,24 @@ export function BlogCard({ blog }: BlogCardProps) {
 
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
-              <Avatar className="h-8 w-8">
-                <AvatarFallback>{author.firstName[0]}</AvatarFallback>
-              </Avatar>
+              <Link
+                href={`/profile/${blog.userID}`}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <Avatar className="h-8 w-8 cursor-pointer hover:opacity-80 transition-opacity">
+                  <AvatarFallback>{author.firstName[0]}</AvatarFallback>
+                </Avatar>
+              </Link>
               <div className="text-sm">
-                <p className="font-medium">{authorName}</p>
+                <p className="font-medium">
+                  <Link 
+                    href={`/profile/${blog.userID}`}
+                    className="hover:text-indigo-600 transition-colors"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {authorName}
+                  </Link>
+                </p>
                 <p className="text-gray-500">
                   {new Date(blog.createdAt).toLocaleDateString()}
                 </p>

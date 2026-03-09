@@ -111,15 +111,20 @@ export default function BlogsPage() {
     }
   }, []);
 
-  // Load last viewed from localStorage on mount
+  // Load last viewed from DB on mount
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem("lastViewedBlogs");
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed)) setLastViewedBlogs(parsed.slice(0, 8));
-      }
-    } catch { /* ignore */ }
+    const token = localStorage.getItem("token");
+    if (!token) return;
+    fetch("/api/activity/recent", { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data: { type: string; itemId: string; title: string; viewedAt: string }[]) => {
+        const blogs = data
+          .filter((h) => h.type === "blog")
+          .slice(0, 8)
+          .map((h) => ({ blogID: h.itemId, heading: h.title, views: 0, createdAt: h.viewedAt }));
+        setLastViewedBlogs(blogs);
+      })
+      .catch(() => {});
   }, []);
 
   // Initial load and when filters/page change
@@ -139,17 +144,7 @@ export default function BlogsPage() {
   };
 
   return (
-    <div className="container mx-auto px-4 pt-2 pb-8">
-      <div className="flex items-center justify-between mb-3">
-        <h1 className="text-3xl font-bold">Career Insights Blog <span className="text-lg font-normal text-gray-500">({totalBlogs} articles)</span></h1>
-      </div>
-
-      {/* Featured Blog */}
-      {currentPage === 1 && featuredBlog && (
-        <div className="mb-8">
-          <FeaturedBlog blog={featuredBlog} />
-        </div>
-      )}
+    <div className="container mx-auto px-4 pt-8 pb-8">
 
       {/* ── Continue Reading (Last Viewed) ────────────────────────── */}
       {currentPage === 1 && lastViewedBlogs.length > 0 && (

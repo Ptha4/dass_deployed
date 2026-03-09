@@ -98,10 +98,7 @@ export default {
         "accordion-up": "accordion-up 0.2s ease-out",
         scroll:
           "scroll var(--animation-duration, 40s) var(--animation-direction, forwards) linear infinite",
-        sparkle: "sparkle 1s ease-in-out forwards",
-        "scale-up": "scale-up 0.4s ease-out forwards",
         "fade-in-out": "fade-in-out 1.5s ease-in-out forwards",
-        "bounce-in": "bounce-in 0.6s ease-out forwards",
         // New animations for comments section
         fadeIn: "fadeIn 0.5s ease-in-out forwards",
         slideIn: "slideIn 0.3s ease-out forwards",
@@ -110,6 +107,7 @@ export default {
         "scale-up": "scale-up 0.5s ease-out forwards",
         "bounce-in": "bounce-in 0.7s ease-out forwards",
         blob: "blob 7s infinite",
+        "pulse-glow": "pulse-glow 2s ease-in-out infinite",
       },
       keyframes: {
         "accordion-down": {
@@ -173,6 +171,10 @@ export default {
           "100%": {
             transform: "translate(0px, 0px) scale(1)",
           },
+        },
+        "pulse-glow": {
+          "0%, 100%": { boxShadow: "0 0 8px 2px rgba(251,146,60,0.5)" },
+          "50%": { boxShadow: "0 0 22px 7px rgba(251,146,60,0.85)" },
         },
       },
     },

@@ -195,7 +195,7 @@ export function UserPostsFeed() {
                         className="text-xs text-indigo-500 font-medium hover:underline cursor-pointer"
                         onClick={(e) => {
                           e.stopPropagation();
-                          router.push(`/communities/${post.communityId}`);
+                          router.push(`/communities/${post.communityName || post.communityId}`);
                         }}
                       >
                         <Users2 className="h-3 w-3 inline mr-0.5" />

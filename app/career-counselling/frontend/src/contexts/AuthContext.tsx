@@ -23,6 +23,7 @@ interface User {
   expertId?: string;
   type: string;
   wallet?: number;
+  profile_picture_url?: string | null;
   // Onboarding fields
   grade?: string;
   preferred_stream?: string;
@@ -39,6 +40,7 @@ interface AuthContextType {
   user: User | null;
   logout: () => void;
   refreshUser: () => Promise<void>;
+  updateProfilePicture: (url: string) => void;
 }
 
 // Create context with default values
@@ -48,6 +50,7 @@ const AuthContext = createContext<AuthContextType>({
   user: null,
   logout: () => { },
   refreshUser: async () => { },
+  updateProfilePicture: () => { },
 });
 
 // The Auth Provider component
@@ -77,6 +80,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     } catch {
       // silently ignore
     }
+  }, []);
+
+  // Optimistically update profile picture in context without a full refetch
+  const updateProfilePicture = useCallback((url: string) => {
+    setUser((prev) => prev ? { ...prev, profile_picture_url: url } : prev);
   }, []);
 
   // Set up interceptors for authentication
@@ -186,7 +194,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [logout]);
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, loading, user, logout, refreshUser }}>
+    <AuthContext.Provider value={{ isAuthenticated, loading, user, logout, refreshUser, updateProfilePicture }}>
       {children}
     </AuthContext.Provider>
   );

@@ -98,7 +98,8 @@ export default function UpcomingMeetings() {
       const token = localStorage.getItem("token");
       if (!token) return;
 
-      const response = await axios.get(`/api/meetings/user/${user?._id}`, {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+      const response = await axios.get(`${apiUrl}/api/meetings/my`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -106,7 +107,7 @@ export default function UpcomingMeetings() {
 
       console.log("Fetched meetings:", response.data);
 
-      const fetchedMeetings = response.data || [];
+      const fetchedMeetings = response.data.meetings || [];
       setAllMeetings(fetchedMeetings);
 
       // Calculate total pages
@@ -378,9 +379,18 @@ export default function UpcomingMeetings() {
                       <span className="text-muted-foreground">Payment:</span>{" "}
                       <span className="font-medium">₹{meeting.amount}</span>
                     </div>
-                    <Button variant="ghost" size="sm" className="h-8">
-                      View calendar
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button variant="ghost" size="sm" className="h-8">
+                        View calendar
+                      </Button>
+                      <Button
+                        size="sm"
+                        className="h-8 bg-blue-600 hover:bg-blue-700"
+                        onClick={() => window.location.href = `/meeting/${meeting._id}`}
+                      >
+                        Join Video Call
+                      </Button>
+                    </div>
                   </div>
                 </div>
               ))}

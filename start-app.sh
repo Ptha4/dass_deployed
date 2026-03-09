@@ -21,30 +21,30 @@ FRONTEND_DIR="$SCRIPT_DIR/app/career-counselling/frontend"
 
 # Step 1: Check and start MongoDB
 echo -e "\n${YELLOW}[1/4] Checking MongoDB...${NC}"
-if systemctl is-active --quiet mongod 2>/dev/null; then
-    echo -e "${GREEN}✓ MongoDB is already running${NC}"
-else
-    echo "Starting MongoDB..."
-    if command -v systemctl &> /dev/null; then
-        sudo systemctl start mongod
-        sleep 2
-        if systemctl is-active --quiet mongod; then
-            echo -e "${GREEN}✓ MongoDB started successfully${NC}"
-        else
-            echo -e "${RED}✗ Failed to start MongoDB via systemd${NC}"
-            echo "Trying manual start..."
-            mongod --dbpath /var/lib/mongodb --fork --logpath /tmp/mongod.log || {
-                echo -e "${RED}✗ Could not start MongoDB. Please start it manually.${NC}"
-                exit 1
-            }
-        fi
+
+if command -v brew &> /dev/null; then
+    # macOS (Homebrew)
+    if brew services list | grep -q "mongodb-community.*started"; then
+        echo -e "${GREEN}✓ MongoDB is already running (brew)${NC}"
     else
-        echo "systemctl not found, trying manual start..."
-        mongod --dbpath /var/lib/mongodb --fork --logpath /tmp/mongod.log || {
-            echo -e "${RED}✗ Could not start MongoDB. Please start it manually.${NC}"
-            exit 1
-        }
+        echo "Starting MongoDB via brew..."
+        brew services start mongodb/brew/mongodb-community
+        sleep 2
+        echo -e "${GREEN}✓ MongoDB started${NC}"
     fi
+elif command -v systemctl &> /dev/null; then
+    # Linux (systemd)
+    if systemctl is-active --quiet mongod; then
+        echo -e "${GREEN}✓ MongoDB is already running${NC}"
+    else
+        echo "Starting MongoDB via systemctl..."
+        sudo systemctl start mongod
+        echo -e "${GREEN}✓ MongoDB started${NC}"
+    fi
+else
+    echo -e "${RED}✗ Could not determine how to start MongoDB.${NC}"
+    echo "Please start MongoDB manually."
+    exit 1
 fi
 
 # Step 2: Check backend .env
@@ -76,7 +76,7 @@ echo -e "${GREEN}✓ Backend .env configured${NC}"
 echo -e "\n${YELLOW}[3/4] Checking frontend configuration...${NC}"
 if [ ! -f "$FRONTEND_DIR/.env.local" ]; then
     echo "Creating frontend .env.local..."
-    echo "NEXT_PUBLIC_API_URL=https://dass-deployed.onrender.com/api" > "$FRONTEND_DIR/.env.local"
+    echo "NEXT_PUBLIC_API_URL=http://localhost:8000/api" > "$FRONTEND_DIR/.env.local"
     echo -e "${GREEN}✓ Created .env.local${NC}"
 else
     echo -e "${GREEN}✓ Frontend .env.local exists${NC}"
@@ -98,7 +98,14 @@ trap cleanup SIGINT SIGTERM
 # Start backend in background
 echo -e "${GREEN}Starting backend (FastAPI)...${NC}"
 cd "$BACKEND_DIR"
-source .venv/bin/activate
+if [ -d ".venv" ]; then
+    source .venv/bin/activate
+elif [ -d "venv" ]; then
+    source venv/bin/activate
+else
+    echo -e "${RED}✗ No virtual environment found. Please create one with python -m venv .venv${NC}"
+    exit 1
+fi
 uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload &
 BACKEND_PID=$!
 echo "Backend PID: $BACKEND_PID"
@@ -118,9 +125,9 @@ echo "✓ All services started!"
 echo "==========================================${NC}"
 
 echo -e "\nAccess the application:"
-echo "  Frontend: https://13-team.vercel.app"
-echo "  Backend:  https://dass-deployed.onrender.com"
-echo "  API Docs: https://dass-deployed.onrender.com/docs"
+echo "  Frontend: http://localhost:3000"
+echo "  Backend:  http://localhost:8000"
+echo "  API Docs: http://localhost:8000/docs"
 
 echo -e "\nDatabase:"
 echo "  MongoDB:  mongodb://localhost:27017"

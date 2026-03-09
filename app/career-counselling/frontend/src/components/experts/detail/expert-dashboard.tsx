@@ -65,12 +65,12 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import type { Expert } from "@/types";
-import CreatePost from "@/components/experts/detail/create-post";
 import ExpertPosts from "@/components/experts/detail/expert-posts";
 import MarkdownViewer from "@/components/shared/markdown-viewer";
 import UpcomingMeetings from "@/components/experts/detail/upcoming-meetings";
 import { VideoManagement } from "@/components/experts/video-management";
 import { BlogManagement } from "@/components/experts/blog-management";
+import AvailabilitySettings from "@/components/experts/detail/availability-settings";
 
 interface ExpertDashboardProps {
   expert: Expert;
@@ -140,7 +140,6 @@ export default function ExpertDashboard({
   const [isSubmittingBlog, setIsSubmittingBlog] = useState(false);
   const [blogError, setBlogError] = useState<string | null>(null);
   const [showBlogDialog, setShowBlogDialog] = useState(false);
-  const [showPostDialog, setShowPostDialog] = useState(false);
   // Track refund requests to accurately calculate earnings
   const [refundRequests, setRefundRequests] = useState<Record<string, string>>(
     {}
@@ -151,10 +150,6 @@ export default function ExpertDashboard({
     thisMonth: 0,
     completedSessions: 0,
   });
-
-  const handlePostCreated = () => {
-    setPostRefreshTrigger((prev) => prev + 1);
-  };
 
   const handleBlogSubmit = async () => {
     if (!blogContent.heading.trim() || !blogContent.body.trim()) {
@@ -296,7 +291,7 @@ export default function ExpertDashboard({
   const fetchRefundData = async () => {
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch("/api/refunds", {
+      const response = await fetch("/api/refunds/expert", {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -617,12 +612,12 @@ export default function ExpertDashboard({
                 </p>
                 {actualEarnings.completedSessions <
                   analytics.performance.meetings.completed && (
-                  <p className="text-xs text-red-600 mt-1 font-medium">
-                    {analytics.performance.meetings.completed -
-                      actualEarnings.completedSessions}{" "}
-                    refunded
-                  </p>
-                )}
+                    <p className="text-xs text-red-600 mt-1 font-medium">
+                      {analytics.performance.meetings.completed -
+                        actualEarnings.completedSessions}{" "}
+                      refunded
+                    </p>
+                  )}
                 <p className="text-xs text-amber-600 mt-1 font-medium">
                   {analytics.performance.meetings.upcoming} upcoming
                 </p>
@@ -648,14 +643,14 @@ export default function ExpertDashboard({
                 </p>
                 {actualEarnings.total <
                   analytics.performance.earnings.total && (
-                  <p className="text-xs text-red-600 mt-1 font-medium">
-                    {(
-                      analytics.performance.earnings.total -
-                      actualEarnings.total
-                    ).toLocaleString()}{" "}
-                    refunded
-                  </p>
-                )}
+                    <p className="text-xs text-red-600 mt-1 font-medium">
+                      {(
+                        analytics.performance.earnings.total -
+                        actualEarnings.total
+                      ).toLocaleString()}{" "}
+                      refunded
+                    </p>
+                  )}
                 <p className="text-xs text-green-600 mt-1 font-medium">
                   +{analytics.performance.earnings.growth}% growth
                 </p>
@@ -851,7 +846,7 @@ export default function ExpertDashboard({
                 </TabsContent>
 
                 <TabsContent value="videos" className="space-y-4">
-                  <VideoManagement />
+                  <VideoManagement expertId={expert.expertID} />
                 </TabsContent>
 
                 <TabsContent value="blogs" className="space-y-4">
@@ -872,15 +867,6 @@ export default function ExpertDashboard({
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              <Button
-                className="w-full justify-start hover:bg-blue-50"
-                variant="outline"
-                onClick={() => setShowPostDialog(true)}
-              >
-                <MessageSquare className="h-4 w-4 mr-2" />
-                Create New Post
-              </Button>
-              
               <Button
                 className="w-full justify-start hover:bg-blue-50"
                 variant="outline"
@@ -976,27 +962,15 @@ export default function ExpertDashboard({
         </div>
       </div>
 
-      {/* Create Post Modal */}
-      <Dialog open={showPostDialog} onOpenChange={setShowPostDialog}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Create New Post</DialogTitle>
-            <DialogDescription>
-              Share your insights and expertise with your followers
-            </DialogDescription>
-          </DialogHeader>
-          <div className="mt-4">
-            <CreatePost
-              expertId={expert.expertID}
-              expertInitials={expertInitials}
-              onPostCreated={() => {
-                handlePostCreated();
-                setShowPostDialog(false);
-              }}
-            />
-          </div>
-        </DialogContent>
-      </Dialog>
+      {/* Availability Schedule */}
+      <div className="mt-6">
+        <AvailabilitySettings
+          expertId={expert.expertID}
+          initialAvailability={expert.availability}
+        />
+      </div>
+
+
     </div>
   );
 }

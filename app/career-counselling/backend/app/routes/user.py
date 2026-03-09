@@ -1,13 +1,19 @@
-from fastapi import APIRouter, HTTPException, Query, Depends, status
+from fastapi import APIRouter, HTTPException, Query, Depends, status, UploadFile, File, Security
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from typing import List, Optional
 from app.models.user import User, UserProfileUpdate, OnboardingUpdate
 from app.managers.expert import ExpertManager
 from app.managers.user import UserManager
-from app.core.auth_utils import require_admin, require_expert, require_user, get_current_user
+from app.managers.file import FileManager
+from app.managers.connection import ConnectionManager
+from app.core.auth_utils import require_admin, require_expert, require_user, get_current_user, get_optional_user
+from app.core.database import get_database
 
 router = APIRouter()
 user_manager = UserManager()
 expert_manager = ExpertManager()
+file_manager = FileManager()
+connection_manager = ConnectionManager()
 
 
 @router.post("/users", response_model=User)
@@ -152,6 +158,127 @@ async def update_profile(user_update: UserProfileUpdate, user_data: dict = Depen
     return updated_user
 
 
+@router.post("/profile/picture", response_model=User)
+async def upload_profile_picture(
+    file: UploadFile = File(...),
+    user_data: dict = Depends(require_user)
+):
+    """
+    Upload a profile picture for the authenticated user.
+    Accepts JPEG or PNG images up to 5 MB.
+    Returns the updated user with the new profile_picture_url.
+    """
+    existing_user = await user_manager.get_user_by_email(user_data["email"])
+    if not existing_user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Upload file via FileManager (GridFS)
+    file_id = await file_manager.upload_file(
+        file,
+        folder="profile_pictures",
+        allowed_types=["image/jpeg", "image/png", "image/webp"],
+        max_size=5 * 1024 * 1024,  # 5 MB
+    )
+
+    profile_picture_url = f"/api/files/{file_id}"
+
+    updated_user = await user_manager.update_user(
+        existing_user.id,
+        {"profile_picture_url": profile_picture_url}
+    )
+    if not updated_user:
+        raise HTTPException(status_code=500, detail="Failed to update profile picture")
+
+    return updated_user
+
+
+@router.get("/users/{user_id}", response_model=User)
+async def get_user_profile(
+    user_id: str,
+    requester: Optional[dict] = Depends(get_optional_user),
+):
+    """
+    Get a specific user's profile information by user ID.
+    Email and mobileNo are only included when the requester is self or a connection.
+    """
+    try:
+        user = await user_manager.get_user(user_id)
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        user_dict = user.model_dump()
+        user_dict.pop("hashedPassword", None)
+        user_dict.pop("password", None)
+
+        # Determine if requester may see private contact fields
+        requester_id = requester["id"] if requester else None
+        if requester_id != user_id:
+            is_connected = (
+                await connection_manager.are_connected(requester_id, user_id)
+                if requester_id
+                else False
+            )
+            if not is_connected:
+                user_dict["email"] = None
+                user_dict["mobileNo"] = None
+
+        return User(**user_dict)
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve user profile: {str(e)}")
+
+
+@router.get("/users/{user_id}/posts")
+async def get_user_posts(user_id: str, skip: int = 0, limit: int = 20):
+    """
+    Get posts created by a specific user.
+    
+    Returns a list of posts by the user.
+    """
+    try:
+        # Get user to verify they exist
+        user = await user_manager.get_user(user_id)
+        if not user:
+            raise HTTPException(
+                status_code=404,
+                detail="User not found"
+            )
+        
+        # Get posts from database
+        db = get_database()
+        print(f"Fetching posts for user {user_id}, database: {db}")
+        
+        # Try to access posts collection
+        posts_collection = db.posts
+        posts_cursor = posts_collection.find(
+            {"authorId": user_id}
+        ).sort("createdAt", -1).skip(skip).limit(limit)
+        
+        posts = []
+        async for post in posts_cursor:
+            # Convert ObjectId to string
+            post["_id"] = str(post["_id"])
+            post["postId"] = str(post["_id"])
+            posts.append(post)
+        
+        print(f"Found {len(posts)} posts for user {user_id}")
+        return posts
+    except HTTPException:
+        # Re-raise HTTP exceptions
+        raise
+    except Exception as e:
+        print(f"Error getting user posts: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to retrieve user posts: {str(e)}"
+        )
+
+
 @router.get("/expert-info")
 async def get_expert_info(user_data: dict = Depends(require_expert)):
     """
@@ -263,6 +390,13 @@ async def follow_user(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Target user not found"
+        )
+
+    # Enforce expert-only follow
+    if not target_user.isExpert:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You can only follow expert users"
         )
 
     # Prevent following yourself
@@ -406,22 +540,6 @@ async def update_user_profile(user_id: str, user_update: UserProfileUpdate):
         )
 
     return updated_user
-
-
-@router.get("/users/{user_id}", response_model=User)
-async def get_user(user_id: str):
-    """
-    Get a specific user by ID.
-
-    Returns the user if found, raises 404 if not found.
-    """
-    user = await user_manager.get_user(user_id)
-    if not user:
-        raise HTTPException(
-            status_code=404,
-            detail="User not found"
-        )
-    return user
 
 
 @router.get("/role")

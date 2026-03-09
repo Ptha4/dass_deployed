@@ -74,9 +74,9 @@ export default function FeaturedVideo({ video }: FeaturedVideoProps) {
               <div className="flex items-center space-x-3">
                 <div>
                   <p className="font-medium">
-                    {video.expertDetails.userDetails.firstName +
+                    {video.expertDetails?.userDetails.firstName +
                       " " +
-                      video.expertDetails.userDetails.lastName}
+                      video.expertDetails?.userDetails.lastName}
                   </p>
                 </div>
               </div>

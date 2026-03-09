@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -74,18 +75,19 @@ export default function BlogDetailPage() {
         // Increment view count
         incrementViewCount(data.blogID);
 
-        // Save to lastViewedBlogs in localStorage
-        try {
-          const stored = localStorage.getItem("lastViewedBlogs");
-          const prev: { blogID: string; heading: string; views: number; createdAt: string }[] =
-            stored ? JSON.parse(stored) : [];
-          const filtered = prev.filter((b) => b.blogID !== data.blogID);
-          const updated = [
-            { blogID: data.blogID, heading: data.heading, views: data.views ?? 0, createdAt: data.createdAt },
-            ...filtered,
-          ].slice(0, 20);
-          localStorage.setItem("lastViewedBlogs", JSON.stringify(updated));
-        } catch { /* ignore */ }
+        // Track in user history (DB-backed, per-user)
+        const _token = localStorage.getItem("token");
+        if (_token && data?.heading) {
+          fetch("/api/activity/view", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${_token}` },
+            body: JSON.stringify({
+              type: "blog",
+              itemId: data.blogID || String(params.id),
+              title: data.heading,
+            }),
+          }).catch(() => {});
+        }
 
         // Check if user has liked this blog
         if (user) {
@@ -393,22 +395,24 @@ export default function BlogDetailPage() {
             {/* Author Card */}
             <div className="bg-white p-6 rounded-lg shadow-sm mb-8">
               <div className="flex items-center space-x-4 mb-4">
-                <Avatar className="h-12 w-12 ring-2 ring-primary-lavender">
-                  <AvatarFallback className="bg-primary-blue text-white">
-                    {authorName[0]}
-                  </AvatarFallback>
-                </Avatar>
+                <Link href={`/profile/${blog.userID}`}>
+                  <Avatar className="h-12 w-12 ring-2 ring-primary-lavender cursor-pointer hover:opacity-80 transition-opacity">
+                    <AvatarFallback className="bg-primary-blue text-white">
+                      {authorName[0]}
+                    </AvatarFallback>
+                  </Avatar>
+                </Link>
                 <div>
                   {blog.expertId ? (
                     <ExpertHoverCard expertId={blog.expertId}>
-                      <h3 className="font-semibold text-gray-900">
+                      <Link href={`/profile/${blog.userID}`} className="font-semibold text-gray-900 hover:text-indigo-600 transition-colors">
                         {authorName}{" "}
-                      </h3>
+                      </Link>
                     </ExpertHoverCard>
                   ) : (
-                    <h3 className="font-semibold text-gray-900">
+                    <Link href={`/profile/${blog.userID}`} className="font-semibold text-gray-900 hover:text-indigo-600 transition-colors">
                       {authorName}
-                    </h3>
+                    </Link>
                   )}
                   <p className="text-sm text-gray-500">Content Contributor</p>
                 </div>

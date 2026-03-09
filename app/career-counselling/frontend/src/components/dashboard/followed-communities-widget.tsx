@@ -3,9 +3,8 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Users2, Plus, Loader2 } from "lucide-react";
+import { Users2, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import axios from "axios";
 import { Community } from "@/types";
 import { useAuth } from "@/contexts/AuthContext";
@@ -33,7 +32,7 @@ export function FollowedCommunitiesWidget() {
       <CardHeader className="pb-3">
         <CardTitle className="text-xl font-semibold flex items-center gap-2">
           <Users2 className="h-5 w-5 text-indigo-500" />
-          Communities
+          My Communities
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-1">
@@ -43,20 +42,15 @@ export function FollowedCommunitiesWidget() {
           </div>
         ) : communities.length === 0 ? (
           <div className="text-center py-4">
-            <p className="text-sm text-gray-500 mb-2">You haven&apos;t joined any communities yet</p>
-            <Link
-              href="/communities"
-              className="text-xs text-indigo-600 hover:underline font-medium"
-            >
-              Browse Communities →
-            </Link>
+            <p className="text-sm text-gray-500">You haven&apos;t joined any communities yet</p>
           </div>
         ) : (
           <>
+            <div className="max-h-[220px] overflow-y-auto space-y-0.5 custom-scrollbar">
             {communities.map((community) => (
               <div
                 key={community.communityId}
-                onClick={() => router.push(`/communities/${community.communityId}`)}
+                onClick={() => router.push(`/communities/${community.name}`)}
                 className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer group"
               >
                 <Avatar className="h-9 w-9 ring-1 ring-gray-100 shrink-0">
@@ -80,13 +74,7 @@ export function FollowedCommunitiesWidget() {
                 )}
               </div>
             ))}
-            <Link
-              href="/communities"
-              className="flex items-center gap-2 p-2.5 rounded-lg hover:bg-indigo-50 transition-colors text-sm text-indigo-600 font-medium"
-            >
-              <Plus className="h-4 w-4" />
-              Browse all communities
-            </Link>
+            </div>
           </>
         )}
       </CardContent>

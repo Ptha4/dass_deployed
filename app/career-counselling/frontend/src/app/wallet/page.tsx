@@ -103,7 +103,10 @@ export default function WalletPage() {
                 password: authUser.password ? String(authUser.password) : "",
                 isAdmin: authUser.isAdmin === undefined ? false : authUser.isAdmin,
                 isExpert: authUser.isExpert === undefined ? false : authUser.isExpert,
-                wallet: authUser.wallet || 200 // default value for wallet
+                wallet: authUser.wallet || 200, // default value for wallet
+                following: (authUser.following as string[]) ?? [],
+                followers: (authUser.followers as string[]) ?? [],
+                interests: (authUser.interests as string[]) ?? [],
             });
             setLoading(false);
         } else {

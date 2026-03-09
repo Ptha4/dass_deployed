@@ -1,3 +1,7 @@
+"use client";
+
+"use client";
+
 import { Slider } from "@mui/material";
 import { Checkbox } from "@/components/ui/checkbox";
 import {

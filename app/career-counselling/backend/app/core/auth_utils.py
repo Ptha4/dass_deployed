@@ -77,7 +77,7 @@ async def verify_token(token: str) -> Optional[Dict[str, str]]:
         user = await db.users.find_one({"email": email})
         
         if user:
-            return {"email": email, "id": user_id, "role": role}
+            return {"email": email, "id": user_id, "role": role, "expertId": payload.get("expertId", "")}
         else:
             return None
 

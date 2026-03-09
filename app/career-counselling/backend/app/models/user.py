@@ -1,5 +1,5 @@
 from pydantic import BaseModel, EmailStr, Field
-from typing import Optional, List
+from typing import Optional, List, Any, Dict
 from enum import Enum
 from bson import ObjectId
 
@@ -56,11 +56,17 @@ class UserBase(BaseModel):
     interests: List[str] = []
     career_goals: Optional[str] = None
     onboarding_completed: bool = False
+    recently_viewed: List[Dict[str, Any]] = []  # [{type, itemId, title, viewedAt}]
+    credentials: List[str] = []  # admin-assigned verification badges e.g. ["Verified", "Professor"]
+    reputation: int = 0          # engagement score (incremented on post likes received)
 
 
 class User(UserBase):
     # Change ObjectId to str
     id: Optional[str] = Field(alias="_id", default=None)
+    # Override to Optional so routes can strip sensitive fields for non-connections
+    email: Optional[EmailStr] = None
+    mobileNo: Optional[str] = None
     password: Optional[str] = None
 
     class Config:
@@ -95,6 +101,8 @@ class UserSignUp(BaseModel):
     firstName: str
     lastName: str
     middleName: Optional[str] = None
+    phone: str
+    verification_token: str
 
 
 class UserLogin(BaseModel):

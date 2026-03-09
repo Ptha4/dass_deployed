@@ -15,6 +15,12 @@ from app.config import settings
 
 DEFAULT_COMMUNITIES = [
     {
+        "name": "general",
+        "displayName": "General",
+        "description": "A place for all topics — career questions, introductions, and anything else that doesn't fit a specific community.",
+        "iconColor": "#6366f1",
+    },
+    {
         "name": "career-guidance",
         "displayName": "Career Guidance",
         "description": "Get advice on choosing the right career path, skill development, and career transitions.",

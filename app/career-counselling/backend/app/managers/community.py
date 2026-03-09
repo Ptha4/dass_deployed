@@ -1,6 +1,7 @@
 from typing import List, Optional
 from datetime import datetime
 from bson import ObjectId
+from pymongo import UpdateOne
 from app.models.community import Community, CommunityCreate, CommunityResponse
 from app.core.database import get_database
 
@@ -11,7 +12,7 @@ class CommunityManager:
         self.collection = self.db.communities
 
     async def create_community(self, data: CommunityCreate, creator_id: str) -> CommunityResponse:
-        """Create a new community. The creator auto-joins."""
+        """Create a new community. The creator auto-joins and becomes moderator."""
         # Normalise slug: lowercase, strip spaces
         slug = data.name.strip().lower().replace(" ", "-")
 
@@ -30,6 +31,9 @@ class CommunityManager:
             "memberCount": 1,
             "postCount": 0,
             "members": [creator_id],
+            "community_roles": {creator_id: "moderator"},
+            "pinnedPosts": [],
+            "bannedUsers": [],
             "createdAt": now,
             "updatedAt": now,
         }
@@ -46,9 +50,14 @@ class CommunityManager:
 
     async def get_community(self, community_id: str, requesting_user_id: Optional[str] = None) -> Optional[CommunityResponse]:
         try:
-            doc = await self.collection.find_one({"_id": ObjectId(community_id)})
+            doc = None
+            # Try ObjectId lookup first; if community_id is a slug this will raise InvalidId
+            try:
+                doc = await self.collection.find_one({"_id": ObjectId(community_id)})
+            except Exception:
+                pass
+            # Fall back to slug lookup
             if not doc:
-                # also try by slug
                 doc = await self.collection.find_one({"name": community_id})
             if not doc:
                 return None
@@ -76,8 +85,13 @@ class CommunityManager:
 
     async def join_community(self, community_id: str, user_id: str) -> bool:
         try:
+            # Support both ObjectId and slug
+            try:
+                query = {"_id": ObjectId(community_id)}
+            except Exception:
+                query = {"name": community_id}
             result = await self.collection.update_one(
-                {"_id": ObjectId(community_id)},
+                query,
                 {
                     "$addToSet": {"members": user_id},
                     "$inc": {"memberCount": 1},
@@ -91,8 +105,13 @@ class CommunityManager:
 
     async def leave_community(self, community_id: str, user_id: str) -> bool:
         try:
+            # Support both ObjectId and slug
+            try:
+                query = {"_id": ObjectId(community_id)}
+            except Exception:
+                query = {"name": community_id}
             result = await self.collection.update_one(
-                {"_id": ObjectId(community_id)},
+                query,
                 {
                     "$pull": {"members": user_id},
                     "$inc": {"memberCount": -1},
@@ -106,8 +125,13 @@ class CommunityManager:
 
     async def increment_post_count(self, community_id: str) -> None:
         try:
+            # Support both ObjectId and slug
+            try:
+                query = {"_id": ObjectId(community_id)}
+            except Exception:
+                query = {"name": community_id}
             await self.collection.update_one(
-                {"_id": ObjectId(community_id)},
+                query,
                 {"$inc": {"postCount": 1}, "$set": {"updatedAt": datetime.utcnow()}},
             )
         except Exception as e:
@@ -127,6 +151,11 @@ class CommunityManager:
         doc["communityId"] = str(doc["_id"])
         doc["creatorName"] = await self._get_user_name(doc.get("createdBy", ""))
         doc["isJoined"] = requesting_user_id in doc.get("members", []) if requesting_user_id else False
+        roles = doc.get("community_roles", {})
+        doc["isModerator"] = (
+            roles.get(requesting_user_id) == "moderator"
+            or doc.get("createdBy") == requesting_user_id
+        ) if requesting_user_id else False
         return CommunityResponse(**doc)
 
     async def _get_user_name(self, user_id: str) -> str:
@@ -138,9 +167,125 @@ class CommunityManager:
             pass
         return "Unknown"
 
+    # ── Moderation helpers ────────────────────────────────────────────────────
+
+    async def is_moderator(self, community_id: str, user_id: str) -> bool:
+        """Return True if user is createdBy or has moderator role."""
+        try:
+            doc = await self.collection.find_one({"_id": ObjectId(community_id)}, {"createdBy": 1, "community_roles": 1})
+            if not doc:
+                return False
+            if doc.get("createdBy") == user_id:
+                return True
+            return doc.get("community_roles", {}).get(user_id) == "moderator"
+        except Exception:
+            return False
+
+    async def promote_to_moderator(self, community_id: str, actor_id: str, target_id: str) -> bool:
+        """Actor (must be mod) promotes target user to moderator."""
+        if not await self.is_moderator(community_id, actor_id):
+            return False
+        result = await self.collection.update_one(
+            {"_id": ObjectId(community_id)},
+            {"$set": {f"community_roles.{target_id}": "moderator", "updatedAt": datetime.utcnow()}},
+        )
+        return result.modified_count > 0
+
+    async def demote_moderator(self, community_id: str, actor_id: str, target_id: str) -> bool:
+        """Actor (must be original creator / mod) demotes a moderator to member."""
+        # Only the creator can demote another moderator
+        doc = await self.collection.find_one({"_id": ObjectId(community_id)}, {"createdBy": 1})
+        if not doc or doc.get("createdBy") != actor_id:
+            return False
+        result = await self.collection.update_one(
+            {"_id": ObjectId(community_id)},
+            {"$unset": {f"community_roles.{target_id}": ""}, "$set": {"updatedAt": datetime.utcnow()}},
+        )
+        return result.modified_count > 0
+
+    async def ban_user(self, community_id: str, actor_id: str, target_id: str) -> bool:
+        """Mod bans a user: removes from members and adds to bannedUsers."""
+        if not await self.is_moderator(community_id, actor_id):
+            return False
+        result = await self.collection.update_one(
+            {"_id": ObjectId(community_id)},
+            {
+                "$addToSet": {"bannedUsers": target_id},
+                "$pull": {"members": target_id},
+                "$inc": {"memberCount": -1},
+                "$set": {"updatedAt": datetime.utcnow()},
+            },
+        )
+        return result.modified_count > 0
+
+    async def unban_user(self, community_id: str, actor_id: str, target_id: str) -> bool:
+        """Mod lifts a ban so the user can rejoin."""
+        if not await self.is_moderator(community_id, actor_id):
+            return False
+        result = await self.collection.update_one(
+            {"_id": ObjectId(community_id)},
+            {"$pull": {"bannedUsers": target_id}, "$set": {"updatedAt": datetime.utcnow()}},
+        )
+        return result.modified_count > 0
+
+    async def pin_post(self, community_id: str, actor_id: str, post_id: str) -> bool:
+        """Mod pins a post. Max 5 pinned posts per community."""
+        if not await self.is_moderator(community_id, actor_id):
+            return False
+        doc = await self.collection.find_one({"_id": ObjectId(community_id)}, {"pinnedPosts": 1})
+        if doc and len(doc.get("pinnedPosts", [])) >= 5:
+            return False  # limit reached
+        result = await self.collection.update_one(
+            {"_id": ObjectId(community_id)},
+            {"$addToSet": {"pinnedPosts": post_id}, "$set": {"updatedAt": datetime.utcnow()}},
+        )
+        return result.modified_count > 0
+
+    async def unpin_post(self, community_id: str, actor_id: str, post_id: str) -> bool:
+        """Mod unpins a post."""
+        if not await self.is_moderator(community_id, actor_id):
+            return False
+        result = await self.collection.update_one(
+            {"_id": ObjectId(community_id)},
+            {"$pull": {"pinnedPosts": post_id}, "$set": {"updatedAt": datetime.utcnow()}},
+        )
+        return result.modified_count > 0
+
+    async def search_posts(self, community_id: str, q: str, skip: int = 0, limit: int = 20) -> list:
+        """Full-text search within a community's posts (case-insensitive regex)."""
+        import re
+        from app.managers.post import PostManager
+        pattern = re.compile(re.escape(q), re.IGNORECASE)
+        cursor = (
+            self.db.posts.find(
+                {
+                    "communityId": community_id,
+                    "$or": [{"title": pattern}, {"content": pattern}, {"tags": pattern}],
+                }
+            )
+            .sort("createdAt", -1)
+            .skip(skip)
+            .limit(limit)
+        )
+        post_manager = PostManager()
+        results = []
+        async for doc in cursor:
+            doc["postId"] = str(doc["_id"])
+            await post_manager._enrich(doc, doc.get("authorId", ""), community_id)
+            doc["commentsCount"] = await self.db.comments.count_documents(
+                {"page_id": doc["postId"], "type": "post"}
+            )
+            from app.models.post import PostResponse
+            try:
+                results.append(PostResponse(**doc))
+            except Exception as e:
+                print(f"search_posts parse error: {e}")
+        return results
+
     async def seed_default_communities(self) -> None:
         """Seed default communities if they don't already exist."""
         DEFAULT_COMMUNITIES = [
+            {"name": "general", "displayName": "General", "description": "A place for all topics — career questions, introductions, and anything else that doesn't fit a specific community.", "iconColor": "#6366f1"},
             {"name": "career-guidance", "displayName": "Career Guidance", "description": "Get advice on choosing the right career path, skill development, and career transitions.", "iconColor": "#6366f1"},
             {"name": "engineering-students", "displayName": "Engineering Students", "description": "A community for engineering students to discuss academics, projects, and career opportunities.", "iconColor": "#ec4899"},
             {"name": "college-admissions", "displayName": "College Admissions", "description": "Tips, strategies, and discussions around college applications, entrance exams, and admissions.", "iconColor": "#10b981"},
@@ -151,17 +296,18 @@ class CommunityManager:
             {"name": "higher-education", "displayName": "Higher Education", "description": "Discussions about master's programs, PhD opportunities, and further education choices.", "iconColor": "#14b8a6"},
         ]
         now = datetime.utcnow()
+        # Single bulk_write with upserts — one round-trip instead of 9 serial find+insert pairs
+        ops = []
         for comm in DEFAULT_COMMUNITIES:
-            existing = await self.collection.find_one({"name": comm["name"]})
-            if not existing:
-                doc = {
-                    **comm,
-                    "createdBy": "system",
-                    "memberCount": 0,
-                    "postCount": 0,
-                    "members": [],
-                    "createdAt": now,
-                    "updatedAt": now,
-                }
-                await self.collection.insert_one(doc)
-                print(f"Seeded community: {comm['name']}")
+            doc = {
+                **comm,
+                "createdBy": "system",
+                "memberCount": 0,
+                "postCount": 0,
+                "members": [],
+                "createdAt": now,
+                "updatedAt": now,
+            }
+            ops.append(UpdateOne({"name": comm["name"]}, {"$setOnInsert": doc}, upsert=True))
+        if ops:
+            await self.collection.bulk_write(ops, ordered=False)

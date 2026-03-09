@@ -12,6 +12,10 @@ import {
     FileText,
     CalendarDays,
     LogIn,
+    Search,
+    Pin,
+    Shield,
+    X,
 } from "lucide-react";
 import { Community, Post } from "@/types";
 import { Button } from "@/components/ui/button";
@@ -31,6 +35,11 @@ export default function CommunityDetailPage() {
     const [loadingCommunity, setLoadingCommunity] = useState(true);
     const [loadingPosts, setLoadingPosts] = useState(true);
     const [joining, setJoining] = useState(false);
+
+    // Search
+    const [searchQuery, setSearchQuery] = useState("");
+    const [searchResults, setSearchResults] = useState<Post[] | null>(null);
+    const [searching, setSearching] = useState(false);
 
     const fetchCommunity = useCallback(async () => {
         try {
@@ -84,6 +93,53 @@ export default function CommunityDetailPage() {
         }
     };
 
+    const handleSearch = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!searchQuery.trim() || !community) return;
+        setSearching(true);
+        try {
+            const res = await axios.get(`/api/communities/${community.communityId}/search`, {
+                params: { q: searchQuery.trim() },
+            });
+            setSearchResults(Array.isArray(res.data) ? res.data : []);
+        } catch {
+            setSearchResults([]);
+        } finally {
+            setSearching(false);
+        }
+    };
+
+    const handlePin = async (postId: string, isPinned: boolean) => {
+        if (!community) return;
+        try {
+            const action = isPinned ? "unpin" : "pin";
+            await axios.post(`/api/communities/${community.communityId}/posts/${postId}/${action}`);
+            fetchPosts();
+            fetchCommunity();
+        } catch {
+            // ignore
+        }
+    };
+
+    const handleDeletePost = async (postId: string) => {
+        if (!community) return;
+        try {
+            await axios.delete(`/api/posts/${postId}`, {
+                params: { community_id: community.communityId },
+            });
+            setPosts((prev) => prev.filter((p) => p.postId !== postId));
+        } catch {
+            // ignore
+        }
+    };
+
+    // Pinned posts come first
+    const pinnedIds = new Set(community?.pinnedPosts ?? []);
+    const displayedPosts = searchResults !== null ? searchResults : [
+        ...posts.filter((p) => pinnedIds.has(p.postId)),
+        ...posts.filter((p) => !pinnedIds.has(p.postId)),
+    ];
+
     if (!loadingCommunity && !community) {
         return (
             <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -131,7 +187,14 @@ export default function CommunityDetailPage() {
                                     {community?.displayName.charAt(0).toUpperCase()}
                                 </div>
                                 <div className="flex-1">
-                                    <h1 className="text-2xl font-extrabold text-gray-900">{community?.displayName}</h1>
+                                    <div className="flex items-center gap-2">
+                                        <h1 className="text-2xl font-extrabold text-gray-900">{community?.displayName}</h1>
+                                        {community?.isModerator && (
+                                            <span className="flex items-center gap-1 text-xs font-semibold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">
+                                                <Shield className="h-3 w-3" /> Moderator
+                                            </span>
+                                        )}
+                                    </div>
                                     <p className="text-sm text-gray-400 font-medium">c/{community?.name}</p>
                                     <p className="text-gray-600 text-sm mt-1 max-w-xl">{community?.description}</p>
                                 </div>
@@ -146,7 +209,7 @@ export default function CommunityDetailPage() {
                                             </Button>
                                         </Link>
                                     )}
-                                    {isAuthenticated && (
+                                    {isAuthenticated && community?.name !== "general" && (
                                         <Button
                                             size="sm"
                                             variant={community?.isJoined ? "outline" : "default"}
@@ -167,12 +230,42 @@ export default function CommunityDetailPage() {
                             </>
                         )}
                     </div>
+
+                    {/* Search bar */}
+                    <form onSubmit={handleSearch} className="mt-4 flex gap-2">
+                        <div className="relative flex-1">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                            <input
+                                type="text"
+                                value={searchQuery}
+                                onChange={(e) => {
+                                    setSearchQuery(e.target.value);
+                                    if (!e.target.value) setSearchResults(null);
+                                }}
+                                placeholder="Search posts in this community..."
+                                className="w-full pl-9 pr-4 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                            />
+                        </div>
+                        <Button type="submit" size="sm" disabled={searching} className="rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white px-4">
+                            {searching ? <Loader2 className="h-4 w-4 animate-spin" /> : "Search"}
+                        </Button>
+                        {searchResults !== null && (
+                            <Button type="button" size="sm" variant="ghost" onClick={() => { setSearchResults(null); setSearchQuery(""); }} className="rounded-xl">
+                                <X className="h-4 w-4" />
+                            </Button>
+                        )}
+                    </form>
                 </div>
 
                 {/* Main two-column layout */}
                 <div className="flex flex-col lg:flex-row gap-6 pb-12">
                     {/* Posts feed */}
                     <main className="flex-1 space-y-4">
+                        {searchResults !== null && (
+                            <p className="text-sm text-gray-500 px-1">
+                                {searchResults.length} result{searchResults.length !== 1 ? "s" : ""} for &quot;{searchQuery}&quot;
+                            </p>
+                        )}
                         {loadingPosts ? (
                             Array.from({ length: 3 }).map((_, i) => (
                                 <div key={i} className="bg-white rounded-2xl border border-gray-100 p-5 space-y-3">
@@ -190,32 +283,46 @@ export default function CommunityDetailPage() {
                                     </div>
                                 </div>
                             ))
-                        ) : posts.length > 0 ? (
-                            posts.map((post) => <PostItem key={post.postId} post={post} />)
+                        ) : displayedPosts.length > 0 ? (
+                            displayedPosts.map((post) => (
+                                <PostItem
+                                    key={post.postId}
+                                    post={post}
+                                    isModerator={community?.isModerator}
+                                    isAuthorModerator={community?.community_roles?.[post.authorId] === "moderator"}
+                                    communityId={community?.communityId}
+                                    onPin={community?.isModerator ? () => handlePin(post.postId, !!post.isPinned) : undefined}
+                                    onModDelete={community?.isModerator ? () => handleDeletePost(post.postId) : undefined}
+                                />
+                            ))
                         ) : (
                             <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center">
                                 <div className="h-16 w-16 bg-indigo-50 rounded-full flex items-center justify-center mx-auto mb-4">
                                     <FileText className="h-8 w-8 text-indigo-300" />
                                 </div>
-                                <h3 className="text-lg font-bold text-gray-800 mb-1">No posts yet</h3>
-                                <p className="text-gray-400 text-sm mb-5">Be the first to post in this community!</p>
-                                {isAuthenticated && community?.isJoined ? (
+                                <h3 className="text-lg font-bold text-gray-800 mb-1">
+                                    {searchResults !== null ? "No posts found" : "No posts yet"}
+                                </h3>
+                                <p className="text-gray-400 text-sm mb-5">
+                                    {searchResults !== null ? "Try a different search term." : "Be the first to post in this community!"}
+                                </p>
+                                {!searchResults && isAuthenticated && community?.isJoined ? (
                                     <Link href={`/communities/${id}/submit`}>
                                         <Button className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl gap-2">
                                             <Plus className="h-4 w-4" /> Create First Post
                                         </Button>
                                     </Link>
-                                ) : isAuthenticated && !community?.isJoined ? (
+                                ) : !searchResults && isAuthenticated && !community?.isJoined && community?.name !== "general" ? (
                                     <Button onClick={handleJoinLeave} disabled={joining} className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl gap-2">
                                         {joining ? <Loader2 className="h-4 w-4 animate-spin" /> : "Join to Post"}
                                     </Button>
-                                ) : (
+                                ) : !searchResults ? (
                                     <Link href="/login">
                                         <Button variant="outline" className="rounded-xl gap-2">
                                             <LogIn className="h-4 w-4" /> Log in to post
                                         </Button>
                                     </Link>
-                                )}
+                                ) : null}
                             </div>
                         )}
                     </main>
@@ -242,6 +349,12 @@ export default function CommunityDetailPage() {
                                     <FileText className="h-4 w-4 text-indigo-400" />
                                     <span><strong className="text-gray-700">{community?.postCount ?? "—"}</strong> posts</span>
                                 </div>
+                                {(community?.pinnedPosts?.length ?? 0) > 0 && (
+                                    <div className="flex items-center gap-2">
+                                        <Pin className="h-4 w-4 text-indigo-400" />
+                                        <span><strong className="text-gray-700">{community?.pinnedPosts?.length}</strong> pinned post{(community?.pinnedPosts?.length ?? 0) !== 1 ? "s" : ""}</span>
+                                    </div>
+                                )}
                                 {community?.createdAt && (
                                     <div className="flex items-center gap-2">
                                         <CalendarDays className="h-4 w-4 text-indigo-400" />
@@ -250,6 +363,21 @@ export default function CommunityDetailPage() {
                                 )}
                             </div>
                         </div>
+
+                        {/* Mod actions panel */}
+                        {community?.isModerator && (
+                            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5">
+                                <h3 className="font-bold text-amber-800 mb-2 text-sm flex items-center gap-1.5">
+                                    <Shield className="h-4 w-4" /> Moderator Tools
+                                </h3>
+                                <p className="text-xs text-amber-600 mb-3">Use the pin / ban / delete controls on each post.</p>
+                                <Link href={`/communities/${id}/reports`}>
+                                    <Button size="sm" variant="outline" className="w-full rounded-xl border-amber-300 text-amber-700 hover:bg-amber-100">
+                                        View Reports
+                                    </Button>
+                                </Link>
+                            </div>
+                        )}
 
                         {/* CTA */}
                         {isAuthenticated && community?.isJoined && (
@@ -283,3 +411,4 @@ export default function CommunityDetailPage() {
         </div>
     );
 }
+

@@ -1,7 +1,9 @@
 from fastapi import APIRouter, HTTPException, Depends
+from pydantic import BaseModel
 from app.models.user import UserSignUp, UserLogin
 from app.managers.auth import AuthManager
 from app.managers.user import UserManager
+from app.managers import otp as otp_manager
 from app.core.auth_utils import get_token, require_admin, require_expert, require_user, get_current_user
 
 router = APIRouter()
@@ -9,11 +11,50 @@ auth_manager = AuthManager()
 user_manager = UserManager()
 
 
+class SendOTPRequest(BaseModel):
+    phone: str  # E.164 format, e.g. +919876543210
+
+
+class VerifyOTPRequest(BaseModel):
+    phone: str
+    otp: str
+
+
+@router.post("/send-otp")
+async def send_otp(payload: SendOTPRequest):
+    """Send a 6-digit OTP via WhatsApp to the given phone number."""
+    try:
+        await otp_manager.send_otp(payload.phone)
+        return {"message": "OTP sent successfully"}
+    except ValueError as e:
+        if str(e) == "phone_taken":
+            raise HTTPException(status_code=409, detail="Phone number already registered")
+        raise HTTPException(status_code=400, detail=str(e))
+    except RuntimeError as e:
+        raise HTTPException(status_code=502, detail=str(e))
+
+
+@router.post("/verify-otp")
+async def verify_otp(payload: VerifyOTPRequest):
+    """Verify the OTP and return a one-time verification_token for signup."""
+    try:
+        token = await otp_manager.verify_otp(payload.phone, payload.otp)
+        return {"verification_token": token}
+    except ValueError as e:
+        msg_map = {
+            "no_otp": "No OTP found for this phone number. Please request a new one.",
+            "already_verified": "This OTP has already been used.",
+            "otp_expired": "OTP has expired. Please request a new one.",
+            "invalid_otp": "Invalid OTP.",
+        }
+        raise HTTPException(status_code=400, detail=msg_map.get(str(e), str(e)))
+
+
 @router.post("/signup")
 async def signup(user_data: UserSignUp):
     """
     Register a new user, hash their password, and return a JWT token.
-    Requires email, password, first name, last name, and middle name.
+    Requires email, password, first name, last name, phone, and verification_token.
     """
     existing_user = await user_manager.get_user_by_email(user_data.email)
     if existing_user:
@@ -22,7 +63,7 @@ async def signup(user_data: UserSignUp):
 
     token = await auth_manager.signup(user_data)
     if not token:
-        raise HTTPException(status_code=500, detail="Failed to create user")
+        raise HTTPException(status_code=400, detail="Invalid or expired phone verification. Please verify your phone again.")
         
     # Log new user registration
     new_user = await user_manager.get_user_by_email(user_data.email)

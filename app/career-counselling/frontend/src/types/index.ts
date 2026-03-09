@@ -34,6 +34,19 @@ export interface User {
   isAdmin: boolean;
   password: string | null;
   wallet: number;
+  profilePicture?: string;
+  // Onboarding fields
+  grade?: string;
+  preferred_stream?: string;
+  target_college?: string;
+  interests: string[];
+  career_goals?: string;
+  onboarding_completed: boolean;
+  following: string[];
+  followers: string[];
+  // Community / social features
+  credentials?: string[];   // admin-assigned verification badges
+  reputation?: number;      // engagement score from post likes
 }
 
 interface Person {
@@ -137,6 +150,7 @@ export interface Post {
   authorId: string;
   authorName?: string;
   authorInitials?: string;
+  authorCredentials?: string[];
   communityId: string;
   communityName?: string;
   communityDisplayName?: string;
@@ -148,6 +162,12 @@ export interface Post {
   tags?: string[];
   media?: PostMedia[];
   commentsCount?: number;
+  isPinned?: boolean;
+  topComment?: {
+    content: string;
+    authorName: string;
+    authorInitials: string;
+  } | null;
 }
 
 export interface Community {
@@ -161,7 +181,11 @@ export interface Community {
   memberCount: number;
   postCount: number;
   members: string[];
+  community_roles?: Record<string, string>;
+  pinnedPosts?: string[];
+  bannedUsers?: string[];
   isJoined?: boolean;
+  isModerator?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -214,11 +238,32 @@ export interface Prediction {
 
 export type NotificationType =
   | "new_post"
+  | "new_video"
+  | "new_blog"
   | "like_post"
   | "comment"
   | "follow"
   | "meeting_scheduled"
-  | "meeting_reminder";
+  | "meeting_reminder"
+  | "connection_request"
+  | "connection_accepted"
+  | "connection_activity"
+  | "comment_reply"
+  | "post_liked"
+  | "community_post"
+  | "mention";
+
+export type ConnectionStatus = "pending" | "accepted" | "declined" | "none";
+
+export interface Connection {
+  connectionId: string;
+  requester_id: string;
+  target_id: string;
+  relationship_type: "connect";
+  status: ConnectionStatus;
+  createdAt: string;
+  updatedAt: string;
+}
 
 export interface SourceUserDetails {
   name: string;
@@ -238,11 +283,33 @@ export interface Notification {
   sourceUserDetails?: SourceUserDetails;
 }
 
+/**
+ * A batched notification that groups multiple fan-out events (new_video, new_blog)
+ * from the same expert within a 60-minute window into a single visible entry.
+ */
+export interface NotificationBatch {
+  batchId: string;
+  targetUserId: string;
+  actorId: string;
+  actorName: string;
+  actorExpertId?: string;
+  eventType: NotificationType;
+  entityIds: string[];
+  referenceType: string;   // "video" | "blog"
+  batchKey: string;
+  isRead: boolean;
+  isOpen: boolean;
+  windowExpiresAt: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Comment {
   commentID: string;
   user: {
     name: string;
     avatar: string;
+    userId?: string;
   };
   content: string;
   createdAt: string;

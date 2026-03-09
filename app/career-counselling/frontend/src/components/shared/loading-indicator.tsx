@@ -34,9 +34,9 @@ export function SkeletonCard({ className }: { className?: string }) {
     );
 }
 
-export function SkeletonCardGrid({ count = 4, columns = "grid-cols-1 md:grid-cols-2 lg:grid-cols-4" }: { count?: number, columns?: string }) {
+export function SkeletonCardGrid({ count = 4, columns = "grid-cols-1 md:grid-cols-2 lg:grid-cols-4", className }: { count?: number, columns?: string, className?: string }) {
     return (
-        <div className={cn("grid gap-4", columns)}>
+        <div className={cn("grid gap-4", columns, className)}>
             {Array(count).fill(0).map((_, i) => (
                 <SkeletonCard key={i} />
             ))}

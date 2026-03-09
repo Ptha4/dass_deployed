@@ -5,12 +5,14 @@ from app.models.post import PostResponse
 from app.models.comment import Comment, CommentCreate, CommentResponse
 from app.managers.post import PostManager
 from app.managers.comment import CommentManager
-from app.core.auth_utils import get_current_user, require_user
+from app.managers.connection import ConnectionManager
+from app.core.auth_utils import get_current_user, require_user, get_optional_user
 from datetime import datetime
 
 router = APIRouter()
 post_manager = PostManager()
 comment_manager = CommentManager()
+connection_manager = ConnectionManager()
 
 
 class PostCommentCreate(BaseModel):
@@ -32,13 +34,30 @@ async def list_posts(community_id: Optional[str] = None, skip: int = 0, limit: i
     return await post_manager.get_all_posts(skip, limit)
 
 @router.get("/posts/feed", response_model=List[PostResponse])
-async def get_feed(skip: int = 0, limit: int = 30, user_data: dict = Depends(require_user)):
+async def get_feed(skip: int = 0, limit: int = 30, user_data: Optional[dict] = Depends(get_optional_user)):
     """Get posts from communities the current user has joined."""
     try:
-        return await post_manager.get_feed_posts(user_data["id"], skip, limit)
+        if user_data:
+            return await post_manager.get_feed_posts(user_data["id"], skip, limit)
+        return []
     except Exception as e:
         print(f"get_feed error: {e}")
         raise HTTPException(status_code=500, detail="Failed to get feed")
+
+
+@router.get("/posts/network-feed", response_model=List[PostResponse])
+async def get_network_feed(
+    skip: int = 0,
+    limit: int = 30,
+    user_data: dict = Depends(get_current_user),
+):
+    """Get posts authored by the current user's connections."""
+    try:
+        connected_ids = await connection_manager.get_connected_user_ids(user_data["id"])
+        return await post_manager.get_posts_by_authors(list(connected_ids), skip, limit)
+    except Exception as e:
+        print(f"get_network_feed error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get network feed")
 
 
 @router.get("/posts/{post_id}", response_model=PostResponse)
@@ -86,9 +105,9 @@ async def get_post_comments(post_id: str, skip: int = 0, limit: int = 50):
 
 
 @router.delete("/posts/{post_id}")
-async def delete_post(post_id: str, user_data: dict = Depends(require_user)):
-    """Delete a post. Any user can delete their own posts."""
-    success = await post_manager.delete_post(post_id, user_data["id"])
+async def delete_post(post_id: str, community_id: Optional[str] = None, user_data: dict = Depends(require_user)):
+    """Delete a post. Author or community moderator can delete."""
+    success = await post_manager.delete_post(post_id, user_data["id"], community_id)
     if not success:
         raise HTTPException(
             status_code=404,

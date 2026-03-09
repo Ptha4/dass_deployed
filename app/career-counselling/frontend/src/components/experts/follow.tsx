@@ -9,9 +9,11 @@ import axios from "axios";
 interface FollowButtonProps {
   targetUserId: string;
   className?: string;
+  label?: string;        // custom label, defaults to "Follow"
+  followingLabel?: string; // label when following, defaults to "Unfollow"
 }
 
-export default function FollowButton({ targetUserId, className = "" }: FollowButtonProps) {
+export default function FollowButton({ targetUserId, className = "", label = "Follow", followingLabel = "Unfollow" }: FollowButtonProps) {
   const [isFollowing, setIsFollowing] = useState<boolean | null>(null); // Use null as initial state
   const [isLoading, setIsLoading] = useState(true); // Start with loading state true
   const { user } = useAuth();
@@ -111,7 +113,7 @@ export default function FollowButton({ targetUserId, className = "" }: FollowBut
         className={`${className} bg-gray-100 text-gray-400`}
         disabled={true}
       >
-        Loading...
+        ...
       </Button>
     );
   }
@@ -122,7 +124,7 @@ export default function FollowButton({ targetUserId, className = "" }: FollowBut
       className={`${className} ${isFollowing ? "bg-gray-200 hover:bg-gray-300 text-gray-800" : "bg-primary-blue hover:bg-primary-blue/90"}`}
       disabled={isLoading}
     >
-      {isLoading ? "Processing..." : isFollowing ? "Unfollow" : "Follow Author"}
+      {isLoading ? "..." : isFollowing ? followingLabel : label}
     </Button>
   );
 }

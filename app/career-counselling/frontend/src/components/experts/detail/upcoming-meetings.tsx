@@ -98,7 +98,7 @@ export default function UpcomingMeetings({ expertId }: UpcomingMeetingsProps) {
       const token = localStorage.getItem("token");
       if (!token) return;
 
-      const response = await axios.get("/api/refunds", {
+      const response = await axios.get("/api/refunds/expert", {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -217,11 +217,10 @@ export default function UpcomingMeetings({ expertId }: UpcomingMeetingsProps) {
               {meetings.map((meeting) => (
                 <div
                   key={meeting._id}
-                  className={`border rounded-lg p-4 hover:bg-gray-50 transition-colors ${
-                    getRefundStatus(meeting._id) === "approved"
+                  className={`border rounded-lg p-4 hover:bg-gray-50 transition-colors ${getRefundStatus(meeting._id) === "approved"
                       ? "border-red-200 bg-red-50"
                       : ""
-                  }`}
+                    }`}
                 >
                   <div className="flex items-start justify-between mb-2">
                     <div className="flex items-center gap-2">
@@ -279,9 +278,18 @@ export default function UpcomingMeetings({ expertId }: UpcomingMeetingsProps) {
                   <Separator className="my-3" />
                   <div className="flex justify-between items-center">
                     {renderEarningText(meeting)}
-                    <Button variant="ghost" size="sm" className="h-8">
-                      View calendar
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button variant="ghost" size="sm" className="h-8">
+                        View calendar
+                      </Button>
+                      <Button
+                        size="sm"
+                        className="h-8 bg-blue-600 hover:bg-blue-700"
+                        onClick={() => window.location.href = `/meeting/${meeting._id}`}
+                      >
+                        Join Video Call
+                      </Button>
+                    </div>
                   </div>
                 </div>
               ))}

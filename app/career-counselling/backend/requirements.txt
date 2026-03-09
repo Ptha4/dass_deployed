@@ -99,6 +99,7 @@ pycparser==2.22
 pycurl==7.45.6
 pydantic==2.11.3
 pydantic-settings==2.9.0
+pydantic_core==2.33.1
 pydub==0.25.1
 pygame==2.6.1
 Pygments==2.17.2
@@ -108,13 +109,14 @@ pymongo==4.13.2
 PyMySQL==1.1.0
 pyparsing==3.1.1
 PyQt5==5.15.10
-PyQt5-Qt5>=5.15.11
+PyQt5-Qt5==5.15.2
 PyQt5-sip==12.13.0
 PySocks==1.7.1
 pytest==8.3.5
 python-dateutil==2.9.0.post0
 python-dotenv==1.1.0
 python-http-client==3.3.7
+twilio==9.10.2
 python-multipart==0.0.20
 pytz==2025.1
 pyzmq==25.1.2
@@ -155,3 +157,4 @@ wikipedia==1.4.0
 wptools==0.4.17
 wsproto==1.2.0
 yarl==1.19.0
+python-socketio

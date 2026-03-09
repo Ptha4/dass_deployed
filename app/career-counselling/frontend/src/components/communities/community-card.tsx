@@ -10,7 +10,7 @@ export default function CommunityCard({ community }: CommunityCardProps) {
     const initial = community.displayName.charAt(0).toUpperCase();
 
     return (
-        <Link href={`/communities/${community.communityId}`}>
+        <Link href={`/communities/${community.name}`}>
             <div className="group relative bg-white rounded-2xl border border-gray-100 hover:border-indigo-200 shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden cursor-pointer h-full flex flex-col">
                 {/* Top accent bar */}
                 <div className="h-1.5 w-full" style={{ backgroundColor: community.iconColor }} />
