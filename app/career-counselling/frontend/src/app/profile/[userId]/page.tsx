@@ -5,8 +5,15 @@ import { useParams, useRouter } from "next/navigation";
 import axios from "axios";
 import {
   Loader2, User as UserIcon, Calendar, MapPin, Mail, Phone, Briefcase,
-  GraduationCap, Star, Clock, Users,
+  GraduationCap, Star, Clock, Users, CalendarCheck,
 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -38,6 +45,7 @@ export default function UserProfilePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [mutualCount, setMutualCount] = useState<number | null>(null);
+  const [showBookingModal, setShowBookingModal] = useState(false);
 
   const { loading: authLoading } = useAuth();
   const isOwnProfile = !!authUser && authUser._id === (userId as string);
@@ -406,12 +414,32 @@ export default function UserProfilePage() {
                 />
 
                 <div className="mt-auto pt-4">
-                  <BookingCalendar
-                    expertId={expert.expertID}
-                    meetingCost={expert.meetingCost}
+                  <Button
+                    onClick={() => setShowBookingModal(true)}
                     disabled={!expert.available}
-                  />
+                    className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white py-6 text-lg font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200"
+                  >
+                    <CalendarCheck className="h-5 w-5 mr-2" />
+                    Book a Meeting
+                  </Button>
                 </div>
+
+                {/* Booking Calendar Modal */}
+                <Dialog open={showBookingModal} onOpenChange={setShowBookingModal}>
+                  <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                      <DialogTitle className="text-xl font-bold">Book a Session</DialogTitle>
+                      <DialogDescription>
+                        Select a date and time slot to book with {expert.userDetails.firstName}
+                      </DialogDescription>
+                    </DialogHeader>
+                    <BookingCalendar
+                      expertId={expert.expertID}
+                      meetingCost={expert.meetingCost}
+                      disabled={!expert.available}
+                    />
+                  </DialogContent>
+                </Dialog>
               </div>
             </Card>
           </div>
@@ -431,6 +459,7 @@ export default function UserProfilePage() {
                     expertId={expert.expertID}
                     expertName={`${expert.userDetails.firstName} ${expert.userDetails.lastName}`}
                     expertInitials={expertInitials}
+                    userId={expert.userId}
                   />
                 </TabsContent>
                 <TabsContent value="videos">

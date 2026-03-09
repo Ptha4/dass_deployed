@@ -30,6 +30,8 @@ export default function BookingCalendar({
     const [isLoadingSlots, setIsLoadingSlots] = useState(false);
     const [isBooking, setIsBooking] = useState(false);
     const [currentMonth, setCurrentMonth] = useState(new Date());
+    const [monthAvailability, setMonthAvailability] = useState<Record<string, boolean>>({});
+    const [isLoadingMonth, setIsLoadingMonth] = useState(false);
     const { user } = useAuth();
 
     // Generate calendar dates for the current month view
@@ -62,6 +64,34 @@ export default function BookingCalendar({
         const day = String(date.getDate()).padStart(2, '0');
         return `${year}-${month}-${day}`;
     };
+
+    // Fetch availability for the entire month when currentMonth changes
+    useEffect(() => {
+        const fetchMonthAvailability = async () => {
+            setIsLoadingMonth(true);
+            try {
+                const year = currentMonth.getFullYear();
+                // API month is 1-12
+                const month = currentMonth.getMonth() + 1;
+                const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+
+                const response = await fetch(
+                    `${apiUrl}/api/experts/${expertId}/availability?year=${year}&month=${month}`
+                );
+
+                if (response.ok) {
+                    const data = await response.json();
+                    setMonthAvailability(data.availability || {});
+                }
+            } catch (error) {
+                console.error("Error loading month availability:", error);
+            } finally {
+                setIsLoadingMonth(false);
+            }
+        };
+
+        fetchMonthAvailability();
+    }, [expertId, currentMonth]);
 
     const handleDateSelect = async (date: Date) => {
         const dateStr = formatDateForApi(date);
@@ -188,19 +218,31 @@ export default function BookingCalendar({
                     const isSelected = dateStr === selectedDate;
                     const isToday = day.toDateString() === new Date().toDateString();
 
+                    // A date is unavailable if it's explicitly false in our map, or if we have loaded the map and it's missing/false
+                    const hasAvailabilityData = Object.keys(monthAvailability).length > 0;
+                    const isUnavailable = hasAvailabilityData && monthAvailability[dateStr] === false;
+                    const isDisabled = isPast || disabled || isUnavailable;
+
                     return (
                         <button
                             key={dateStr}
-                            disabled={isPast || disabled}
+                            disabled={isDisabled}
                             onClick={() => handleDateSelect(day)}
                             className={`
-                text-sm p-2 rounded-lg transition-all
-                ${isPast ? "text-gray-300 cursor-not-allowed" : "hover:bg-blue-100 cursor-pointer"}
-                ${isSelected ? "bg-blue-600 text-white hover:bg-blue-700" : ""}
-                ${isToday && !isSelected ? "ring-2 ring-blue-300" : ""}
+                relative text-sm p-2 rounded-lg transition-all
+                ${isDisabled ? "text-gray-300 cursor-not-allowed overflow-hidden" : "hover:bg-blue-100 cursor-pointer"}
+                ${isSelected ? "bg-blue-600 text-white hover:bg-blue-700 font-medium" : ""}
+                ${isToday && !isSelected ? "ring-2 ring-blue-300 font-medium text-blue-800" : ""}
+                ${isUnavailable && !isPast ? "opacity-60" : ""}
               `}
                         >
-                            {day.getDate()}
+                            {/* Cross out explicitly unavailable days */}
+                            {isUnavailable && (
+                                <div className="absolute inset-0 flex items-center justify-center overflow-hidden pointer-events-none">
+                                    <div className="w-full border-t flex-shrink-0" style={{ borderColor: 'rgba(156, 163, 175, 0.4)', transform: 'rotate(25deg)' }}></div>
+                                </div>
+                            )}
+                            <span className="relative z-10">{day.getDate()}</span>
                         </button>
                     );
                 })}

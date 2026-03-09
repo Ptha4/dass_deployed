@@ -45,6 +45,33 @@ async def get_available_slots(
         print(f"Error getting available slots: {e}")
         raise HTTPException(status_code=500, detail="Failed to get available slots")
 
+@router.get("/experts/{expert_id}/availability")
+async def get_month_availability(
+    expert_id: str,
+    year: int = Query(..., description="Year (e.g., 2024)"),
+    month: int = Query(..., description="Month (1-12)"),
+):
+    """
+    Get availability for an entire month.
+    Returns a dictionary mapping 'YYYY-MM-DD' to boolean indicating if the 
+    expert has at least one available slot that day.
+    """
+    try:
+        # Verify expert exists
+        expert = await expert_manager.get_expert(expert_id)
+        if not expert:
+            raise HTTPException(status_code=404, detail="Expert not found")
+
+        availability_map = await meeting_manager.get_month_availability(expert_id, year, month)
+        return {"expertId": expert_id, "year": year, "month": month, "availability": availability_map}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error getting month availability: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get month availability")
+
 
 @router.post("/meetings/book")
 async def book_meeting(
