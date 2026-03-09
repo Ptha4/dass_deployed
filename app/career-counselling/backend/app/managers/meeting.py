@@ -104,6 +104,101 @@ class MeetingManager:
         print("FINAL SLOTS:", available_slots)
         return available_slots
 
+    async def get_month_availability(self, expert_id: str, year: int, month: int) -> Dict[str, bool]:
+        """
+        Calculate availability for all days in a given month.
+        Returns a dictionary mapping 'YYYY-MM-DD' dates to a boolean indicating
+        if the expert has at least one available slot on that date.
+        """
+        # Quick check for expert availability config
+        expert = await self.db.experts.find_one({"_id": ObjectId(expert_id)})
+        if not expert or not expert.get("availability"):
+            return {}
+            
+        # Find the number of days in the requested month
+        import calendar
+        _, num_days = calendar.monthrange(year, month)
+        
+        # Calculate for each day in the month
+        # We use asyncio.gather to calculate days concurrently
+        # However we can just do it sequentially for simplicity, or we do a bulk query for existing bookings
+        
+        # Get all bookings for the entire month for this expert
+        start_of_month = datetime(year, month, 1)
+        end_of_month = datetime(year, month, num_days, 23, 59, 59)
+        
+        existing_bookings = await self.collection.find({
+            "expertId": expert_id,
+            "startTime": {"$gte": start_of_month, "$lte": end_of_month},
+            "status": {"$ne": MeetingStatus.CANCELLED},
+        }).to_list(None)
+        
+        # Group bookings by date string
+        bookings_by_date = {}
+        for booking in existing_bookings:
+            date_str = booking["startTime"].strftime("%Y-%m-%d")
+            time_str = booking["startTime"].strftime("%H:%M")
+            if date_str not in bookings_by_date:
+                bookings_by_date[date_str] = set()
+            bookings_by_date[date_str].add(time_str)
+            
+        availability_config = expert.get("availability")
+        result = {}
+        
+        now = datetime.now()
+        
+        # Calculate availability for each day
+        for day in range(1, num_days + 1):
+            test_date = datetime(year, month, day)
+            date_str = test_date.strftime("%Y-%m-%d")
+            day_name = test_date.strftime("%A").lower()
+            
+            # If the date is entirely in the past (before today), it's not available
+            if test_date.date() < now.date():
+                result[date_str] = False
+                continue
+                
+            day_config = availability_config.get(day_name)
+            
+            # If day is not configured as available
+            if not day_config or not day_config.get("isAvailable", False):
+                result[date_str] = False
+                continue
+                
+            booked_times = bookings_by_date.get(date_str, set())
+            has_available_slot = False
+            
+            # Check if there is at least one unbooked slot in the future
+            for slot in day_config.get("slots", []):
+                start_time_str = slot.get("startTime", "")
+                end_time_str = slot.get("endTime", "")
+                
+                if not start_time_str or not end_time_str:
+                    continue
+                    
+                start_hour, start_min = map(int, start_time_str.split(":"))
+                end_hour, end_min = map(int, end_time_str.split(":"))
+                
+                current = test_date.replace(hour=start_hour, minute=start_min, second=0)
+                end = test_date.replace(hour=end_hour, minute=end_min, second=0)
+                
+                while current + timedelta(hours=1) <= end:
+                    slot_time_str = current.strftime("%H:%M")
+                    
+                    # Check if this specific slot is available
+                    if slot_time_str not in booked_times and current > now:
+                        has_available_slot = True
+                        break # Found at least one slot, day is available
+                        
+                    current += timedelta(hours=1)
+                    
+                if has_available_slot:
+                    break
+                    
+            result[date_str] = has_available_slot
+            
+        return result
+
     async def book_meeting(
         self,
         expert_id: str,

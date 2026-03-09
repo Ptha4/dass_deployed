@@ -132,8 +132,7 @@ export default function Sidebar() {
 
   const isDashboardActive =
     pathname.startsWith("/dashboard") ||
-    pathname.startsWith("/admin") ||
-    pathname.startsWith("/experts/");
+    pathname.startsWith("/admin");
 
   return (
     <TooltipProvider delayDuration={0}>
