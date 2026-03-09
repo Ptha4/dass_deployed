@@ -23,7 +23,7 @@ if not os.getenv("ALGORITHM"):
 if not os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES"):
     os.environ["ACCESS_TOKEN_EXPIRE_MINUTES"] = "60"
 if not os.getenv("CORS_ALLOW_ORIGINS"):
-    os.environ["CORS_ALLOW_ORIGINS"] = "https://13-team.vercel.app"
+    os.environ["CORS_ALLOW_ORIGINS"] = "http://localhost:3000"
 
 # Add the backend directory to the Python path
 sys.path.append(os.path.join(os.path.dirname(__file__), 'backend'))

@@ -78,7 +78,7 @@ if __name__ == "__main__":
     # Configuration
     INPUT_CSV = "output/branches.csv"
     OUTPUT_CSV = "output/branches_with_ids.csv"
-    API_URL = "https://dass-deployed.onrender.com/api/branches/"
+    API_URL = "http://localhost:8000/api/branches/"
 
     # Run the process
     create_branches_from_csv(INPUT_CSV, OUTPUT_CSV, API_URL)

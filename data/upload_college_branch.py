@@ -8,7 +8,7 @@ import re
 from enum import Enum
 
 # API endpoint
-API_URL = "https://dass-deployed.onrender.com/api/college-branches/"
+API_URL = "http://localhost:8000/api/college-branches/"
 
 # Enums for data validation and transformation
 
