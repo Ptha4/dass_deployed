@@ -188,6 +188,10 @@ class UserManager:
             if not follower or not target:
                 return False
 
+            # Enforce that the target user is an expert
+            if not target.isExpert:
+                return False
+
             # Add target_id to follower's following list if not already following
             await self.collection.update_one(
                 {"_id": ObjectId(follower_id)},
@@ -199,6 +203,21 @@ class UserManager:
                 {"_id": ObjectId(target_id)},
                 {"$addToSet": {"followers": follower_id}}
             )
+
+            # Write a persistent follow record (prevent duplicates)
+            existing = await self.db.follows.find_one(
+                {"followerId": follower_id, "followedId": target_id}
+            )
+            if not existing:
+                from datetime import datetime as _dt
+                await self.db.follows.insert_one({
+                    "followerId": follower_id,
+                    "followedId": target_id,
+                    "relationship_type": "follow",
+                    "status": "accepted",
+                    "createdAt": _dt.utcnow(),
+                    "updatedAt": _dt.utcnow(),
+                })
 
             # Create a notification for the target user (expert) that they gained a new follower
             if target.isExpert:
@@ -248,6 +267,11 @@ class UserManager:
             await self.collection.update_one(
                 {"_id": ObjectId(target_id)},
                 {"$pull": {"followers": follower_id}}
+            )
+
+            # Remove the follow record from db.follows
+            await self.db.follows.delete_one(
+                {"followerId": follower_id, "followedId": target_id}
             )
 
             return True

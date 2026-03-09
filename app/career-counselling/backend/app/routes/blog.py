@@ -4,11 +4,13 @@ from datetime import datetime
 from app.models.blog import Blog, BlogResponse, BlogBase
 from app.managers.blog import BlogManager
 from app.managers.user import UserManager
+from app.managers.notification import NotificationManager
 from app.core.auth_utils import require_user, require_expert
 
 router = APIRouter()
 
 blog_manager = BlogManager()
+notification_manager = NotificationManager()
 
 
 @router.get("/blogs", response_model=dict)
@@ -118,6 +120,14 @@ async def create_blog(blog_data: BlogBase, user_data: dict = Depends(require_exp
         activity_type="blog_creation",
         description=f"New blog created: {blog_data.heading}",
         user_id=user_data["id"]
+    )
+
+    # Notify followers
+    blog_id = result.blogID if hasattr(result, "blogID") and result.blogID else ""
+    await notification_manager.create_blog_notification_for_followers(
+        expert_user_id=user_data["id"],
+        blog_id=blog_id,
+        blog_heading=blog_data.heading,
     )
     
     return result

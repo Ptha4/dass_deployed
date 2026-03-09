@@ -5,8 +5,7 @@ import FeaturesSection from "@/components/landing/features-section";
 import StatsSection from "@/components/landing/stats-section";
 import CTASection from "@/components/landing/cta-section";
 import dynamic from "next/dynamic";
-import { useEffect, useState, Suspense } from "react";
-import { motion } from "framer-motion";
+import { Suspense } from "react";
 // Lazy load heavy components to improve initial page load
 const MapSection = dynamic(() => import("@/components/landing/map-section"), {
   loading: () => (
@@ -35,96 +34,7 @@ const TestimonialsSection = dynamic(
   }
 );
 
-// Loader Component
-const LoadingOverlay = ({ error }: { error: string | null }) => (
-  <div
-    style={{
-      position: "fixed",
-      top: 0,
-      left: 0,
-      width: "100%",
-      height: "100%",
-      backgroundColor: "white",
-      display: "flex",
-      flexDirection: "column",
-      justifyContent: "center",
-      alignItems: "center",
-      zIndex: 9999, // Ensure it's on top
-    }}
-  >
-    {error ? (
-      <div className="text-red-600 text-center">
-        <p>Error connecting to our backend!</p>
-      </div>
-    ) : (
-      <>
-        <motion.div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-white"
-          initial={{ opacity: 1 }}
-          animate={{ opacity: 0 }}
-          transition={{ duration: 0.6, delay: 0.4 }}
-          style={{ pointerEvents: "none" }}
-        >
-          <motion.div
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.3 }}
-          >
-            <h1 className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600">
-              AlumNiti
-            </h1>
-          </motion.div>
-        </motion.div>
-        <div className="loadingspinner">
-          <div id="square1"></div>
-          <div id="square2"></div>
-          <div id="square3"></div>
-          <div id="square4"></div>
-          <div id="square5"></div>
-        </div>
-      </>
-    )}
-  </div>
-);
-
 export default function LandingPage() {
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [isApiReady, setIsApiReady] = useState(false);
-
-  useEffect(() => {
-    const checkApiStatus = async () => {
-      setIsLoading(true);
-      setError(null);
-      try {
-        // Adjust the URL based on your actual API endpoint
-        const response = await fetch("/api/health");
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        const data = await response.json();
-        if (data.status === "healthy") {
-          setIsApiReady(true);
-        } else {
-          setError("Unexpected response from backend.");
-        }
-      } catch (e: any) {
-        console.error("API check failed:", e);
-        setError(e.message || "Failed to connect to the backend.");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    setTimeout(() => {
-      checkApiStatus();
-    }, 300);
-  }, []);
-
-  if (isLoading || !isApiReady || error) {
-    return <LoadingOverlay error={error} />;
-  }
-
   return (
     <div className="w-full overflow-hidden">
       {/* Main Content */}

@@ -4,8 +4,25 @@ from app.models.user import UserBase, UserSearchResponse
 from datetime import datetime
 
 
+class TimeSlot(BaseModel):
+    startTime: str  # Format: "HH:MM" (24-hour)
+    endTime: str    # Format: "HH:MM" (24-hour)
+
+class DayAvailability(BaseModel):
+    isAvailable: bool = False
+    slots: List[TimeSlot] = []
+
+class ExpertAvailability(BaseModel):
+    monday: DayAvailability = DayAvailability()
+    tuesday: DayAvailability = DayAvailability()
+    wednesday: DayAvailability = DayAvailability()
+    thursday: DayAvailability = DayAvailability()
+    friday: DayAvailability = DayAvailability()
+    saturday: DayAvailability = DayAvailability()
+    sunday: DayAvailability = DayAvailability()
+
 class ExpertBase(BaseModel):
-    calendarEmbedUrl: str
+    calendarEmbedUrl: str = "" # Making it optional/empty by default since we use native
     meetingCost: float
     currentPosition: str
     organization: str
@@ -17,11 +34,10 @@ class ExpertBase(BaseModel):
     available: bool = True
     studentsGuided: int = 0  # Default to 0 students guided
     profile_video_id: Optional[str] = None  # Expert's chosen profile video ID
-
+    availability: Optional[ExpertAvailability] = None # Native scheduling availability
 
 class Expert(ExpertBase):
     createdAt: datetime
-
 
 class ExpertResponse(Expert):
     expertID: str
@@ -45,3 +61,4 @@ class ExpertUpdate(BaseModel):
     available: Optional[bool] = None
     studentsGuided: Optional[int] = None
     profile_video_id: Optional[str] = None  # Expert's chosen profile video ID
+    availability: Optional[ExpertAvailability] = None

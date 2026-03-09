@@ -5,6 +5,7 @@ from app.models.college import CollegeSearchResponse
 from app.models.expert import ExpertSearchResponse
 from app.models.user import UserSearchResponse
 from app.models.video import VideoSearchResponse
+from typing import Optional, Set
 import random
 import re
 
@@ -88,10 +89,12 @@ class SearchManager:
         query: str,
         search_type: SearchType = SearchType.ALL,
         skip: int = 0,
-        limit: int = 10
+        limit: int = 10,
+        connected_ids: Optional[Set[str]] = None,
     ) -> SearchResult:
         """
         Perform an improved search across specified content types.
+        Connected users / authors are surfaced first when connected_ids is provided.
         """
         results = SearchResult(type=search_type, total_count=0)
         random_limit = 1 if search_type == SearchType.ALL else 5
@@ -173,6 +176,11 @@ class SearchManager:
                     min(random_limit if not query.strip()
                         else limit, len(all_experts))
                 )
+                # Boost connected experts to the top
+                if connected_ids:
+                    selected_experts.sort(
+                        key=lambda e: 0 if e.get("userId") in connected_ids else 1
+                    )
                 results.experts = [ExpertSearchResponse(
                     **expert) for expert in selected_experts]
                 results.total_count += len(results.experts)

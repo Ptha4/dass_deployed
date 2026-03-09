@@ -144,17 +144,7 @@ export default function BlogsPage() {
   };
 
   return (
-    <div className="container mx-auto px-4 pt-2 pb-8">
-      <div className="flex items-center justify-between mb-3">
-        <h1 className="text-3xl font-bold">Career Insights Blog <span className="text-lg font-normal text-gray-500">({totalBlogs} articles)</span></h1>
-      </div>
-
-      {/* Featured Blog */}
-      {currentPage === 1 && featuredBlog && (
-        <div className="mb-8">
-          <FeaturedBlog blog={featuredBlog} />
-        </div>
-      )}
+    <div className="container mx-auto px-4 pt-8 pb-8">
 
       {/* ── Continue Reading (Last Viewed) ────────────────────────── */}
       {currentPage === 1 && lastViewedBlogs.length > 0 && (

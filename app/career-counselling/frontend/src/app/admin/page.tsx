@@ -65,6 +65,45 @@ import { toast } from "sonner";
 import axios from "axios";
 import { Textarea } from "@/components/ui/textarea";
 
+// Module-level interfaces used by both AdminDashboard and dialog components
+interface ExpertApplication {
+  id: string;
+  userId: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  currentPosition: string;
+  organization: string;
+  education: string;
+  bio: string;
+  specialization: string;
+  meetingCost: number;
+  fileId: string;
+  applicationDate: string;
+  status: "pending" | "approved" | "rejected";
+  reviewDate?: string;
+  reviewedBy?: string;
+  rejectionReason?: string;
+}
+
+interface RefundRequest {
+  _id: string;
+  meetingId: string;
+  expertId: string;
+  userId: string;
+  reason: string;
+  amount: number;
+  status: "pending" | "approved" | "denied";
+  requestedAt: string;
+  processedAt?: string;
+  adminNotes?: string;
+  fileId?: string;
+  userName?: string;
+  userEmail?: string;
+  expertName?: string;
+  meetingDetails?: any;
+}
+
 export default function AdminDashboard() {
   const router = useRouter();
   const { user } = useAuth();
@@ -92,6 +131,7 @@ export default function AdminDashboard() {
     email: string;
     isAdmin: boolean;
     isExpert: boolean;
+    status?: string;
   }
 
   interface Expert {
@@ -101,44 +141,7 @@ export default function AdminDashboard() {
     email: string;
     specialization: string;
     rating: number;
-  }
-
-  interface ExpertApplication {
-    id: string;
-    userId: string;
-    firstName: string;
-    lastName: string;
-    email: string;
-    currentPosition: string;
-    organization: string;
-    education: string;
-    bio: string;
-    specialization: string;
-    meetingCost: number;
-    fileId: string;
-    applicationDate: string;
-    status: "pending" | "approved" | "rejected";
-    reviewDate?: string;
-    reviewedBy?: string;
-    rejectionReason?: string;
-  }
-
-  interface RefundRequest {
-    _id: string;
-    meetingId: string;
-    expertId: string;
-    userId: string;
-    reason: string;
-    amount: number;
-    status: "pending" | "approved" | "denied";
-    requestedAt: string;
-    processedAt?: string;
-    adminNotes?: string;
-    fileId?: string;
-    userName?: string;
-    userEmail?: string;
-    expertName?: string;
-    meetingDetails?: any;
+    studentsGuided?: number;
   }
 
   interface Video {
@@ -501,11 +504,7 @@ export default function AdminDashboard() {
               </div>
               {activities.length > 5 && (
                 <div className="mt-4 text-center">
-                  <ViewAllActivitiesDialog activities={activities}>
-                    <Button variant="outline" size="sm">
-                      View All Activities
-                    </Button>
-                  </ViewAllActivitiesDialog>
+                  <ViewAllActivitiesDialog activities={activities} />
                 </div>
               )}
             </CardContent>
@@ -647,7 +646,9 @@ export default function AdminDashboard() {
                               <div className="flex items-center gap-1.5">
                                 {expert.firstName} {expert.lastName}
                                 {isVerified && (
-                                  <CheckCircle className="h-4 w-4 fill-blue-600 text-white" title="Verified Expert" />
+                                  <span title="Verified Expert">
+                                    <CheckCircle className="h-4 w-4 fill-blue-600 text-white" />
+                                  </span>
                                 )}
                               </div>
                               <p className="text-xs text-muted-foreground">
@@ -1009,6 +1010,7 @@ export default function AdminDashboard() {
 }
 
 // Dialog components for user management
+
 function AddUserDialog() {
   const [formData, setFormData] = useState({
     firstName: "",
@@ -1110,6 +1112,7 @@ function AddUserDialog() {
 interface EditUserProps {
   user: {
     _id: number;
+    id?: number;
     firstName: string;
     lastName: string;
     email: string;

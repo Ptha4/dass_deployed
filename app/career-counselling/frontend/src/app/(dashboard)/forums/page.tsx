@@ -2,17 +2,18 @@
 
 import { useState, useEffect } from "react";
 import axios from "axios";
-import { MessageSquare, Plus, SlidersHorizontal, ChevronDown, Loader2, Search } from "lucide-react";
+import { MessageSquare, Plus, SlidersHorizontal, ChevronDown, Loader2, Search, BookOpen, Play } from "lucide-react";
 import { FollowedCommunitiesWidget } from "@/components/dashboard/followed-communities-widget";
 import { TrendingCarousel } from "@/components/dashboard/trending-carousel";
 import PostItem from "@/components/communities/post-item";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
-import { Post, Community } from "@/types";
+import { Post, Community, Blog, Video } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import Link from "next/link";
 import {
   Popover,
   PopoverContent,
@@ -44,6 +45,8 @@ export default function ForumsPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [joinedCommunities, setJoinedCommunities] = useState<Community[]>([]);
   const [loadingCommunities, setLoadingCommunities] = useState(true);
+  const [promoBlogs, setPromoBlogs] = useState<Blog[]>([]);
+  const [promoVideos, setPromoVideos] = useState<Video[]>([]);
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -64,6 +67,16 @@ export default function ForumsPage() {
   useEffect(() => {
     if (authLoading) return;
     fetchPosts();
+    // Fetch promo content once on mount
+    axios.get("/api/blogs?limit=20").then((r) => {
+      const items: Blog[] = Array.isArray(r.data) ? r.data : r.data.blogs || [];
+      // Shuffle so different ones appear each session
+      setPromoBlogs(items.sort(() => Math.random() - 0.5));
+    }).catch(() => { });
+    axios.get("/api/videos?limit=20").then((r) => {
+      const items: Video[] = Array.isArray(r.data) ? r.data : r.data.videos || [];
+      setPromoVideos(items.sort(() => Math.random() - 0.5));
+    }).catch(() => { });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [appliedFilters, authLoading]);
 
@@ -339,9 +352,55 @@ export default function ForumsPage() {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {posts.map((post) => (
-                    <PostItem key={post.postId} post={post} showCommunity />
-                  ))}
+                  {posts.map((post, idx) => {
+                    // Every 3rd post (after index 2, 5, 8 …), inject a promo card
+                    const showPromo = (idx + 1) % 3 === 0;
+                    // Alternate blog / video
+                    const promoSlot = Math.floor((idx + 1) / 3) - 1;
+                    const isBlog = promoSlot % 2 === 0;
+                    const blog = isBlog ? promoBlogs[promoSlot % Math.max(promoBlogs.length, 1)] : null;
+                    const video = !isBlog ? promoVideos[promoSlot % Math.max(promoVideos.length, 1)] : null;
+
+                    return (
+                      <div key={post.postId}>
+                        <PostItem post={post} showCommunity />
+
+                        {showPromo && blog && (
+                          <Link href={`/blogs/${blog.blogID}`} className="block mt-4">
+                            <div className="flex gap-3 items-start bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-100 rounded-2xl p-4 hover:shadow-md transition-shadow">
+                              <div className="flex-shrink-0 h-9 w-9 rounded-xl bg-indigo-600 flex items-center justify-center">
+                                <BookOpen className="h-4 w-4 text-white" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-[10px] font-semibold text-indigo-400 uppercase tracking-wider mb-0.5">Recommended Blog</p>
+                                <p className="text-sm font-semibold text-gray-800 line-clamp-2">{blog.heading}</p>
+                                <p className="text-xs text-gray-500 mt-1 line-clamp-1">
+                                  {blog.author.firstName} {blog.author.lastName}
+                                </p>
+                              </div>
+                            </div>
+                          </Link>
+                        )}
+
+                        {showPromo && video && (
+                          <Link href={`/videos/${video.videoID}`} className="block mt-4">
+                            <div className="flex gap-3 items-start bg-gradient-to-r from-rose-50 to-orange-50 border border-rose-100 rounded-2xl p-4 hover:shadow-md transition-shadow">
+                              <div className="flex-shrink-0 h-9 w-9 rounded-xl bg-rose-500 flex items-center justify-center">
+                                <Play className="h-4 w-4 text-white" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-[10px] font-semibold text-rose-400 uppercase tracking-wider mb-0.5">Recommended Video</p>
+                                <p className="text-sm font-semibold text-gray-800 line-clamp-2">{video.title}</p>
+                                <p className="text-xs text-gray-500 mt-1 line-clamp-1">
+                                  {video.views?.toLocaleString() ?? 0} views
+                                </p>
+                              </div>
+                            </div>
+                          </Link>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>

@@ -47,8 +47,13 @@ export default function MeetingsDashboard() {
         setError(null);
         try {
             // Use existing backend endpoint
-            const response = await axios.get(`/api/meetings/user/${user?._id}`);
-            setMeetings(Array.isArray(response.data) ? response.data : []);
+            const token = localStorage.getItem("token");
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+            const response = await axios.get(`${apiUrl}/api/meetings/my`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            const fetchedMeetings = response.data.meetings || [];
+            setMeetings(Array.isArray(fetchedMeetings) ? fetchedMeetings : []);
         } catch (err: any) {
             console.error("Failed to fetch meetings:", err);
             setError("Failed to load your meetings. Please try again later.");
@@ -116,10 +121,8 @@ export default function MeetingsDashboard() {
                         {/* Actions Column */}
                         <div className="flex flex-col sm:items-end justify-center gap-2 border-t sm:border-t-0 sm:border-l border-gray-100 pt-4 sm:pt-0 sm:pl-4 min-w-[140px]">
                             {!isPast && meeting.meetingLink ? (
-                                <Button className="w-full gap-2 bg-indigo-600 hover:bg-indigo-700" asChild>
-                                    <a href={meeting.meetingLink} target="_blank" rel="noopener noreferrer">
-                                        Join Meeting <ExternalLink className="h-4 w-4" />
-                                    </a>
+                                <Button className="w-full gap-2 bg-indigo-600 hover:bg-indigo-700" onClick={() => router.push(`/meeting/${meeting._id || meeting.id}`)}>
+                                    Join Meeting <ExternalLink className="h-4 w-4" />
                                 </Button>
                             ) : !isPast ? (
                                 <Button className="w-full gap-2" variant="outline" disabled>

@@ -82,6 +82,9 @@ async def update_expert_profile(
         raise HTTPException(
             status_code=403, detail="You don't have permission to update this profile")
 
+    print("INCOMING EXPERT UPDATE DUMP:")
+    print(expert_update.model_dump(exclude_none=True))
+
     updated_expert = await expert_manager.update_expert(expert_id, expert_update)
     if not updated_expert:
         raise HTTPException(

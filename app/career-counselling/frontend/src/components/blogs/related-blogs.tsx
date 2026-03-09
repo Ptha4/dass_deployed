@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 import { Clock, Eye, BookOpen, ChevronRight } from "lucide-react";
 import RandomImage from "../shared/random-image";

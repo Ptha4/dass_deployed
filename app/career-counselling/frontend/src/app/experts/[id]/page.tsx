@@ -7,20 +7,29 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import {
   Star,
   Building2,
   Clock,
   CheckCircle,
   LogIn,
   UserPlus,
+  CalendarCheck,
 } from "lucide-react";
 import ExpertOverview from "@/components/experts/detail/expert-overview";
 import ExpertVideos from "@/components/experts/detail/expert-videos";
 import ExpertBlogs from "@/components/experts/detail/expert-blogs";
 import ExpertPosts from "@/components/experts/detail/expert-posts";
 import ExpertRatings from "@/components/experts/detail/expert-ratings";
-import BookMeeting from "@/components/experts/detail/book-meeting";
+import BookingCalendar from "@/components/experts/detail/booking-calendar";
 import FollowButton from "@/components/experts/follow";
+import ConnectButton from "@/components/shared/connect-button";
 import RateExpert from "@/components/experts/detail/rate-expert";
 import ProfileVideoPlayer from "@/components/experts/detail/profile-video-player";
 import type { Expert } from "@/types/index";
@@ -41,6 +50,7 @@ export default function ExpertDetailPage() {
   const { user, isAuthenticated } = useAuth();
   const router = useRouter();
   const [showLoginPrompt, setShowLoginPrompt] = useState(false);
+  const [showBookingModal, setShowBookingModal] = useState(false);
 
   useEffect(() => {
     const fetchExpert = async () => {
@@ -124,7 +134,7 @@ export default function ExpertDetailPage() {
     <div className="bg-gray-50 min-h-screen">
       {/* Light blue to white gradient banner */}
       <div className="relative bg-gradient-to-r from-blue-100 to-white py-12">
-        
+
         {/* Login Overlay */}
         {showLoginPrompt && !isAuthenticated && (
           <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
@@ -163,7 +173,7 @@ export default function ExpertDetailPage() {
             </div>
           </div>
         )}
-        
+
         {/* Left-aligned Profile Card within Banner */}
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -250,6 +260,12 @@ export default function ExpertDetailPage() {
                           className="flex-1 md:flex-none"
                         />
                       )}
+                      {!isExpertLoggedIn && (
+                        <ConnectButton
+                          targetUserId={expert.userId}
+                          className="flex-1 md:flex-none"
+                        />
+                      )}
                     </div>
                   </div>
                 </div>
@@ -303,14 +319,33 @@ export default function ExpertDetailPage() {
                   {/* Only show booking option if not the expert viewing their own profile */}
                   {!isExpertLoggedIn && (
                     <div className="mt-auto pt-4">
-                      <BookMeeting
-                        calendarUrl={expert.calendarEmbedUrl}
-                        cost={expert.meetingCost}
+                      <Button
+                        onClick={() => setShowBookingModal(true)}
                         disabled={!expert.available}
-                        expertId={expert.expertID}
-                      />
+                        className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white py-6 text-lg font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200"
+                      >
+                        <CalendarCheck className="h-5 w-5 mr-2" />
+                        Book a Meeting
+                      </Button>
                     </div>
                   )}
+
+                  {/* Booking Calendar Modal */}
+                  <Dialog open={showBookingModal} onOpenChange={setShowBookingModal}>
+                    <DialogContent className="sm:max-w-md">
+                      <DialogHeader>
+                        <DialogTitle className="text-xl font-bold">Book a Session</DialogTitle>
+                        <DialogDescription>
+                          Select a date and time slot to book with {expert.userDetails.firstName}
+                        </DialogDescription>
+                      </DialogHeader>
+                      <BookingCalendar
+                        expertId={expert.expertID}
+                        meetingCost={expert.meetingCost}
+                        disabled={!expert.available}
+                      />
+                    </DialogContent>
+                  </Dialog>
                 </div>
               </Card>
             )}
@@ -348,6 +383,7 @@ export default function ExpertDetailPage() {
                         expertName={`${expert.userDetails.firstName} ${expert.userDetails.lastName}`}
                         expertInitials={initials}
                         isExpertLoggedIn={isExpertLoggedIn}
+                        userId={expert.userId}
                       />
                     </TabsContent>
                     <TabsContent value="videos">

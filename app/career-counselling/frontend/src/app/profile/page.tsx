@@ -131,7 +131,7 @@ export default function ProfilePage() {
         onboarding_completed: Boolean(authUser.onboarding_completed),
         following: Array.isArray(authUser.following) ? (authUser.following as string[]) : [],
         followers: Array.isArray(authUser.followers) ? (authUser.followers as string[]) : [],
-        profile_picture_url: typeof authUser.profile_picture_url === "string" ? authUser.profile_picture_url : null,
+        profilePicture: typeof authUser.profile_picture_url === "string" ? authUser.profile_picture_url : undefined,
         // Onboarding fields
         grade: authUser.grade || "",
         preferred_stream: authUser.preferred_stream || "",

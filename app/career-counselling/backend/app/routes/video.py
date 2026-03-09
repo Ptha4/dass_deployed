@@ -2,11 +2,13 @@ from fastapi import APIRouter, HTTPException, Query, Depends, Body, status
 from typing import List, Optional, Dict
 from app.models.video import VideoBase, VideoResponse, VideoCreate
 from app.managers.video import VideoManager
+from app.managers.notification import NotificationManager
 from app.core.auth_utils import require_user, require_expert, require_admin
 import traceback
 
 router = APIRouter()
 video_manager = VideoManager()
+notification_manager = NotificationManager()
 
 
 @router.post("/videos", response_model=VideoBase)
@@ -17,7 +19,15 @@ async def create_video(video: VideoCreate, user_data: dict = Depends(require_exp
     Returns the created video with generated ID and timestamps.
     """
     try:
-        return await video_manager.create_video(video, user_data["id"])
+        result = await video_manager.create_video(video, user_data["id"])
+        # Notify followers
+        video_id = result.videoID if hasattr(result, "videoID") else ""
+        await notification_manager.create_video_notification_for_followers(
+            expert_user_id=user_data["id"],
+            video_id=video_id,
+            video_title=video.title,
+        )
+        return result
     except ValueError as e:
         print(f"Validation error: {str(e)}")
         raise HTTPException(

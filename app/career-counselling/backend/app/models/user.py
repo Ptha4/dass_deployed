@@ -57,12 +57,16 @@ class UserBase(BaseModel):
     career_goals: Optional[str] = None
     onboarding_completed: bool = False
     recently_viewed: List[Dict[str, Any]] = []  # [{type, itemId, title, viewedAt}]
-    profile_picture_url: Optional[str] = None
+    credentials: List[str] = []  # admin-assigned verification badges e.g. ["Verified", "Professor"]
+    reputation: int = 0          # engagement score (incremented on post likes received)
 
 
 class User(UserBase):
     # Change ObjectId to str
     id: Optional[str] = Field(alias="_id", default=None)
+    # Override to Optional so routes can strip sensitive fields for non-connections
+    email: Optional[EmailStr] = None
+    mobileNo: Optional[str] = None
     password: Optional[str] = None
 
     class Config:

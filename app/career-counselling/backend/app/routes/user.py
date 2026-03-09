@@ -1,16 +1,19 @@
-from fastapi import APIRouter, HTTPException, Query, Depends, status, UploadFile, File
+from fastapi import APIRouter, HTTPException, Query, Depends, status, UploadFile, File, Security
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from typing import List, Optional
 from app.models.user import User, UserProfileUpdate, OnboardingUpdate
 from app.managers.expert import ExpertManager
 from app.managers.user import UserManager
 from app.managers.file import FileManager
-from app.core.auth_utils import require_admin, require_expert, require_user, get_current_user
+from app.managers.connection import ConnectionManager
+from app.core.auth_utils import require_admin, require_expert, require_user, get_current_user, get_optional_user
 from app.core.database import get_database
 
 router = APIRouter()
 user_manager = UserManager()
 expert_manager = ExpertManager()
 file_manager = FileManager()
+connection_manager = ConnectionManager()
 
 
 @router.post("/users", response_model=User)
@@ -190,41 +193,42 @@ async def upload_profile_picture(
 
 
 @router.get("/users/{user_id}", response_model=User)
-async def get_user_profile(user_id: str):
+async def get_user_profile(
+    user_id: str,
+    requester: Optional[dict] = Depends(get_optional_user),
+):
     """
     Get a specific user's profile information by user ID.
-    
-    Returns user profile if found, raises 404 if not found.
+    Email and mobileNo are only included when the requester is self or a connection.
     """
     try:
-        print(f"Fetching profile for user: {user_id}")
         user = await user_manager.get_user(user_id)
         if not user:
-            raise HTTPException(
-                status_code=404,
-                detail="User not found"
-            )
-        
-        # Remove sensitive information
+            raise HTTPException(status_code=404, detail="User not found")
+
         user_dict = user.model_dump()
-        if "hashedPassword" in user_dict:
-            del user_dict["hashedPassword"]
-        if "password" in user_dict:
-            del user_dict["password"]
-            
-        print(f"Successfully fetched user profile: {user_dict.get('firstName', 'Unknown')}")
-        return user
+        user_dict.pop("hashedPassword", None)
+        user_dict.pop("password", None)
+
+        # Determine if requester may see private contact fields
+        requester_id = requester["id"] if requester else None
+        if requester_id != user_id:
+            is_connected = (
+                await connection_manager.are_connected(requester_id, user_id)
+                if requester_id
+                else False
+            )
+            if not is_connected:
+                user_dict["email"] = None
+                user_dict["mobileNo"] = None
+
+        return User(**user_dict)
     except HTTPException:
-        # Re-raise HTTP exceptions
         raise
     except Exception as e:
-        print(f"Error getting user profile: {e}")
         import traceback
         traceback.print_exc()
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to retrieve user profile: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve user profile: {str(e)}")
 
 
 @router.get("/users/{user_id}/posts")
@@ -388,6 +392,13 @@ async def follow_user(
             detail="Target user not found"
         )
 
+    # Enforce expert-only follow
+    if not target_user.isExpert:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You can only follow expert users"
+        )
+
     # Prevent following yourself
     if current_user.id == target_id:
         raise HTTPException(
@@ -529,22 +540,6 @@ async def update_user_profile(user_id: str, user_update: UserProfileUpdate):
         )
 
     return updated_user
-
-
-@router.get("/users/{user_id}", response_model=User)
-async def get_user(user_id: str):
-    """
-    Get a specific user by ID.
-
-    Returns the user if found, raises 404 if not found.
-    """
-    user = await user_manager.get_user(user_id)
-    if not user:
-        raise HTTPException(
-            status_code=404,
-            detail="User not found"
-        )
-    return user
 
 
 @router.get("/role")

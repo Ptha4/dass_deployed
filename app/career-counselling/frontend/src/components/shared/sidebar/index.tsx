@@ -12,6 +12,8 @@ import {
   ChevronLeft,
   ChevronRight,
   MessageSquare,
+  Calendar,
+  Network,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSidebar } from "./sidebar-context";
@@ -60,6 +62,11 @@ const staticNavItems: NavItem[] = [
     title: "Career Predictor",
     href: "/assessments",
     icon: <Sparkles className="h-5 w-5" />,
+  },
+  {
+    title: "Meetings",
+    href: "/meetings",
+    icon: <Calendar className="h-5 w-5" />,
   },
 ];
 
@@ -115,7 +122,7 @@ function NavLink({
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const { isCollapsed, setIsCollapsed } = useSidebar();
 
   const isActive = (item: NavItem) => {
@@ -125,8 +132,7 @@ export default function Sidebar() {
 
   const isDashboardActive =
     pathname.startsWith("/dashboard") ||
-    pathname.startsWith("/admin") ||
-    pathname.startsWith("/experts/");
+    pathname.startsWith("/admin");
 
   return (
     <TooltipProvider delayDuration={0}>
@@ -164,12 +170,36 @@ export default function Sidebar() {
             {isAuthenticated && (
               <NavLink
                 item={{
+                  title: "My Network",
+                  href: "/network",
+                  icon: <Network className="h-5 w-5" />,
+                }}
+                isCollapsed={isCollapsed}
+                active={pathname === "/network"}
+              />
+            )}
+
+            {isAuthenticated && (
+              <NavLink
+                item={{
                   title: "Dashboard",
                   href: "/dashboard",
                   icon: <LayoutDashboard className="h-5 w-5" />,
                 }}
                 isCollapsed={isCollapsed}
                 active={isDashboardActive}
+              />
+            )}
+
+            {isAuthenticated && user?.isExpert && user?.expertId && (
+              <NavLink
+                item={{
+                  title: "Expert Dashboard",
+                  href: `/experts/${user.expertId}`,
+                  icon: <GraduationCap className="h-5 w-5" />,
+                }}
+                isCollapsed={isCollapsed}
+                active={pathname === `/experts/${user.expertId}`}
               />
             )}
           </div>
@@ -199,6 +229,7 @@ function MobileSidebar({
   isAuthenticated: boolean;
 }) {
   const { isCollapsed, setIsCollapsed } = useSidebar();
+  const { user } = useAuth();
 
   const isActive = (href: string, exact = false) => {
     if (exact) return pathname === href;
@@ -253,6 +284,24 @@ function MobileSidebar({
 
             {isAuthenticated && (
               <Link
+                href="/network"
+                onClick={() => setIsCollapsed(true)}
+                className={cn(
+                  "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors",
+                  pathname === "/network"
+                    ? "bg-blue-50 text-blue-700"
+                    : "text-gray-700 hover:bg-gray-50"
+                )}
+              >
+                <span className={pathname === "/network" ? "text-blue-700" : "text-gray-500"}>
+                  <Network className="h-5 w-5" />
+                </span>
+                <span className="text-sm font-medium">My Network</span>
+              </Link>
+            )}
+
+            {isAuthenticated && (
+              <Link
                 href="/dashboard"
                 onClick={() => setIsCollapsed(true)}
                 className={cn(
@@ -274,6 +323,30 @@ function MobileSidebar({
                   <LayoutDashboard className="h-5 w-5" />
                 </span>
                 <span className="text-sm font-medium">Dashboard</span>
+              </Link>
+            )}
+
+            {isAuthenticated && user?.isExpert && user?.expertId && (
+              <Link
+                href={`/experts/${user.expertId}`}
+                onClick={() => setIsCollapsed(true)}
+                className={cn(
+                  "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors",
+                  pathname === `/experts/${user.expertId}`
+                    ? "bg-blue-50 text-blue-700"
+                    : "text-gray-700 hover:bg-gray-50"
+                )}
+              >
+                <span
+                  className={
+                    pathname === `/experts/${user.expertId}`
+                      ? "text-blue-700"
+                      : "text-gray-500"
+                  }
+                >
+                  <GraduationCap className="h-5 w-5" />
+                </span>
+                <span className="text-sm font-medium">Expert Dashboard</span>
               </Link>
             )}
           </div>

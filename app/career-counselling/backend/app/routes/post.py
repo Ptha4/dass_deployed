@@ -5,14 +5,14 @@ from app.models.post import PostResponse
 from app.models.comment import Comment, CommentCreate, CommentResponse
 from app.managers.post import PostManager
 from app.managers.comment import CommentManager
-from app.managers.community import CommunityManager
+from app.managers.connection import ConnectionManager
 from app.core.auth_utils import get_current_user, require_user, get_optional_user
 from datetime import datetime
 
 router = APIRouter()
 post_manager = PostManager()
 comment_manager = CommentManager()
-community_manager = CommunityManager()
+connection_manager = ConnectionManager()
 
 
 class PostCommentCreate(BaseModel):
@@ -24,50 +24,6 @@ class PostEditData(BaseModel):
     title: Optional[str] = None
     content: Optional[str] = None
     tags: Optional[List[str]] = None
-
-
-class GeneralPostCreate(BaseModel):
-    content: str
-    title: Optional[str] = None
-    tags: Optional[List[str]] = []
-
-
-@router.post("/posts", response_model=PostResponse)
-async def create_general_post(
-    post_data: GeneralPostCreate,
-    user_data: dict = Depends(require_user),
-):
-    """Create a post in c/general. Auto-joins the user to general if not already a member."""
-    try:
-        general = await community_manager.get_community("general")
-        if not general:
-            raise HTTPException(status_code=503, detail="c/general community not found. Please contact an admin.")
-
-        general_id = general.communityId
-
-        # Auto-join the user to c/general if not already a member
-        await community_manager.join_community(general_id, user_data["id"])
-
-        # Use provided title or derive one from content
-        title = (post_data.title or "").strip()
-        if not title:
-            words = post_data.content.split()
-            title = " ".join(words[:12]) + ("…" if len(words) > 12 else "")
-
-        post = await post_manager.create_community_post(
-            community_id=general_id,
-            author_id=user_data["id"],
-            title=title,
-            content=post_data.content,
-            tags=post_data.tags or [],
-        )
-        await community_manager.increment_post_count(general_id)
-        return post
-    except HTTPException:
-        raise
-    except Exception as e:
-        print(f"create_general_post error: {e}")
-        raise HTTPException(status_code=500, detail="Failed to create post")
 
 
 @router.get("/posts", response_model=List[PostResponse])
@@ -87,6 +43,21 @@ async def get_feed(skip: int = 0, limit: int = 30, user_data: Optional[dict] = D
     except Exception as e:
         print(f"get_feed error: {e}")
         raise HTTPException(status_code=500, detail="Failed to get feed")
+
+
+@router.get("/posts/network-feed", response_model=List[PostResponse])
+async def get_network_feed(
+    skip: int = 0,
+    limit: int = 30,
+    user_data: dict = Depends(get_current_user),
+):
+    """Get posts authored by the current user's connections."""
+    try:
+        connected_ids = await connection_manager.get_connected_user_ids(user_data["id"])
+        return await post_manager.get_posts_by_authors(list(connected_ids), skip, limit)
+    except Exception as e:
+        print(f"get_network_feed error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get network feed")
 
 
 @router.get("/posts/{post_id}", response_model=PostResponse)
@@ -134,9 +105,9 @@ async def get_post_comments(post_id: str, skip: int = 0, limit: int = 50):
 
 
 @router.delete("/posts/{post_id}")
-async def delete_post(post_id: str, user_data: dict = Depends(require_user)):
-    """Delete a post. Any user can delete their own posts."""
-    success = await post_manager.delete_post(post_id, user_data["id"])
+async def delete_post(post_id: str, community_id: Optional[str] = None, user_data: dict = Depends(require_user)):
+    """Delete a post. Author or community moderator can delete."""
+    success = await post_manager.delete_post(post_id, user_data["id"], community_id)
     if not success:
         raise HTTPException(
             status_code=404,

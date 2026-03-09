@@ -1,283 +1,266 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuTrigger,
-  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Bell } from "lucide-react";
+import { Bell, Layers, UserCheck, X } from "lucide-react";
 import axios from "axios";
 import { useRouter } from "next/navigation";
-import { Notification } from "@/types";
+import { Notification, NotificationBatch } from "@/types";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { formatDistanceToNow } from "date-fns";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSocket } from "@/contexts/SocketContext";
 import { useToast } from "@/hooks/use-toast";
 
-// Helper function to strip Markdown
+// ─── Markdown stripper ───────────────────────────────────────────────────────
 const stripMarkdown = (markdown: string): string => {
-  // Log the input for debugging
-  console.log("Stripping Markdown Input:", JSON.stringify(markdown));
-
   if (!markdown) return "";
-
   let text = markdown;
-
-  // Block Elements
-  text = text.replace(/#+\s*(.*)$/gm, "$1"); // Headers (NO ^ anchor, handles optional space after #)
-  text = text.replace(/^>\s+/gm, ""); // Blockquotes (Keep ^ anchor)
-  text = text.replace(/^(\s*(\*|-|\+)\s+)|(^\s*\d+\.\s+)/gm, ""); // List items (basic markers)
-  text = text.replace(/^- \[( |x)\]\s+/gm, ""); // Task list markers
-  text = text.replace(/```[\s\S]*?```/g, ""); // Fenced Code blocks
-  text = text.replace(/^(---|___|\*\*\*)\s*$/gm, ""); // Horizontal rules
-  text = text.replace(/^\|.*\|$/gm, ""); // Table rows (basic)
-  text = text.replace(/^\|?[- :]+\|[-| :]*\|$/gm, ""); // Table separators (basic)
-  text = text.replace(/^\s*([^\n]+)\n:\s+(.*)/gm, "$1: $2"); // Definition lists (basic)
-  text = text.replace(/^\[\^(\w+)\]:\s*(.*)/gm, ""); // Footnote definitions
-
-  // Inline Elements
-  text = text.replace(/(\*\*|__)(.*?)\1/g, "$2"); // Bold
-  text = text.replace(/(\*|_)(.*?)\1/g, "$2"); // Italics
-  text = text.replace(/~~(.*?)~~/g, "$1"); // Strikethrough
-  text = text.replace(/`(.*?)`/g, "$1"); // Inline code
-  text = text.replace(/!\[(.*?)\]\(.*?\)/g, "$1"); // Images (keep alt text)
-  text = text.replace(/\[(.*?)\]\(.*?\)/g, "$1"); // Links (keep link text)
-  text = text.replace(/<[^>]*>/g, ""); // HTML tags
-  text = text.replace(/\[\^(\w+)\]/g, ""); // Footnote links
-  text = text.replace(/:(.*?):/g, "$1"); // Emoji (remove colons, keep text/unicode)
-  text = text.replace(/==(.*?)==/g, "$1"); // Highlight
-  text = text.replace(/~(.*?)~/g, "$1"); // Subscript
-  text = text.replace(/\^(.*?)\^/g, "$1"); // Superscript
-
-  // Clean up extra whitespace and newlines
-  text = text.replace(/\n{2,}/g, "\n"); // Replace multiple newlines with one
-  text = text.replace(/\\n/g, " "); // Replace escaped newlines with space
-  text = text.replace(/\s+/g, " ").trim(); // Replace multiple spaces with one and trim
-
-  console.log("Stripping Markdown Output:", JSON.stringify(text)); // Log output for comparison
+  text = text.replace(/#+\s*(.*)$/gm, "$1");
+  text = text.replace(/^>\s+/gm, "");
+  text = text.replace(/^(\s*(\*|-|\+)\s+)|(^\s*\d+\.\s+)/gm, "");
+  text = text.replace(/```[\s\S]*?```/g, "");
+  text = text.replace(/(\*\*|__)(.*?)\1/g, "$2");
+  text = text.replace(/(\*|_)(.*?)\1/g, "$2");
+  text = text.replace(/~~(.*?)~~/g, "$1");
+  text = text.replace(/`(.*?)`/g, "$1");
+  text = text.replace(/!\[(.*?)\]\(.*?\)/g, "$1");
+  text = text.replace(/\[(.*?)\]\(.*?\)/g, "$1");
+  text = text.replace(/<[^>]*>/g, "");
+  text = text.replace(/\s+/g, " ").trim();
   return text;
 };
 
+// ─── Batch label helper ───────────────────────────────────────────────────────
+function batchLabel(batch: NotificationBatch): string {
+  const count = batch.entityIds.length;
+  const name = batch.actorName;
+  if (batch.eventType === "new_video") {
+    return count === 1
+      ? `${name} uploaded a new video`
+      : `${name} uploaded ${count} new videos`;
+  }
+  if (batch.eventType === "new_blog") {
+    return count === 1
+      ? `${name} published a new blog`
+      : `${name} published ${count} new blogs`;
+  }
+  if (batch.eventType === "new_post") {
+    return count === 1
+      ? `${name} posted in a community`
+      : `${name} made ${count} posts in communities`;
+  }
+  return count === 1
+    ? `${name} posted new content`
+    : `${name} posted ${count} new updates`;
+}
+
+// ─── Merge helper ─────────────────────────────────────────────────────────────
+type MergedItem =
+  | { kind: "individual"; data: Notification; sortKey: string }
+  | { kind: "batch"; data: NotificationBatch; sortKey: string };
+
+function mergeAndSort(
+  notifications: Notification[],
+  batches: NotificationBatch[]
+): MergedItem[] {
+  const items: MergedItem[] = [
+    ...notifications.map((n) => ({
+      kind: "individual" as const,
+      data: n,
+      sortKey: n.createdAt,
+    })),
+    ...batches.map((b) => ({
+      kind: "batch" as const,
+      data: b,
+      sortKey: b.updatedAt,
+    })),
+  ];
+  return items.sort((a, b) => (a.sortKey < b.sortKey ? 1 : -1));
+}
+
+// ─── Component ────────────────────────────────────────────────────────────────
 export default function NotificationsDropdown() {
   const [isOpen, setIsOpen] = useState(false);
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [unreadCount, setUnreadCount] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
   const { isAuthenticated } = useAuth();
+  const {
+    liveNotifications,
+    liveBatches,
+    unreadCount,
+    markRead,
+    markBatchRead,
+    setNotifications,
+    setLiveBatches,
+  } = useSocket();
   const { toast } = useToast();
 
-  const fetchNotifications = useCallback(async () => {
+  // ── REST fetch (history + batches) ──────────────────────────────────────────
+  const fetchAll = useCallback(async () => {
     if (!isAuthenticated) return;
-
+    const token = localStorage.getItem("token");
+    const headers = { Authorization: `Bearer ${token}` };
     try {
-      const token = localStorage.getItem("token");
-      const response = await axios.get("/api/notifications", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      setNotifications(response.data);
-      setUnreadCount(response.data.filter((n: Notification) => !n.read).length);
-    } catch (error) {
-      console.error("Failed to fetch notifications:", error);
+      const [notifRes, batchRes] = await Promise.all([
+        axios.get("/api/notifications", { headers, params: { limit: 50 } }),
+        axios.get("/api/notifications/batches", { headers, params: { limit: 50 } }),
+      ]);
+      setNotifications(notifRes.data as Notification[]);
+      setLiveBatches(batchRes.data as NotificationBatch[]);
+    } catch (err) {
+      console.error("Failed to fetch notifications:", err);
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, setNotifications, setLiveBatches]);
 
-  const fetchExpertIdByUserId = async (
-    userId: string
-  ): Promise<string | null> => {
+  useEffect(() => { fetchAll(); }, [fetchAll]);
+  useEffect(() => { if (isOpen) fetchAll(); }, [isOpen, fetchAll]);
+
+  // ── Toasts ──────────────────────────────────────────────────────────────────
+  // Individual direct notifications (follow, meeting, …)
+  useEffect(() => {
+    const newest = liveNotifications[0];
+    if (newest && !newest.read) {
+      toast({ title: "New notification", description: newest.content });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [liveNotifications.length]);
+
+  // New batch (notification_batch_new) → show one toast, suppress subsequent updates
+  useEffect(() => {
+    const newest = liveBatches[0];
+    if (newest && !newest.isRead) {
+      toast({ title: "New from an expert you follow", description: batchLabel(newest) });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [liveBatches.length]);
+
+  // ── Merged list ─────────────────────────────────────────────────────────────
+  const mergedItems = useMemo(
+    () => mergeAndSort(liveNotifications, liveBatches),
+    [liveNotifications, liveBatches]
+  );
+
+  // ── Click handlers ──────────────────────────────────────────────────────────
+  const handleIndividualClick = async (notification: Notification) => {
+    if (!notification.read) {
+      markRead(notification.notificationId);
+      const token = localStorage.getItem("token");
+      axios
+        .put(`/api/notifications/${notification.notificationId}`, { read: true }, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        .catch(console.error);
+    }
+
+    const { referenceType, referenceId, sourceUserId, sourceUserDetails } = notification;
+    if (referenceType === "expert" && referenceId) {
+      router.push(`/experts/${referenceId}`);
+    } else if (referenceType === "blog" && referenceId) {
+      router.push(`/blogs/${referenceId}`);
+    } else if (referenceType === "video" && referenceId) {
+      router.push(`/videos/${referenceId}`);
+    } else if (referenceType === "post" && sourceUserId) {
+      const expertId =
+        (sourceUserDetails as any)?.expertId ||
+        (await axios
+          .get(`/api/by-user/${sourceUserId}`, {
+            headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+          })
+          .then((r) => r.data?.expertId)
+          .catch(() => null));
+      if (expertId) router.push(`/experts/${expertId}`);
+    }
+    setIsOpen(false);
+  };
+
+  const handleBatchClick = async (batch: NotificationBatch) => {
+    if (!batch.isRead) {
+      markBatchRead(batch.batchId);
+      const token = localStorage.getItem("token");
+      axios
+        .put(`/api/notifications/batches/${batch.batchId}/read`, {}, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        .catch(console.error);
+    }
+    // Navigate to the expert's profile page
+    if (batch.actorExpertId) {
+      router.push(`/experts/${batch.actorExpertId}`);
+    }
+    setIsOpen(false);
+  };
+
+  // ── Connection request actions ─────────────────────────────────────────────
+  const [actingOn, setActingOn] = useState<string | null>(null);
+
+  const handleConnectionAction = async (
+    e: React.MouseEvent,
+    notification: Notification,
+    accept: boolean
+  ) => {
+    e.stopPropagation();
+    const connectionId = notification.referenceId;
+    if (!connectionId) return;
+    setActingOn(notification.notificationId);
     try {
       const token = localStorage.getItem("token");
-      const response = await axios.get(`/api/by-user/${userId}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-      });
-
-      if (response.data && response.data.expertId) {
-        return response.data.expertId;
-      }
-      return null;
-    } catch (error) {
-      console.error("Error fetching expert ID:", error);
-      return null;
+      const headers = { Authorization: `Bearer ${token}` };
+      await axios.post(
+        `/api/connections/${connectionId}/${accept ? "accept" : "decline"}`,
+        {},
+        { headers }
+      );
+      // Mark the notification read and update its content locally
+      markRead(notification.notificationId);
+      axios.put(`/api/notifications/${notification.notificationId}`, { read: true }, { headers }).catch(() => { });
+      setNotifications(
+        liveNotifications.map((n) =>
+          n.notificationId === notification.notificationId
+            ? { ...n, read: true, content: accept ? "Connection accepted." : "Connection declined." }
+            : n
+        )
+      );
+    } catch {
+      toast({ title: "Error", description: "Failed to respond to request.", variant: "destructive" });
+    } finally {
+      setActingOn(null);
     }
   };
 
-  useEffect(() => {
-    fetchNotifications();
-
-    // Setup polling for notifications (every minute)
-    const interval = setInterval(fetchNotifications, 60000);
-    return () => clearInterval(interval);
-  }, [isAuthenticated, fetchNotifications]);
-
-  useEffect(() => {
-    // Refetch when dropdown is opened
-    if (isOpen) {
-      fetchNotifications();
-    }
-  }, [isOpen, fetchNotifications]);
-
-  const handleNotificationClick = async (notification: Notification) => {
-    try {
-      // Mark individual notification as read
-      if (!notification.read) {
-        const token = localStorage.getItem("token");
-
-        try {
-          await axios.put(
-            `/api/notifications/${notification.notificationId}`,
-            { read: true },
-            {
-              headers: {
-                Authorization: `Bearer ${token}`,
-                "Content-Type": "application/json",
-              },
-            }
-          );
-          console.log("Notification marked as read successfully");
-        } catch (markReadError) {
-          console.error("Error marking notification as read:", markReadError);
-          // Continue with navigation even if marking as read fails
-        }
-
-        // Update local state to mark as read regardless of API success
-        setNotifications((prev) =>
-          prev.map((n) =>
-            n.notificationId === notification.notificationId
-              ? { ...n, read: true }
-              : n
-          )
-        );
-        setUnreadCount((prev) => Math.max(0, prev - 1));
-      }
-
-      // Navigate based on notification type and reference
-      if (notification.referenceType === "expert" && notification.referenceId) {
-        // Navigate to expert detail page using the expert ID
-        console.log(
-          `Navigating to expert page with ID: ${notification.referenceId}`
-        );
-        router.push(`/experts/${notification.referenceId}`);
-      } else if (
-        notification.referenceType === "post" &&
-        notification.referenceId
-      ) {
-        // For post notifications, navigate to the expert's page
-        let expertId = null;
-
-        // First check if sourceUserDetails has expertId
-        if (
-          notification.sourceUserDetails &&
-          "expertId" in notification.sourceUserDetails
-        ) {
-          expertId = (notification.sourceUserDetails as any).expertId;
-        }
-        // If not, fetch the expert ID from the API using the source user ID
-        else if (notification.sourceUserId) {
-          expertId = await fetchExpertIdByUserId(notification.sourceUserId);
-        }
-
-        if (expertId) {
-          console.log(`Navigating to expert page with ID: ${expertId}`);
-          router.push(`/experts/${expertId}`);
-        } else {
-          console.log("Could not navigate - expert ID not found");
-          toast({
-            title: "Navigation Error",
-            description: "Could not navigate to the expert's page.",
-            variant: "destructive",
-          });
-        }
-      } else if (
-        notification.referenceType === "blog" &&
-        notification.referenceId
-      ) {
-        console.log(
-          `Navigating to blog page with ID: ${notification.referenceId}`
-        );
-        router.push(`/blogs/${notification.referenceId}`);
-      } else if (
-        notification.referenceType === "video" &&
-        notification.referenceId
-      ) {
-        console.log(
-          `Navigating to video page with ID: ${notification.referenceId}`
-        );
-        router.push(`/videos/${notification.referenceId}`);
-      } else {
-        console.log("No specific navigation target for this notification");
-      }
-
-      // Close dropdown after clicking
-      setIsOpen(false);
-    } catch (error) {
-      console.error("Error handling notification:", error);
-      toast({
-        title: "Error",
-        description: "Failed to process notification. Please try again.",
-        variant: "destructive",
-      });
-    }
-  };
-
+  // ── Mark all as read ─────────────────────────────────────────────────────────
   const markAllAsRead = async () => {
     if (unreadCount === 0) return;
-
     setIsLoading(true);
+    const token = localStorage.getItem("token");
+    const headers = { Authorization: `Bearer ${token}` };
     try {
-      const token = localStorage.getItem("token");
-
-      // Use POST method instead of PUT
-      await axios.post(
-        "/api/notifications/read-all",
-        {}, // Empty body
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-
-      // Update local state
-      setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
-      setUnreadCount(0);
-
-      toast({
-        title: "Success",
-        description: "All notifications marked as read",
-      });
-    } catch (error) {
-      console.error("Failed to mark all as read:", error);
-      toast({
-        title: "Error",
-        description: "Failed to mark all as read. Please try again later.",
-        variant: "destructive",
-      });
+      await Promise.all([
+        axios.post("/api/notifications/read-all", {}, { headers }),
+        axios.post("/api/notifications/batches/read-all", {}, { headers }),
+      ]);
+      setNotifications(liveNotifications.map((n) => ({ ...n, read: true })));
+      setLiveBatches(liveBatches.map((b) => ({ ...b, isRead: true })));
+      toast({ title: "All notifications marked as read" });
+    } catch {
+      toast({ title: "Error", description: "Failed to mark all as read.", variant: "destructive" });
     } finally {
       setIsLoading(false);
     }
   };
 
-  if (!isAuthenticated) {
-    return null;
-  }
+  if (!isAuthenticated) return null;
 
   return (
     <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
       <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="relative w-9 h-9 p-0 rounded-full"
-        >
+        <Button variant="ghost" size="sm" className="relative w-9 h-9 p-0 rounded-full">
           <Bell className="h-5 w-5" />
           {unreadCount > 0 && (
             <Badge
@@ -289,6 +272,7 @@ export default function NotificationsDropdown() {
           )}
         </Button>
       </DropdownMenuTrigger>
+
       <DropdownMenuContent align="end" className="w-80 mt-2">
         <div className="flex items-center justify-between px-4 py-3 border-b">
           <p className="font-medium">Notifications</p>
@@ -300,45 +284,97 @@ export default function NotificationsDropdown() {
               onClick={markAllAsRead}
               disabled={isLoading}
             >
-              {isLoading ? "Marking..." : "Mark all as read"}
+              {isLoading ? "Marking…" : "Mark all as read"}
             </Button>
           )}
         </div>
+
         <ScrollArea className="max-h-[420px] overflow-scroll">
-          {notifications.length === 0 ? (
-            <div className="text-center p-4 text-gray-500">
-              No notifications yet
-            </div>
+          {mergedItems.length === 0 ? (
+            <div className="text-center p-4 text-gray-500">No notifications yet</div>
           ) : (
-            notifications.map((notification) => (
-              <div
-                key={notification.notificationId}
-                className={`px-4 py-3 hover:bg-slate-50 cursor-pointer border-b last:border-b-0 transition-colors ${
-                  !notification.read ? "bg-blue-50" : ""
-                }`}
-                onClick={() => handleNotificationClick(notification)}
-              >
-                <div className="flex gap-3">
+            mergedItems.map((item) => {
+              if (item.kind === "batch") {
+                const batch = item.data;
+                return (
                   <div
-                    className={`w-2 h-2 mt-2 rounded-full ${
-                      !notification.read ? "bg-blue-600" : "bg-transparent"
+                    key={`batch-${batch.batchId}`}
+                    className={`px-4 py-3 hover:bg-slate-50 cursor-pointer border-b last:border-b-0 transition-colors ${!batch.isRead ? "bg-blue-50" : ""
+                      }`}
+                    onClick={() => handleBatchClick(batch)}
+                  >
+                    <div className="flex gap-3">
+                      <div
+                        className={`w-2 h-2 mt-2 rounded-full flex-shrink-0 ${!batch.isRead ? "bg-blue-600" : "bg-transparent"
+                          }`}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <Layers className="h-3 w-3 text-blue-500 flex-shrink-0" />
+                          <p className="text-sm font-medium truncate">{batchLabel(batch)}</p>
+                        </div>
+                        {batch.entityIds.length > 1 && (
+                          <p className="text-xs text-blue-600 mt-0.5">
+                            {batch.entityIds.length} items — tap to view
+                          </p>
+                        )}
+                        <p className="text-xs text-gray-500 mt-1">
+                          {formatDistanceToNow(new Date(batch.updatedAt), { addSuffix: true })}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
+
+              const notification = item.data;
+              return (
+                <div
+                  key={`notif-${notification.notificationId}`}
+                  className={`px-4 py-3 hover:bg-slate-50 cursor-pointer border-b last:border-b-0 transition-colors ${!notification.read ? "bg-blue-50" : ""
                     }`}
-                  />
-                  <div className="flex-1">
-                    <p className={`text-sm line-clamp-2 ${
-                      notification.referenceType === 'post' ? 'break-all' : 'break-word'
-                    }`}>
-                      {stripMarkdown(notification.content)}{" "}
-                    </p>
-                    <p className="text-xs text-gray-500 mt-1">
-                      {formatDistanceToNow(new Date(notification.createdAt), {
-                        addSuffix: true,
-                      })}
-                    </p>
+                  onClick={() => handleIndividualClick(notification)}
+                >
+                  <div className="flex gap-3">
+                    <div
+                      className={`w-2 h-2 mt-2 rounded-full flex-shrink-0 ${!notification.read ? "bg-blue-600" : "bg-transparent"
+                        }`}
+                    />
+                    <div className="flex-1">
+                      <p className="text-sm line-clamp-2 break-words">
+                        {stripMarkdown(notification.content)}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true })}
+                      </p>
+                      {notification.type === "connection_request" && notification.read === false && (
+                        <div className="flex gap-2 mt-2" onClick={(e) => e.stopPropagation()}>
+                          <Button
+                            size="sm"
+                            className="h-7 px-3 text-xs"
+                            disabled={actingOn === notification.notificationId}
+                            onClick={(e) => handleConnectionAction(e, notification, true)}
+                          >
+                            <UserCheck className="h-3 w-3 mr-1" />
+                            Accept
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 px-3 text-xs"
+                            disabled={actingOn === notification.notificationId}
+                            onClick={(e) => handleConnectionAction(e, notification, false)}
+                          >
+                            <X className="h-3 w-3 mr-1" />
+                            Decline
+                          </Button>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))
+              );
+            })
           )}
         </ScrollArea>
       </DropdownMenuContent>

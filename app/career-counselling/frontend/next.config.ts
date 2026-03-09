@@ -20,6 +20,11 @@ const nextConfig: NextConfig = {
         source: "/api/:path*",
         destination: `${apiUrl}/api/:path*`,
       },
+      {
+        // Proxy Socket.IO handshake and transport requests to the backend
+        source: "/socket.io/:path*",
+        destination: `${apiUrl}/socket.io/:path*`,
+      },
     ];
   },
 };
