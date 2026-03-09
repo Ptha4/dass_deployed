@@ -4,12 +4,13 @@ import { useState, useEffect, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import axios from "axios";
 import Link from "next/link";
-import { Send, Loader2, Tags, ImagePlus, X, Film, AlertTriangle, BookOpen } from "lucide-react";
+import { Send, Loader2, Tags, ImagePlus, X, Film, AlertTriangle, BookOpen, Sparkles } from "lucide-react";
 import { Community } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
 
 interface MediaItem {
     url: string;
@@ -37,6 +38,7 @@ export default function SubmitPostPage() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
     const [showWordLimitModal, setShowWordLimitModal] = useState(false);
+    const [enhancingContent, setEnhancingContent] = useState(false);
 
     const wordCount = countWords(form.content);
     const overLimit = wordCount > WORD_LIMIT;
@@ -112,6 +114,49 @@ export default function SubmitPostPage() {
             if (item.preview) URL.revokeObjectURL(item.preview);
             return prev.filter((_, i) => i !== index);
         });
+    };
+
+    // ── AI Enhancement ─────────────────────
+    const handleEnhanceContent = async () => {
+        if (!form.content.trim()) {
+            setError("Please add some content to enhance");
+            return;
+        }
+
+        try {
+            setError("");
+            setEnhancingContent(true);
+            const token = localStorage.getItem("token");
+
+            if (!token) {
+                setError("You must be logged in to enhance content");
+                return;
+            }
+
+            const response = await fetch("/api/chatbot/enhance-content", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({
+                    content: form.content,
+                }),
+            });
+
+            if (!response.ok) {
+                throw new Error("Failed to enhance content");
+            }
+
+            const data = await response.json();
+            setForm({ ...form, content: data.enhanced_content });
+            toast.success("Content enhanced successfully!");
+        } catch (err) {
+            console.error("Error enhancing content:", err);
+            setError("Failed to enhance content. Please try again.");
+        } finally {
+            setEnhancingContent(false);
+        }
     };
 
     // ── Submit ────────────────────────────
@@ -220,7 +265,29 @@ export default function SubmitPostPage() {
 
                         {/* Content */}
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1.5">Content *</label>
+                            <div className="flex justify-between items-center mb-1.5">
+                                <label className="block text-sm font-medium text-gray-700">Content *</label>
+                                <Button
+                                    type="button"
+                                    onClick={handleEnhanceContent}
+                                    disabled={!form.content.trim() || enhancingContent}
+                                    variant="outline"
+                                    size="sm"
+                                    className="flex items-center gap-1.5 text-xs"
+                                >
+                                    {enhancingContent ? (
+                                        <>
+                                            <Loader2 className="h-3 w-3 animate-spin" />
+                                            <span>Enhancing...</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Sparkles className="h-3 w-3 text-yellow-500" />
+                                            <span>Enhance</span>
+                                        </>
+                                    )}
+                                </Button>
+                            </div>
                             <Textarea
                                 placeholder="Share your thoughts, questions, or insights..."
                                 value={form.content}

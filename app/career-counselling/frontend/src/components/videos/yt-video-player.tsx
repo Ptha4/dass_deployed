@@ -86,36 +86,70 @@ export default function YouTubePlayer({
       setApiLoaded(true);
     }
 
-    // Handle keyboard events to disable all keyboard controls globally when video is focused
-    const preventKeyboardControls = (e: KeyboardEvent) => {
-      const iframe = playerContainerRef.current?.querySelector('iframe');
-      if (iframe) {
-        // Check if the iframe is focused or document.activeElement is the iframe
-        if (document.activeElement === iframe || document.activeElement === document.body) {
-          // Prevent all keyboard events for the video (space for play/pause, arrows for seeking, etc.)
+    // Handle keyboard events for video controls
+    const handleKeyboardControls = (e: KeyboardEvent) => {
+      // Only handle keyboard events when no input is focused
+      const activeElement = document.activeElement;
+      const isInputFocused = activeElement?.tagName === 'INPUT' || 
+                           activeElement?.tagName === 'TEXTAREA' || 
+                           (activeElement as HTMLElement)?.contentEditable === 'true';
+      
+      if (isInputFocused) return;
+
+      // Check if the video player container is in view
+      const videoContainer = playerContainerRef.current;
+      if (!videoContainer || !videoContainer.contains(activeElement)) return;
+
+      switch (e.key) {
+        case ' ':
+        case 'Spacebar':
           e.preventDefault();
-          e.stopPropagation();
-          return false;
-        }
+          if (player) {
+            if (player.getPlayerState() === window.YT.PlayerState.PLAYING) {
+              player.pauseVideo();
+            } else {
+              player.playVideo();
+            }
+          }
+          break;
+        case 'ArrowRight':
+          e.preventDefault();
+          if (player) {
+            const currentTime = player.getCurrentTime();
+            const newTime = Math.min(currentTime + 10, player.getDuration());
+            
+            // Don't allow skipping beyond preview duration for free users
+            if (!hasFullAccess && newTime > previewDuration) {
+              setShowSubscriptionPrompt(true);
+              return;
+            }
+            
+            player.seekTo(newTime, true);
+          }
+          break;
+        case 'ArrowLeft':
+          e.preventDefault();
+          if (player) {
+            const currentTime = player.getCurrentTime();
+            const newTime = Math.max(currentTime - 10, 0);
+            player.seekTo(newTime, true);
+          }
+          break;
       }
     };
 
     // Add keyboard event listeners
-    document.addEventListener('keydown', preventKeyboardControls, true);
-    document.addEventListener('keyup', preventKeyboardControls, true);
-    document.addEventListener('keypress', preventKeyboardControls, true);
+    document.addEventListener('keydown', handleKeyboardControls);
 
     return () => {
       // Clean up listeners
-      document.removeEventListener('keydown', preventKeyboardControls, true);
-      document.removeEventListener('keyup', preventKeyboardControls, true);
-      document.removeEventListener('keypress', preventKeyboardControls, true);
+      document.removeEventListener('keydown', handleKeyboardControls);
       
       if (player && player.destroy) {
         player.destroy();
       }
     };
-  }, []);
+  }, [player, hasFullAccess, previewDuration]);
   
   // Comprehensive right-click protection for the embedded YouTube iframe
   useEffect(() => {
@@ -230,8 +264,8 @@ export default function YouTubePlayer({
           autoplay: 0,
           modestbranding: 1,
           rel: 0,
-          // Disable keyboard controls in YouTube player
-          disablekb: 1,
+          // Enable keyboard controls in YouTube player (we'll handle them ourselves)
+          disablekb: 0,
           // Enable regular controls for all users
           controls: 1,
           // Additional parameters to restrict functionality
