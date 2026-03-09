@@ -199,6 +199,23 @@ export default function CommunityDetailPage() {
                                     <p className="text-gray-600 text-sm mt-1 max-w-xl">{community?.description}</p>
                                 </div>
                                 <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 shrink-0">
+                                    {isAuthenticated && community?.createdBy === userId && (
+                                        <Link href={`/communities/${id}/moderator-approvals`}>
+                                            <Button size="sm" variant="outline" className="rounded-xl text-sm">
+                                                Moderator Approvals
+                                            </Button>
+                                        </Link>
+                                    )}
+                                    {isAuthenticated &&
+                                        community?.isJoined &&
+                                        community?.createdBy !== userId &&
+                                        !community?.isModerator && (
+                                            <Link href={`/communities/${id}/apply-moderator`}>
+                                                <Button size="sm" variant="outline" className="rounded-xl text-sm">
+                                                    Apply as Moderator
+                                                </Button>
+                                            </Link>
+                                        )}
                                     {isAuthenticated && community?.isJoined && (
                                         <Link href={`/communities/${id}/submit`}>
                                             <Button
@@ -411,4 +428,3 @@ export default function CommunityDetailPage() {
         </div>
     );
 }
-
