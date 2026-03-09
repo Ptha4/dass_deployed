@@ -6,7 +6,7 @@ import os
 import socketio
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routes import blog, branch, college_branch, college, expert, search, user, video, auth, comment, post, admin, expert_analytics, notification, rating, expert_application, file, chatbot, meeting, community, activity, connection
+from app.routes import blog, branch, college_branch, college, expert, search, user, video, auth, comment, post, admin, expert_analytics, notification, rating, expert_application, file, chatbot, meeting, community, activity, connection, moderator_application
 from app.managers.user import UserManager
 from app.config import settings
 from app.core.socket_manager import sio
@@ -48,6 +48,7 @@ _fastapi_app.include_router(meeting.router, tags=["meeting"], prefix="/api")
 _fastapi_app.include_router(community.router, tags=["community"], prefix="/api")
 _fastapi_app.include_router(activity.router, tags=["activity"], prefix="/api")
 _fastapi_app.include_router(connection.router, tags=["connection"], prefix="/api")
+_fastapi_app.include_router(moderator_application.router, tags=["moderator_application"], prefix="/api")
 
 # Wrap FastAPI with Socket.IO ASGI middleware.
 # Socket.IO handles /socket.io/* paths; everything else goes to FastAPI.

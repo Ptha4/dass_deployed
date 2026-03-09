@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import {
   Play,
   Pause,
@@ -67,7 +67,7 @@ export default function VideoPlayer({ video }: VideoPlayerProps) {
     }
   }, [currentTime, hasFullAccess, previewDuration]);
 
-  const togglePlay = () => {
+  const togglePlay = useCallback(() => {
     if (videoRef.current) {
       // Don't allow playing beyond preview duration for free users
       if (!hasFullAccess && currentTime >= previewDuration) {
@@ -82,7 +82,7 @@ export default function VideoPlayer({ video }: VideoPlayerProps) {
       }
       setIsPlaying(!isPlaying);
     }
-  };
+  }, [isPlaying, currentTime, hasFullAccess, previewDuration]);
 
   const toggleMute = () => {
     if (videoRef.current) {
@@ -191,6 +191,68 @@ export default function VideoPlayer({ video }: VideoPlayerProps) {
     }
   };
 
+  // Keyboard event handlers
+  const handleSkipForward = useCallback(() => {
+    if (videoRef.current) {
+      const newTime = Math.min(currentTime + 10, duration);
+      
+      // Don't allow skipping beyond preview duration for free users
+      if (!hasFullAccess && newTime > previewDuration) {
+        setShowSubscriptionPrompt(true);
+        return;
+      }
+      
+      videoRef.current.currentTime = newTime;
+      setCurrentTime(newTime);
+    }
+  }, [currentTime, duration, hasFullAccess, previewDuration]);
+
+  const handleSkipBackward = useCallback(() => {
+    if (videoRef.current) {
+      const newTime = Math.max(currentTime - 10, 0);
+      videoRef.current.currentTime = newTime;
+      setCurrentTime(newTime);
+    }
+  }, [currentTime]);
+
+  // Add keyboard event listener
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Only handle keyboard events when video element is focused or when no other input is focused
+      const activeElement = document.activeElement;
+      const isInputFocused = activeElement?.tagName === 'INPUT' || 
+                           activeElement?.tagName === 'TEXTAREA' || 
+                           (activeElement as HTMLElement)?.contentEditable === 'true';
+      
+      if (isInputFocused) return;
+
+      // Check if the video player container is in view/focused
+      const videoContainer = videoRef.current?.closest('.relative');
+      if (!videoContainer) return;
+
+      switch (e.key) {
+        case ' ':
+        case 'Spacebar':
+          e.preventDefault();
+          togglePlay();
+          break;
+        case 'ArrowRight':
+          e.preventDefault();
+          handleSkipForward();
+          break;
+        case 'ArrowLeft':
+          e.preventDefault();
+          handleSkipBackward();
+          break;
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [togglePlay, handleSkipForward, handleSkipBackward]);
+
   return (
     <div className="relative bg-black rounded-lg overflow-hidden">
       {/* Video Element */}
@@ -273,6 +335,38 @@ export default function VideoPlayer({ video }: VideoPlayerProps) {
                 </TooltipTrigger>
                 <TooltipContent>
                   <p>{isPlaying ? "Pause" : "Play"}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={handleSkipBackward}
+                    className="hover:text-primary-blue transition-colors"
+                  >
+                    <SkipBack className="h-5 w-5" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Skip Backward (-10s)</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={handleSkipForward}
+                    className="hover:text-primary-blue transition-colors"
+                  >
+                    <SkipForward className="h-5 w-5" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Skip Forward (+10s)</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
