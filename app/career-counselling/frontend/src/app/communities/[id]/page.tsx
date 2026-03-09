@@ -22,12 +22,14 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import PostItem from "@/components/communities/post-item";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSocket } from "@/contexts/SocketContext";
 import { formatDistanceToNow } from "date-fns";
 
 export default function CommunityDetailPage() {
     const { id } = useParams() as { id: string };
     const router = useRouter();
-    const { user, isAuthenticated } = useAuth();
+    const { user, isAuthenticated, loading: authLoading } = useAuth();
+    const { onEvent, socketReady } = useSocket();
     const userId = user?._id || "";
 
     const [community, setCommunity] = useState<Community | null>(null);
@@ -65,9 +67,71 @@ export default function CommunityDetailPage() {
     }, [id]);
 
     useEffect(() => {
+        if (authLoading) return; // wait for auth so the token is in the request header
         fetchCommunity();
         fetchPosts();
-    }, [fetchCommunity, fetchPosts]);
+    }, [fetchCommunity, fetchPosts, authLoading]);
+
+    // ── Real-time socket listeners ────────────────────────────────────────────
+    useEffect(() => {
+        const offNewPost = onEvent("community_new_post", (data: { communityId: string; post: Post }) => {
+            setCommunity((prev) => {
+                if (!prev || prev.communityId !== data.communityId) return prev;
+                return { ...prev, postCount: prev.postCount + 1 };
+            });
+            setPosts((prev) => {
+                if (!prev.find((p) => p.postId === data.post.postId)) {
+                    return [data.post, ...prev];
+                }
+                return prev;
+            });
+        });
+
+        const offPinUpdate = onEvent("community_pin_update", (data: { communityId: string; pinnedPosts: string[] }) => {
+            setCommunity((prev) => {
+                if (!prev || prev.communityId !== data.communityId) return prev;
+                return { ...prev, pinnedPosts: data.pinnedPosts };
+            });
+            setPosts((prev) =>
+                prev.map((p) => ({ ...p, isPinned: data.pinnedPosts.includes(p.postId) }))
+            );
+        });
+
+        const offBan = onEvent("community_ban", (data: { communityId: string; userId: string }) => {
+            setCommunity((prev) => {
+                if (!prev || prev.communityId !== data.communityId) return prev;
+                if (data.userId === userId) {
+                    alert(`You have been banned from ${prev.displayName}.`);
+                    router.push("/communities");
+                }
+                return prev;
+            });
+        });
+
+        const offRoleUpdate = onEvent("community_role_update", (data: { communityId: string; userId: string; role: string }) => {
+            setCommunity((prev) => {
+                if (!prev || prev.communityId !== data.communityId) return prev;
+                if (data.userId === userId) {
+                    return { ...prev, isModerator: data.role === "moderator" };
+                }
+                return prev;
+            });
+        });
+
+        const offCredentialsUpdate = onEvent("community_credentials_update", (data: { communityId: string; userId: string; credentials: string[] }) => {
+            setPosts((prev) =>
+                prev.map((p) => p.authorId === data.userId ? { ...p, authorCredentials: data.credentials } : p)
+            );
+        });
+
+        return () => {
+            offNewPost();
+            offPinUpdate();
+            offBan();
+            offRoleUpdate();
+            offCredentialsUpdate();
+        };
+    }, [onEvent, userId, router, socketReady]);
 
     const handleJoinLeave = async () => {
         if (!isAuthenticated || !community) return;
@@ -293,6 +357,7 @@ export default function CommunityDetailPage() {
                                     communityId={community?.communityId}
                                     onPin={community?.isModerator ? () => handlePin(post.postId, !!post.isPinned) : undefined}
                                     onModDelete={community?.isModerator ? () => handleDeletePost(post.postId) : undefined}
+                                    onCredentialsUpdate={community?.isModerator ? (uid, creds) => setPosts((prev) => prev.map((p) => p.authorId === uid ? { ...p, authorCredentials: creds } : p)) : undefined}
                                 />
                             ))
                         ) : (

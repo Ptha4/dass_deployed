@@ -17,6 +17,7 @@ import { formatDistanceToNow } from "date-fns";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSocket } from "@/contexts/SocketContext";
 import { useToast } from "@/hooks/use-toast";
+import { utcDate } from "@/lib/utils";
 
 // ─── Markdown stripper ───────────────────────────────────────────────────────
 const stripMarkdown = (markdown: string): string => {
@@ -90,7 +91,7 @@ export default function NotificationsDropdown() {
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, loading: authLoading } = useAuth();
   const {
     liveNotifications,
     liveBatches,
@@ -119,7 +120,7 @@ export default function NotificationsDropdown() {
     }
   }, [isAuthenticated, setNotifications, setLiveBatches]);
 
-  useEffect(() => { fetchAll(); }, [fetchAll]);
+  useEffect(() => { if (!authLoading) fetchAll(); }, [fetchAll, authLoading]);
   useEffect(() => { if (isOpen) fetchAll(); }, [isOpen, fetchAll]);
 
   // ── Toasts ──────────────────────────────────────────────────────────────────
@@ -166,6 +167,15 @@ export default function NotificationsDropdown() {
       router.push(`/blogs/${referenceId}`);
     } else if (referenceType === "video" && referenceId) {
       router.push(`/videos/${referenceId}`);
+    } else if (notification.type === "community_post" && referenceId) {
+      // Look up the post to find which community it belongs to
+      try {
+        const postRes = await axios.get(`/api/posts/${referenceId}`);
+        const communityId = postRes.data?.communityId;
+        router.push(communityId ? `/communities/${communityId}` : "/communities");
+      } catch {
+        router.push("/communities");
+      }
     } else if (referenceType === "post" && sourceUserId) {
       const expertId =
         (sourceUserDetails as any)?.expertId ||
@@ -319,7 +329,7 @@ export default function NotificationsDropdown() {
                           </p>
                         )}
                         <p className="text-xs text-gray-500 mt-1">
-                          {formatDistanceToNow(new Date(batch.updatedAt), { addSuffix: true })}
+                          {formatDistanceToNow(utcDate(batch.updatedAt), { addSuffix: true })}
                         </p>
                       </div>
                     </div>
@@ -345,7 +355,7 @@ export default function NotificationsDropdown() {
                         {stripMarkdown(notification.content)}
                       </p>
                       <p className="text-xs text-gray-500 mt-1">
-                        {formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true })}
+                        {formatDistanceToNow(utcDate(notification.createdAt), { addSuffix: true })}
                       </p>
                       {notification.type === "connection_request" && notification.read === false && (
                         <div className="flex gap-2 mt-2" onClick={(e) => e.stopPropagation()}>

@@ -32,6 +32,8 @@ interface SocketContextType {
     emitEvent: (event: string, data: unknown) => void;
     /** Subscribe to a custom socket event. Returns cleanup function. */
     onEvent: (event: string, handler: (...args: any[]) => void) => () => void;
+    /** Increments each time the socket successfully connects/reconnects. Use as a useEffect dep to re-register listeners. */
+    socketReady: number;
 }
 
 const SocketContext = createContext<SocketContextType>({
@@ -44,6 +46,7 @@ const SocketContext = createContext<SocketContextType>({
     setLiveBatches: () => { },
     emitEvent: () => { },
     onEvent: () => () => { },
+    socketReady: 0,
 });
 
 export const SocketProvider = ({ children }: { children: ReactNode }) => {
@@ -51,6 +54,7 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
     const socketRef = useRef<Socket | null>(null);
     const [liveNotifications, setLiveNotifications] = useState<Notification[]>([]);
     const [liveBatches, setLiveBatchesState] = useState<NotificationBatch[]>([]);
+    const [socketReady, setSocketReady] = useState(0);
 
     const unreadCount =
         liveNotifications.filter((n) => !n.read).length +
@@ -86,6 +90,7 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
 
         socket.on("connect", () => {
             console.log("[Socket] connected:", socket.id);
+            setSocketReady((n) => n + 1);
         });
 
         // Individual direct notifications (follow, meeting, refund…)
@@ -170,6 +175,7 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
                 setLiveBatches,
                 emitEvent,
                 onEvent,
+                socketReady,
             }}
         >
             {children}

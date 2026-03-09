@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException, Depends, UploadFile, File as FastAPIFile
 from typing import List, Optional
+import asyncio
 from pydantic import BaseModel
 from bson import ObjectId
 from app.models.community import CommunityCreate, CommunityResponse
@@ -10,6 +11,7 @@ from app.managers.notification import NotificationManager
 from app.managers.report import ReportManager
 from app.models.report import ReportCreate
 from app.core.auth_utils import get_current_user, require_user, get_optional_user
+from app.core.socket_manager import broadcast_to_users
 
 router = APIRouter()
 community_manager = CommunityManager()
@@ -172,7 +174,6 @@ async def create_community_post(
         await community_manager.increment_post_count(actual_community_id)
 
         # Notify ALL community members about the new post
-        import asyncio
         asyncio.create_task(
             notification_manager.create_community_post_for_all_members(
                 poster_id=user_data["id"],
@@ -203,6 +204,20 @@ async def create_community_post(
                         post_id=post.postId,
                         member_ids=target_ids,
                     )
+
+        # Emit real-time event so other community members' feeds update instantly
+        comm_doc_for_broadcast = await community_manager.collection.find_one(
+            {"_id": ObjectId(actual_community_id)}, {"members": 1}
+        )
+        member_ids = comm_doc_for_broadcast.get("members", []) if comm_doc_for_broadcast else []
+        other_members = [m for m in member_ids if m != user_data["id"]]
+        asyncio.create_task(
+            broadcast_to_users(
+                other_members,
+                "community_new_post",
+                {"communityId": actual_community_id, "post": post.model_dump(mode="json")},
+            )
+        )
 
         return post
     except HTTPException:
@@ -271,6 +286,13 @@ async def promote_to_moderator(
     ok = await community_manager.promote_to_moderator(community.communityId, user_data["id"], body.userId)
     if not ok:
         raise HTTPException(status_code=403, detail="Not authorised or user not found")
+    asyncio.create_task(
+        broadcast_to_users(
+            [body.userId],
+            "community_role_update",
+            {"communityId": community.communityId, "userId": body.userId, "role": "moderator", "communityName": community.displayName},
+        )
+    )
     return {"message": "User promoted to moderator"}
 
 
@@ -287,6 +309,13 @@ async def demote_moderator(
     ok = await community_manager.demote_moderator(community.communityId, user_data["id"], body.userId)
     if not ok:
         raise HTTPException(status_code=403, detail="Not authorised")
+    asyncio.create_task(
+        broadcast_to_users(
+            [body.userId],
+            "community_role_update",
+            {"communityId": community.communityId, "userId": body.userId, "role": "member", "communityName": community.displayName},
+        )
+    )
     return {"message": "Moderator demoted"}
 
 
@@ -303,6 +332,13 @@ async def ban_user(
     ok = await community_manager.ban_user(community.communityId, user_data["id"], body.userId)
     if not ok:
         raise HTTPException(status_code=403, detail="Not authorised")
+    asyncio.create_task(
+        broadcast_to_users(
+            [body.userId],
+            "community_ban",
+            {"communityId": community.communityId, "userId": body.userId, "communityName": community.displayName},
+        )
+    )
     return {"message": "User banned from community"}
 
 
@@ -335,6 +371,18 @@ async def pin_post(
     ok = await community_manager.pin_post(community.communityId, user_data["id"], post_id)
     if not ok:
         raise HTTPException(status_code=403, detail="Not authorised or pin limit reached (max 5)")
+    updated_doc = await community_manager.collection.find_one(
+        {"_id": ObjectId(community.communityId)}, {"members": 1, "pinnedPosts": 1}
+    )
+    member_ids = updated_doc.get("members", []) if updated_doc else []
+    pinned_posts = updated_doc.get("pinnedPosts", []) if updated_doc else []
+    asyncio.create_task(
+        broadcast_to_users(
+            member_ids,
+            "community_pin_update",
+            {"communityId": community.communityId, "pinnedPosts": pinned_posts},
+        )
+    )
     return {"message": "Post pinned"}
 
 
@@ -351,6 +399,18 @@ async def unpin_post(
     ok = await community_manager.unpin_post(community.communityId, user_data["id"], post_id)
     if not ok:
         raise HTTPException(status_code=403, detail="Not authorised")
+    updated_doc = await community_manager.collection.find_one(
+        {"_id": ObjectId(community.communityId)}, {"members": 1, "pinnedPosts": 1}
+    )
+    member_ids = updated_doc.get("members", []) if updated_doc else []
+    pinned_posts = updated_doc.get("pinnedPosts", []) if updated_doc else []
+    asyncio.create_task(
+        broadcast_to_users(
+            member_ids,
+            "community_pin_update",
+            {"communityId": community.communityId, "pinnedPosts": pinned_posts},
+        )
+    )
     return {"message": "Post unpinned"}
 
 
@@ -453,4 +513,14 @@ async def set_member_credentials(
     )
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="User not found")
+    comm_doc = await db.communities.find_one({"_id": ObjectId(community_id)}, {"members": 1})
+    if comm_doc:
+        members = [str(m) for m in comm_doc.get("members", [])]
+        asyncio.create_task(
+            broadcast_to_users(
+                members,
+                "community_credentials_update",
+                {"communityId": community_id, "userId": user_id, "credentials": body.credentials},
+            )
+        )
     return {"message": "Credentials updated", "credentials": body.credentials}

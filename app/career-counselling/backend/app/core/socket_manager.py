@@ -63,6 +63,15 @@ async def disconnect(sid):
     print(f"Socket disconnected: sid={sid}, user_id={user_id}")
 
 
+async def broadcast_to_users(user_ids: list, event: str, data: dict) -> None:
+    """Emit *event* with *data* to each user's personal socket room (best-effort)."""
+    for uid in user_ids:
+        try:
+            await sio.emit(event, data, room=uid)
+        except Exception as e:
+            print(f"broadcast_to_users error (uid={uid}): {e}")
+
+
 # ---------------------------------------------------------------------------
 # Extension approval flow
 # ---------------------------------------------------------------------------

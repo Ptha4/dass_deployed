@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Heart, MessageSquare, Eye, Clock, Pin, Trash2, Flag, BadgeCheck, MoreVertical, Shield, Settings2 } from "lucide-react";
 import { Post } from "@/types";
 import { formatDistanceToNow } from "date-fns";
+import { utcDate } from "@/lib/utils";
 import { useState } from "react";
 import axios from "axios";
 import { useAuth } from "@/contexts/AuthContext";
@@ -24,6 +25,7 @@ interface PostItemProps {
     communityId?: string;
     onPin?: () => void;
     onModDelete?: () => void;
+    onCredentialsUpdate?: (userId: string, credentials: string[]) => void;
 }
 
 export default function PostItem({
@@ -34,6 +36,7 @@ export default function PostItem({
     communityId,
     onPin,
     onModDelete,
+    onCredentialsUpdate,
 }: PostItemProps) {
     const { user, isAuthenticated } = useAuth();
     const userId = user?._id || "";
@@ -55,6 +58,7 @@ export default function PostItem({
     const ALLOWED_CREDENTIALS = ["Verified", "Career Counselor", "Professor", "Industry Expert", "Alumni"];
     const [showCredentials, setShowCredentials] = useState(false);
     const [selectedCredentials, setSelectedCredentials] = useState<string[]>(post.authorCredentials ?? []);
+    const [localCredentials, setLocalCredentials] = useState<string[] | null>(null);
     const [credSaving, setCredSaving] = useState(false);
     const [credDone, setCredDone] = useState(false);
 
@@ -72,6 +76,8 @@ export default function PostItem({
                 credentials: selectedCredentials,
             });
             setCredDone(true);
+            setLocalCredentials(selectedCredentials);
+            onCredentialsUpdate?.(post.authorId, selectedCredentials);
         } catch {
             // ignore
         } finally {
@@ -124,7 +130,7 @@ export default function PostItem({
     };
 
     const initials = post.authorInitials || (post.authorName?.charAt(0) || "U").toUpperCase();
-    const credentials = post.authorCredentials ?? [];
+    const credentials = localCredentials ?? post.authorCredentials ?? [];
 
     return (
         <div className={`group relative bg-white border rounded-2xl shadow-sm hover:shadow-md transition-all duration-200 p-5 ${post.isPinned ? "border-amber-300 bg-amber-50/30" : "border-gray-100 hover:border-indigo-200"}`}>
@@ -183,7 +189,7 @@ export default function PostItem({
                 )}
                 <span className="ml-auto flex items-center gap-1">
                     <Clock className="h-3 w-3" />
-                    {formatDistanceToNow(new Date(post.createdAt), { addSuffix: true })}
+                    {formatDistanceToNow(utcDate(post.createdAt), { addSuffix: true })}
                 </span>
 
                 {/* Mod / author action menu */}
