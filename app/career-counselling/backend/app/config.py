@@ -12,10 +12,13 @@ class Settings(BaseSettings):
     ACCOUNT_SID: str = ""
     AUTH_TOKEN: str = ""
     TWILIO_SMS_FROM: str = ""
-    DAILY_API_KEY: str = ""
+    JAAS_APP_ID: str = ""
+    JAAS_KEY_ID: str = ""
+
 
     class Config:
         env_file = ".env"
+        extra = "ignore"
 
 
 settings = Settings()

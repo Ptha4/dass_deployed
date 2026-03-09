@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Calendar, Clock, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
@@ -33,6 +34,7 @@ export default function BookingCalendar({
     const [monthAvailability, setMonthAvailability] = useState<Record<string, boolean>>({});
     const [isLoadingMonth, setIsLoadingMonth] = useState(false);
     const { user } = useAuth();
+    const router = useRouter();
 
     // Generate calendar dates for the current month view
     const generateCalendarDays = () => {
@@ -141,10 +143,12 @@ export default function BookingCalendar({
                 throw new Error(err.detail || "Failed to book meeting");
             }
 
-            toast.success("Meeting booked successfully! Check your dashboard for details.");
+            toast.success("Meeting booked successfully! Redirecting to your meetings...");
             setSelectedSlot(null);
             setAvailableSlots([]);
             setSelectedDate("");
+            // Redirect to meetings dashboard after a short delay
+            setTimeout(() => router.push("/meetings"), 1500);
         } catch (error) {
             console.error("Error booking meeting:", error);
             toast.error(
@@ -265,7 +269,7 @@ export default function BookingCalendar({
                             No available slots on this day.
                         </p>
                     ) : (
-                        <div className="grid grid-cols-2 gap-2">
+                        <div className="grid grid-cols-2 gap-2 max-h-[140px] overflow-y-auto pr-1">
                             {availableSlots.map((slot, i) => (
                                 <Button
                                     key={i}

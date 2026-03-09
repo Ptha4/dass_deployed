@@ -332,7 +332,7 @@ export default function ExpertDetailPage() {
 
                   {/* Booking Calendar Modal */}
                   <Dialog open={showBookingModal} onOpenChange={setShowBookingModal}>
-                    <DialogContent className="sm:max-w-md">
+                    <DialogContent className="sm:max-w-md max-h-[85vh] overflow-y-auto">
                       <DialogHeader>
                         <DialogTitle className="text-xl font-bold">Book a Session</DialogTitle>
                         <DialogDescription>

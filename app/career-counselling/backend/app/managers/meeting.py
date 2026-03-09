@@ -6,7 +6,6 @@ from datetime import datetime, timedelta
 from bson import ObjectId
 from app.core.database import get_database
 from app.models.meeting import MeetingStatus
-from app.services.daily_service import create_daily_room, delete_daily_room
 import uuid
 
 
@@ -60,6 +59,10 @@ class MeetingManager:
         for booking in existing_bookings:
             booked_times.add(booking["startTime"].strftime("%H:%M"))
 
+        # Per-expert session duration (default 60 min)
+        slot_duration = int(expert.get("sessionDurationMinutes", 60))
+        slot_td = timedelta(minutes=slot_duration)
+
         # Build available slots from the expert's configured time windows
         available_slots = []
         for slot in day_config.get("slots", []):
@@ -75,10 +78,13 @@ class MeetingManager:
 
             current = requested_date.replace(hour=start_hour, minute=start_min, second=0)
             end = requested_date.replace(hour=end_hour, minute=end_min, second=0)
+            # Handle midnight wraparound: '23:00' -> '00:00' means end of day
+            if end <= current:
+                end += timedelta(days=1)
 
-            while current + timedelta(hours=1) <= end:
+            while current + slot_td <= end:
                 slot_time_str = current.strftime("%H:%M")
-                slot_end = current + timedelta(hours=1)
+                slot_end = current + slot_td
                 print(f"  INNER WHILE: slot {slot_time_str}")
 
                 # Skip if already booked
@@ -99,7 +105,7 @@ class MeetingManager:
                 else:
                     print(f"    SKIPPED: {slot_time_str} is already booked")
 
-                current += timedelta(hours=1)
+                current += slot_td
 
         print("FINAL SLOTS:", available_slots)
         return available_slots
@@ -118,10 +124,6 @@ class MeetingManager:
         # Find the number of days in the requested month
         import calendar
         _, num_days = calendar.monthrange(year, month)
-        
-        # Calculate for each day in the month
-        # We use asyncio.gather to calculate days concurrently
-        # However we can just do it sequentially for simplicity, or we do a bulk query for existing bookings
         
         # Get all bookings for the entire month for this expert
         start_of_month = datetime(year, month, 1)
@@ -143,6 +145,8 @@ class MeetingManager:
             bookings_by_date[date_str].add(time_str)
             
         availability_config = expert.get("availability")
+        slot_duration = int(expert.get("sessionDurationMinutes", 60))
+        slot_td = timedelta(minutes=slot_duration)
         result = {}
         
         now = datetime.now()
@@ -181,8 +185,11 @@ class MeetingManager:
                 
                 current = test_date.replace(hour=start_hour, minute=start_min, second=0)
                 end = test_date.replace(hour=end_hour, minute=end_min, second=0)
+                # Handle midnight wraparound
+                if end <= current:
+                    end += timedelta(days=1)
                 
-                while current + timedelta(hours=1) <= end:
+                while current + slot_td <= end:
                     slot_time_str = current.strftime("%H:%M")
                     
                     # Check if this specific slot is available
@@ -190,7 +197,7 @@ class MeetingManager:
                         has_available_slot = True
                         break # Found at least one slot, day is available
                         
-                    current += timedelta(hours=1)
+                    current += slot_td
                     
                 if has_available_slot:
                     break
@@ -213,7 +220,7 @@ class MeetingManager:
         1. Verify the slot is still available
         2. Get expert's meeting cost
         3. Deduct coins from user's wallet
-        4. Create a Daily.co room
+        4. Generate a Jitsi room name
         5. Save meeting to DB
 
         Returns:
@@ -249,12 +256,9 @@ class MeetingManager:
             {"$inc": {"wallet": -int(cost)}}
         )
 
-        # 5. Create a Daily.co room
-        room_name = f"meeting-{uuid.uuid4().hex[:12]}"
-        room_data = await create_daily_room(room_name)
-        # Always provide a fallback URL so the meeting link is never empty
-        daily_room_url = room_data["url"] if room_data else f"https://career-counselor.daily.co/{room_name}"
-        daily_room_name = room_data["name"] if room_data else room_name
+        # 5. Generate a Jitsi room name (no API call needed)
+        room_name = f"alumniti-meeting-{uuid.uuid4().hex[:12]}"
+        jitsi_room_url = f"https://meet.jit.si/{room_name}"
 
         # 6. Save meeting to DB
         now = datetime.utcnow()
@@ -265,8 +269,8 @@ class MeetingManager:
             "endTime": end_time,
             "costInfo": cost,
             "status": MeetingStatus.SCHEDULED,
-            "dailyRoomUrl": daily_room_url,
-            "dailyRoomName": daily_room_name,
+            "jitsiRoomUrl": jitsi_room_url,
+            "jitsiRoomName": room_name,
             "createdAt": now,
             "updatedAt": now,
         }
@@ -302,8 +306,8 @@ class MeetingManager:
             # Map costInfo to amount for UI
             m["amount"] = m.get("costInfo") or 0
             m["isPaid"] = m["amount"] > 0
-            # Map dailyRoomUrl to meetingLink for UI — always set it
-            m["meetingLink"] = m.get("dailyRoomUrl") or f"https://career-counselor.daily.co/{m.get('dailyRoomName', 'unknown')}"
+            # Map jitsiRoomUrl to meetingLink for UI — always set it
+            m["meetingLink"] = m.get("jitsiRoomUrl") or m.get("dailyRoomUrl") or f"https://meet.jit.si/{m.get('jitsiRoomName', m.get('dailyRoomName', 'unknown'))}"
                 
             # Attach expert name
             expert = await self.db.experts.find_one({"_id": ObjectId(m["expertId"])})
@@ -329,7 +333,7 @@ class MeetingManager:
             if user_doc:
                 m["studentName"] = f"{user_doc.get('firstName', '')} {user_doc.get('lastName', '')}"
             # Also set meetingLink for expert-side UI
-            m["meetingLink"] = m.get("dailyRoomUrl") or f"https://career-counselor.daily.co/{m.get('dailyRoomName', 'unknown')}"
+            m["meetingLink"] = m.get("jitsiRoomUrl") or m.get("dailyRoomUrl") or f"https://meet.jit.si/{m.get('jitsiRoomName', m.get('dailyRoomName', 'unknown'))}"
         return meetings
 
     async def get_all_meetings_for_user(self, user_id: str, status: Optional[str] = None) -> List[Dict]:
@@ -359,7 +363,7 @@ class MeetingManager:
             m["_id"] = mid
             m["amount"] = m.get("costInfo") or 0
             m["isPaid"] = m["amount"] > 0
-            m["meetingLink"] = m.get("dailyRoomUrl") or f"https://career-counselor.daily.co/{m.get('dailyRoomName', 'unknown')}"
+            m["meetingLink"] = m.get("jitsiRoomUrl") or m.get("dailyRoomUrl") or f"https://meet.jit.si/{m.get('jitsiRoomName', m.get('dailyRoomName', 'unknown'))}"
 
             # Attach expert name
             exp = await self.db.experts.find_one({"_id": ObjectId(m["expertId"])})
@@ -410,10 +414,7 @@ class MeetingManager:
             {"$set": {"status": MeetingStatus.CANCELLED, "updatedAt": datetime.utcnow()}}
         )
 
-        # Delete the Daily.co room
-        if meeting.get("dailyRoomName"):
-            await delete_daily_room(meeting["dailyRoomName"])
-
+        # No need to delete Jitsi rooms — they auto-expire
         return True
 
     async def extend_meeting(
@@ -479,7 +480,7 @@ class MeetingManager:
             {"$inc": {"wallet": -extension_cost}}
         )
 
-        # 5. Update meeting end time and total cost
+        # 5. Update meeting end time; track extension earnings separately (costInfo stays as original booking cost)
         await self.collection.update_one(
             {"_id": ObjectId(meeting_id)},
             {
@@ -488,7 +489,7 @@ class MeetingManager:
                     "updatedAt": datetime.utcnow()
                 },
                 "$inc": {
-                    "costInfo": extension_cost
+                    "extensionEarnings": extension_cost
                 }
             }
         )
@@ -502,3 +503,97 @@ class MeetingManager:
             {"$set": {"status": MeetingStatus.COMPLETED, "updatedAt": datetime.utcnow()}}
         )
         return result.modified_count > 0
+
+    async def get_expert_earnings(self, expert_id: str) -> dict:
+        """
+        Calculate full earnings breakdown for an expert.
+        - base_earnings = sum of costInfo for non-cancelled meetings
+        - extension_earnings = sum of extensionEarnings across all meetings
+        - Per-month breakdown for the last 12 months.
+        - Per-session list.
+        """
+        from collections import defaultdict
+
+        meetings = await self.collection.find({"expertId": expert_id}).sort("startTime", -1).to_list(None)
+
+        total_base = 0
+        total_extensions = 0
+        monthly: dict = defaultdict(lambda: {"base": 0, "extensions": 0, "sessions": 0})
+        sessions = []
+
+        for m in meetings:
+            base = m.get("costInfo", 0) or 0
+            ext = m.get("extensionEarnings", 0) or 0
+            status = m.get("status", "")
+            start = m.get("startTime")
+            if isinstance(start, str):
+                start = datetime.fromisoformat(start)
+
+            month_key = start.strftime("%b %Y") if start else "Unknown"
+
+            # Base earning: counted only if not cancelled (non-refunded)
+            if status != MeetingStatus.CANCELLED:
+                total_base += base
+                monthly[month_key]["base"] += base
+                monthly[month_key]["sessions"] += 1
+
+            # Extension earnings: always kept (non-refundable)
+            total_extensions += ext
+            monthly[month_key]["extensions"] += ext
+
+            # Attach student name
+            student_name = "Unknown"
+            try:
+                student = await self.db.users.find_one({"_id": ObjectId(m["userId"])})
+                if student:
+                    student_name = f"{student.get('firstName','')} {student.get('lastName','')}".strip()
+            except Exception:
+                pass
+
+            sessions.append({
+                "meetingId": str(m["_id"]),
+                "studentName": student_name,
+                "startTime": start.isoformat() if start else None,
+                "status": status,
+                "baseCost": base,
+                "extensionEarnings": ext,
+                "totalEarned": (base if status != MeetingStatus.CANCELLED else 0) + ext,
+            })
+
+        now = datetime.now()
+        this_month_key = now.strftime("%b %Y")
+        last_month_key = (now.replace(day=1) - timedelta(days=1)).strftime("%b %Y")
+
+        # Build last-12-month chart data in order
+        chart = []
+        for i in range(11, -1, -1):
+            from datetime import date
+            import calendar as cal_mod
+            d = date(now.year, now.month, 1)
+            # go back i months
+            month_num = now.month - i
+            year_num = now.year
+            while month_num <= 0:
+                month_num += 12
+                year_num -= 1
+            key = datetime(year_num, month_num, 1).strftime("%b %Y")
+            short = datetime(year_num, month_num, 1).strftime("%b")
+            data = monthly.get(key, {"base": 0, "extensions": 0, "sessions": 0})
+            chart.append({
+                "month": short,
+                "fullMonth": key,
+                "base": data["base"],
+                "extensions": data["extensions"],
+                "total": data["base"] + data["extensions"],
+                "sessions": data["sessions"],
+            })
+
+        return {
+            "totalEarnings": total_base + total_extensions,
+            "baseEarnings": total_base,
+            "extensionEarnings": total_extensions,
+            "thisMonth": monthly[this_month_key]["base"] + monthly[this_month_key]["extensions"],
+            "lastMonth": monthly[last_month_key]["base"] + monthly[last_month_key]["extensions"],
+            "chart": chart,
+            "sessions": sessions,
+        }

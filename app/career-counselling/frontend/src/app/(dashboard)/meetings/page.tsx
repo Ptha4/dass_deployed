@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { format } from "date-fns";
-import { Calendar, Clock, MapPin, Search, Users, ExternalLink, RefreshCw } from "lucide-react";
+import { Calendar, Clock, Search, Users, ExternalLink, RefreshCw } from "lucide-react";
 import axios from "axios";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -87,6 +87,23 @@ export default function MeetingsDashboard() {
             }
         };
 
+        // Time-gating: allow joining only within 10 minutes before start
+        const nowMs = now.getTime();
+        const startMs = startDate.getTime();
+        const minutesUntilStart = (startMs - nowMs) / (1000 * 60);
+        const canJoin = !isPast && minutesUntilStart <= 10; // joinable 10 min before start
+
+        // Human-readable countdown
+        const getCountdown = () => {
+            if (minutesUntilStart <= 0) return "Starting now";
+            if (minutesUntilStart < 60) return `Starts in ${Math.ceil(minutesUntilStart)} min`;
+            const hours = Math.floor(minutesUntilStart / 60);
+            const mins = Math.ceil(minutesUntilStart % 60);
+            if (hours < 24) return `Starts in ${hours}h ${mins > 0 ? `${mins}m` : ''}`;
+            const days = Math.floor(hours / 24);
+            return `Starts in ${days} day${days > 1 ? 's' : ''}`;
+        };
+
         return (
             <Card className="hover:shadow-md transition-shadow">
                 <CardContent className="p-6">
@@ -119,19 +136,22 @@ export default function MeetingsDashboard() {
                         </div>
 
                         {/* Actions Column */}
-                        <div className="flex flex-col sm:items-end justify-center gap-2 border-t sm:border-t-0 sm:border-l border-gray-100 pt-4 sm:pt-0 sm:pl-4 min-w-[140px]">
-                            {!isPast && meeting.meetingLink ? (
-                                <Button className="w-full gap-2 bg-indigo-600 hover:bg-indigo-700" onClick={() => router.push(`/meeting/${meeting._id || meeting.id}`)}>
-                                    Join Meeting <ExternalLink className="h-4 w-4" />
-                                </Button>
-                            ) : !isPast ? (
-                                <Button className="w-full gap-2" variant="outline" disabled>
-                                    <MapPin className="h-4 w-4" /> Link Pending
-                                </Button>
-                            ) : (
+                        <div className="flex flex-col sm:items-end justify-center gap-2 border-t sm:border-t-0 sm:border-l border-gray-100 pt-4 sm:pt-0 sm:pl-4 min-w-[160px]">
+                            {isPast ? (
                                 <Button className="w-full" variant="outline" onClick={() => router.push(`/experts/${meeting.expertId}`)}>
                                     Book Again
                                 </Button>
+                            ) : canJoin ? (
+                                <Button className="w-full gap-2 bg-indigo-600 hover:bg-indigo-700" onClick={() => router.push(`/meeting/${meeting._id || meeting.id}`)}>
+                                    Join Meeting <ExternalLink className="h-4 w-4" />
+                                </Button>
+                            ) : (
+                                <div className="w-full text-center space-y-1">
+                                    <Button className="w-full gap-2" variant="outline" disabled>
+                                        <Clock className="h-4 w-4" /> {getCountdown()}
+                                    </Button>
+                                    <p className="text-xs text-gray-400">Join opens 10 min before</p>
+                                </div>
                             )}
                         </div>
                     </div>

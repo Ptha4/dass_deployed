@@ -112,6 +112,26 @@ interface Analytics {
   };
 }
 
+interface EarningsSession {
+  meetingId: string;
+  studentName: string;
+  startTime: string;
+  status: string;
+  baseCost: number;
+  extensionEarnings: number;
+  totalEarned: number;
+}
+
+interface EarningsData {
+  totalEarnings: number;
+  baseEarnings: number;
+  extensionEarnings: number;
+  thisMonth: number;
+  lastMonth: number;
+  chart: { month: string; fullMonth: string; base: number; extensions: number; total: number; sessions: number }[];
+  sessions: EarningsSession[];
+}
+
 export default function ExpertDashboard({
   expert,
   expertInitials,
@@ -140,16 +160,16 @@ export default function ExpertDashboard({
   const [isSubmittingBlog, setIsSubmittingBlog] = useState(false);
   const [blogError, setBlogError] = useState<string | null>(null);
   const [showBlogDialog, setShowBlogDialog] = useState(false);
-  // Track refund requests to accurately calculate earnings
-  const [refundRequests, setRefundRequests] = useState<Record<string, string>>(
-    {}
-  );
-  // Track actual earnings (after refunds)
-  const [actualEarnings, setActualEarnings] = useState({
-    total: 0,
-    thisMonth: 0,
-    completedSessions: 0,
+  // Dedicated meeting settings (cost + availability) — editable without opening full profile edit
+  const [meetingSettings, setMeetingSettings] = useState({
+    meetingCost: expert.meetingCost,
+    available: expert.available,
+    sessionDurationMinutes: (expert as any).sessionDurationMinutes ?? 60,
   });
+  const [isSavingMeetingSettings, setIsSavingMeetingSettings] = useState(false);
+
+  // Earnings data from /api/meetings/my-earnings
+  const [earningsData, setEarningsData] = useState<EarningsData | null>(null);
 
   const handleBlogSubmit = async () => {
     if (!blogContent.heading.trim() || !blogContent.body.trim()) {
@@ -221,8 +241,18 @@ export default function ExpertDashboard({
         const data = await response.json();
         setAnalytics(data);
 
-        // After fetching analytics, fetch refund data to update stats
-        fetchRefundData();
+        // Fetch real earnings data
+        try {
+          const earningsRes = await fetch("/api/meetings/my-earnings", {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (earningsRes.ok) {
+            const ed = await earningsRes.json();
+            setEarningsData(ed);
+          }
+        } catch {
+          // earnings fetch failure is non-fatal
+        }
       } catch (error) {
         console.error("Error fetching analytics:", error);
         toast.error("Failed to load analytics data. Please try again later.");
@@ -287,93 +317,30 @@ export default function ExpertDashboard({
     fetchAnalytics();
   }, [expert.expertID, expert.rating]);
 
-  // Function to fetch refund data and update actual earnings
-  const fetchRefundData = async () => {
+  const handleSaveMeetingSettings = async () => {
+    setIsSavingMeetingSettings(true);
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch("/api/refunds/expert", {
+      const response = await fetch(`/api/experts/${expert.expertID}`, {
+        method: "PUT",
         headers: {
+          "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
+        body: JSON.stringify(meetingSettings),
       });
-
-      if (!response.ok) throw new Error("Failed to fetch refund data");
-
-      const refundData = await response.json();
-
-      // Create a map of meetingId -> status
-      const refundMap: Record<string, string> = {};
-      refundData.forEach((refund: any) => {
-        refundMap[refund.meetingId] = refund.status;
-      });
-
-      setRefundRequests(refundMap);
-
-      // Now fetch all meetings to calculate actual earnings
-      await fetchMeetingsForEarningsCalculation(refundMap);
-    } catch (error) {
-      console.error("Error fetching refund data:", error);
-    }
-  };
-
-  // Function to fetch meetings and calculate actual earnings
-  const fetchMeetingsForEarningsCalculation = async (
-    refundMap: Record<string, string>
-  ) => {
-    try {
-      const token = localStorage.getItem("token");
-      const response = await fetch(`/api/meetings/expert/${expert.expertID}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) throw new Error("Failed to fetch meetings");
-
-      const meetings = await response.json();
-
-      // Initialize values
-      let totalEarnings = 0;
-      let thisMonthEarnings = 0;
-      let completedSessions = 0;
-
-      // Get current month
-      const now = new Date();
-      const currentMonth = now.getMonth();
-      const currentYear = now.getFullYear();
-
-      // Calculate actual earnings (excluding refunded meetings)
-      meetings.forEach((meeting: any) => {
-        const isRefunded = refundMap[meeting._id] === "approved";
-
-        if (meeting.status === "completed" && !isRefunded) {
-          // Count as a completed session
-          completedSessions++;
-
-          // Add to total earnings
-          totalEarnings += meeting.amount;
-
-          // Check if completed this month
-          const completedDate = new Date(
-            meeting.completedAt || meeting.endTime
-          );
-          if (
-            completedDate.getMonth() === currentMonth &&
-            completedDate.getFullYear() === currentYear
-          ) {
-            thisMonthEarnings += meeting.amount;
-          }
-        }
-      });
-
-      // Update actual earnings state
-      setActualEarnings({
-        total: totalEarnings,
-        thisMonth: thisMonthEarnings,
-        completedSessions: completedSessions,
-      });
-    } catch (error) {
-      console.error("Error fetching meetings for earnings calculation:", error);
+      if (!response.ok) throw new Error("Failed to update meeting settings");
+      toast.success("Meeting settings saved!");
+      // Keep profile form in sync
+      setProfileForm((prev) => ({
+        ...prev,
+        meetingCost: meetingSettings.meetingCost,
+        available: meetingSettings.available,
+      }));
+    } catch {
+      toast.error("Failed to save meeting settings. Please try again.");
+    } finally {
+      setIsSavingMeetingSettings(false);
     }
   };
 
@@ -603,21 +570,13 @@ export default function ExpertDashboard({
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-4xl font-bold text-gray-900 mb-1">
-                  {actualEarnings.completedSessions > 0
-                    ? actualEarnings.completedSessions
+                  {earningsData
+                    ? earningsData.sessions.filter((s) => s.status === "completed").length
                     : analytics.performance.meetings.completed}
                 </h3>
                 <p className="text-sm font-medium text-gray-500">
                   Sessions Completed
                 </p>
-                {actualEarnings.completedSessions <
-                  analytics.performance.meetings.completed && (
-                    <p className="text-xs text-red-600 mt-1 font-medium">
-                      {analytics.performance.meetings.completed -
-                        actualEarnings.completedSessions}{" "}
-                      refunded
-                    </p>
-                  )}
                 <p className="text-xs text-amber-600 mt-1 font-medium">
                   {analytics.performance.meetings.upcoming} upcoming
                 </p>
@@ -634,23 +593,16 @@ export default function ExpertDashboard({
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-4xl font-bold text-gray-900 mb-1">
-                  {actualEarnings.total > 0
-                    ? actualEarnings.total.toLocaleString()
-                    : analytics.performance.earnings.total.toLocaleString()}
+                  {(earningsData?.totalEarnings ?? analytics.performance.earnings.total).toLocaleString()}
                 </h3>
                 <p className="text-sm font-medium text-gray-500">
                   Total Earnings (coins)
                 </p>
-                {actualEarnings.total <
-                  analytics.performance.earnings.total && (
-                    <p className="text-xs text-red-600 mt-1 font-medium">
-                      {(
-                        analytics.performance.earnings.total -
-                        actualEarnings.total
-                      ).toLocaleString()}{" "}
-                      refunded
-                    </p>
-                  )}
+                {earningsData && earningsData.extensionEarnings > 0 && (
+                  <p className="text-xs text-blue-600 mt-1 font-medium">
+                    +{earningsData.extensionEarnings.toLocaleString()} from extensions
+                  </p>
+                )}
                 <p className="text-xs text-green-600 mt-1 font-medium">
                   +{analytics.performance.earnings.growth}% growth
                 </p>
@@ -668,6 +620,134 @@ export default function ExpertDashboard({
         <div className="lg:col-span-2 space-y-8">
           {/* Upcoming Meetings */}
           <UpcomingMeetings expertId={expert.expertID} />
+
+          {/* Earnings Breakdown */}
+          {earningsData && (
+            <Card className="bg-white shadow-sm">
+              <CardHeader className="pb-2">
+                <div className="flex items-center gap-2">
+                  <DollarSign className="h-5 w-5 text-purple-600" />
+                  <CardTitle className="text-2xl font-semibold text-gray-900">
+                    Earnings Breakdown
+                  </CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-6 pt-2">
+                {/* Mini KPI row */}
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="rounded-lg border bg-purple-50 p-4 text-center">
+                    <p className="text-2xl font-bold text-purple-700">
+                      {earningsData.totalEarnings.toLocaleString()}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">Total Earned</p>
+                  </div>
+                  <div className="rounded-lg border bg-green-50 p-4 text-center">
+                    <p className="text-2xl font-bold text-green-700">
+                      {earningsData.thisMonth.toLocaleString()}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">This Month</p>
+                  </div>
+                  <div className="rounded-lg border bg-blue-50 p-4 text-center">
+                    <p className="text-2xl font-bold text-blue-700">
+                      {earningsData.extensionEarnings.toLocaleString()}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">From Extensions</p>
+                  </div>
+                </div>
+
+                {/* 12-month bar chart */}
+                {earningsData.chart.length > 0 && (
+                  <div>
+                    <p className="text-sm font-medium text-gray-600 mb-3">
+                      Monthly Earnings — Last 12 Months
+                    </p>
+                    <div className="h-[240px]">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={earningsData.chart} barSize={16}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                          <XAxis dataKey="month" stroke="#6B7280" tick={{ fontSize: 12 }} />
+                          <YAxis stroke="#6B7280" tick={{ fontSize: 12 }} />
+                          <Tooltip
+                            formatter={(value: number, name: string) => [
+                              `${value.toLocaleString()} coins`,
+                              name === "base" ? "Base" : "Extensions",
+                            ]}
+                            contentStyle={{ backgroundColor: "#FFF", borderColor: "#E5E7EB" }}
+                          />
+                          <Legend
+                            formatter={(value) => (value === "base" ? "Base" : "Extensions")}
+                          />
+                          <Bar dataKey="base" stackId="a" fill="#a855f7" radius={[0, 0, 0, 0]} />
+                          <Bar dataKey="extensions" stackId="a" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+                )}
+
+                {/* Per-session table */}
+                {earningsData.sessions.length > 0 && (
+                  <div>
+                    <p className="text-sm font-medium text-gray-600 mb-3">Session History</p>
+                    <div className="rounded-lg border overflow-hidden">
+                      <table className="w-full text-sm">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-4 py-3 text-left font-medium text-gray-500">Date</th>
+                            <th className="px-4 py-3 text-left font-medium text-gray-500">Student</th>
+                            <th className="px-4 py-3 text-right font-medium text-gray-500">Base</th>
+                            <th className="px-4 py-3 text-right font-medium text-gray-500">Extension</th>
+                            <th className="px-4 py-3 text-right font-medium text-gray-500">Total</th>
+                            <th className="px-4 py-3 text-center font-medium text-gray-500">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y">
+                          {earningsData.sessions.slice(0, 10).map((s) => (
+                            <tr key={s.meetingId} className="hover:bg-gray-50">
+                              <td className="px-4 py-3 text-gray-600">
+                                {new Date(s.startTime).toLocaleDateString("en-IN", {
+                                  day: "numeric",
+                                  month: "short",
+                                  year: "2-digit",
+                                })}
+                              </td>
+                              <td className="px-4 py-3 font-medium text-gray-900">{s.studentName}</td>
+                              <td className="px-4 py-3 text-right text-gray-600">{s.baseCost}</td>
+                              <td className="px-4 py-3 text-right text-blue-600">
+                                {s.extensionEarnings > 0 ? `+${s.extensionEarnings}` : "—"}
+                              </td>
+                              <td className="px-4 py-3 text-right font-semibold text-gray-900">
+                                {s.totalEarned}
+                              </td>
+                              <td className="px-4 py-3 text-center">
+                                <Badge
+                                  variant="outline"
+                                  className={
+                                    s.status === "completed"
+                                      ? "border-green-300 text-green-700 bg-green-50"
+                                      : s.status === "cancelled"
+                                      ? "border-red-300 text-red-700 bg-red-50"
+                                      : "border-amber-300 text-amber-700 bg-amber-50"
+                                  }
+                                >
+                                  {s.status}
+                                </Badge>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                      {earningsData.sessions.length > 10 && (
+                        <div className="px-4 py-2 bg-gray-50 text-xs text-gray-400 text-center">
+                          +{earningsData.sessions.length - 10} more sessions
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
           {/* Views Chart with increased padding */}
           <Card className="bg-white shadow-sm">
@@ -897,6 +977,92 @@ export default function ExpertDashboard({
             </CardContent>
           </Card>
 
+          {/* Meeting Settings */}
+          <Card className="bg-white shadow-sm border-blue-100">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-xl font-semibold text-gray-900 flex items-center gap-2">
+                <Clock className="h-5 w-5 text-blue-600" />
+                Meeting Settings
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-5">
+              {/* Session duration */}
+              <div className="space-y-2">
+                <Label htmlFor="msDuration" className="text-sm font-medium text-gray-700">
+                  Session Length
+                </Label>
+                <select
+                  id="msDuration"
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                  value={meetingSettings.sessionDurationMinutes}
+                  onChange={(e) =>
+                    setMeetingSettings((prev) => ({
+                      ...prev,
+                      sessionDurationMinutes: Number(e.target.value),
+                    }))
+                  }
+                >
+                  <option value={30}>30 minutes</option>
+                  <option value={45}>45 minutes</option>
+                  <option value={60}>60 minutes (1 hour)</option>
+                  <option value={90}>90 minutes</option>
+                  <option value={120}>120 minutes (2 hours)</option>
+                </select>
+                <p className="text-xs text-gray-400">Each bookable slot will be this long.</p>
+              </div>
+
+              {/* Session cost */}
+              <div className="space-y-2">
+                <Label htmlFor="msCost" className="text-sm font-medium text-gray-700">
+                  Session Cost <span className="text-gray-400 font-normal">(coins / session)</span>
+                </Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    id="msCost"
+                    type="number"
+                    min={0}
+                    className="w-full"
+                    value={meetingSettings.meetingCost}
+                    onChange={(e) =>
+                      setMeetingSettings((prev) => ({
+                        ...prev,
+                        meetingCost: Number(e.target.value),
+                      }))
+                    }
+                  />
+                  <span className="text-sm text-gray-500 shrink-0">coins</span>
+                </div>
+                <p className="text-xs text-gray-400">Students pay this per 1-hour session.</p>
+              </div>
+
+              {/* Accept bookings toggle */}
+              <div className="flex items-center justify-between rounded-lg border p-3 bg-gray-50">
+                <div>
+                  <p className="text-sm font-medium text-gray-800">Accept new bookings</p>
+                  <p className="text-xs text-gray-500">Disable to pause incoming session requests</p>
+                </div>
+                <Switch
+                  checked={meetingSettings.available}
+                  onCheckedChange={(checked) =>
+                    setMeetingSettings((prev) => ({ ...prev, available: checked }))
+                  }
+                />
+              </div>
+
+              <Button
+                className="w-full"
+                onClick={handleSaveMeetingSettings}
+                disabled={isSavingMeetingSettings}
+              >
+                {isSavingMeetingSettings ? (
+                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Saving...</>
+                ) : (
+                  <><Save className="h-4 w-4 mr-2" />Save Meeting Settings</>
+                )}
+              </Button>
+            </CardContent>
+          </Card>
+
           {/* Ratings Overview */}
           <Card className="bg-white shadow-sm">
             <CardHeader className="pb-4">
@@ -966,7 +1132,7 @@ export default function ExpertDashboard({
       <div className="mt-6">
         <AvailabilitySettings
           expertId={expert.expertID}
-          initialAvailability={expert.availability}
+          initialAvailability={(expert as any).availability}
         />
       </div>
 

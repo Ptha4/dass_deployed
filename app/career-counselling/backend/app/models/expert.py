@@ -35,6 +35,7 @@ class ExpertBase(BaseModel):
     studentsGuided: int = 0  # Default to 0 students guided
     profile_video_id: Optional[str] = None  # Expert's chosen profile video ID
     availability: Optional[ExpertAvailability] = None # Native scheduling availability
+    sessionDurationMinutes: int = 60  # Duration of each bookable slot in minutes
 
 class Expert(ExpertBase):
     createdAt: datetime
@@ -62,3 +63,4 @@ class ExpertUpdate(BaseModel):
     studentsGuided: Optional[int] = None
     profile_video_id: Optional[str] = None  # Expert's chosen profile video ID
     availability: Optional[ExpertAvailability] = None
+    sessionDurationMinutes: Optional[int] = None  # 30, 45, 60, 90, 120
