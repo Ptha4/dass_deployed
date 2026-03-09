@@ -76,7 +76,7 @@ echo -e "${GREEN}✓ Backend .env configured${NC}"
 echo -e "\n${YELLOW}[3/4] Checking frontend configuration...${NC}"
 if [ ! -f "$FRONTEND_DIR/.env.local" ]; then
     echo "Creating frontend .env.local..."
-    echo "NEXT_PUBLIC_API_URL=http://localhost:8000/api" > "$FRONTEND_DIR/.env.local"
+    echo "NEXT_PUBLIC_API_URL=https://dass-deployed.onrender.com/api" > "$FRONTEND_DIR/.env.local"
     echo -e "${GREEN}✓ Created .env.local${NC}"
 else
     echo -e "${GREEN}✓ Frontend .env.local exists${NC}"
@@ -125,9 +125,9 @@ echo "✓ All services started!"
 echo "==========================================${NC}"
 
 echo -e "\nAccess the application:"
-echo "  Frontend: http://localhost:3000"
-echo "  Backend:  http://localhost:8000"
-echo "  API Docs: http://localhost:8000/docs"
+echo "  Frontend: https://13-team.vercel.app"
+echo "  Backend:  https://dass-deployed.onrender.com"
+echo "  API Docs: https://dass-deployed.onrender.com/docs"
 
 echo -e "\nDatabase:"
 echo "  MongoDB:  mongodb://localhost:27017"
