@@ -61,3 +61,124 @@ async def disconnect(sid):
     session = await sio.get_session(sid)
     user_id = session.get("user_id") if session else "unknown"
     print(f"Socket disconnected: sid={sid}, user_id={user_id}")
+
+
+# ---------------------------------------------------------------------------
+# Extension approval flow
+# ---------------------------------------------------------------------------
+# Pending requests: { meeting_id -> { studentUserId, studentSid, durationMinutes, extensionCost } }
+_pending_extensions: dict = {}
+
+
+@sio.event
+async def extension_request(sid, data):
+    """
+    Student emits this to request an extension.
+    Backend validates, then relays the request to the expert's socket room.
+    data: { meetingId: str, durationMinutes: int }
+    """
+    from bson import ObjectId
+    from app.core.database import get_database
+    from app.managers.meeting import MeetingManager
+    from app.models.meeting import MeetingStatus
+
+    session = await sio.get_session(sid)
+    student_user_id = session.get("user_id")
+    meeting_id = data.get("meetingId")
+    duration_minutes = int(data.get("durationMinutes", 30))
+
+    mm = MeetingManager()
+    meeting = await mm.get_meeting(meeting_id)
+    if not meeting:
+        await sio.emit("extension_error", {"meetingId": meeting_id, "reason": "Meeting not found"}, to=sid)
+        return
+
+    if meeting["userId"] != student_user_id:
+        await sio.emit("extension_error", {"meetingId": meeting_id, "reason": "Not authorised"}, to=sid)
+        return
+
+    if meeting.get("status") not in (MeetingStatus.SCHEDULED, MeetingStatus.IN_PROGRESS):
+        await sio.emit("extension_error", {"meetingId": meeting_id, "reason": "Meeting is not active"}, to=sid)
+        return
+
+    db = get_database()
+    expert = await db.experts.find_one({"_id": ObjectId(meeting["expertId"])})
+    if not expert:
+        await sio.emit("extension_error", {"meetingId": meeting_id, "reason": "Expert not found"}, to=sid)
+        return
+
+    expert_user_id = expert["userId"]
+    hourly_rate = expert.get("meetingCost", 0)
+    extension_cost = int(hourly_rate * (duration_minutes / 60.0))
+
+    # Store pending request (overwrite any previous request for this meeting)
+    _pending_extensions[meeting_id] = {
+        "studentUserId": student_user_id,
+        "studentSid": sid,
+        "durationMinutes": duration_minutes,
+        "extensionCost": extension_cost,
+    }
+
+    # Relay to expert
+    await sio.emit("extension_request_incoming", {
+        "meetingId": meeting_id,
+        "durationMinutes": duration_minutes,
+        "extensionCost": extension_cost,
+    }, room=expert_user_id)
+    print(f"Extension request relayed: meeting={meeting_id} student={student_user_id} → expert={expert_user_id}")
+
+
+@sio.event
+async def extension_respond(sid, data):
+    """
+    Expert emits this to approve or deny an extension request.
+    data: { meetingId: str, approved: bool }
+    """
+    from bson import ObjectId
+    from app.core.database import get_database
+    from app.managers.meeting import MeetingManager
+
+    session = await sio.get_session(sid)
+    meeting_id = data.get("meetingId")
+    approved = bool(data.get("approved", False))
+
+    pending = _pending_extensions.pop(meeting_id, None)
+    if not pending:
+        # Request expired or already handled
+        return
+
+    student_sid = pending["studentSid"]
+    student_user_id = pending["studentUserId"]
+    duration_minutes = pending["durationMinutes"]
+
+    if not approved:
+        await sio.emit("extension_denied", {
+            "meetingId": meeting_id,
+            "reason": "Expert declined the extension request.",
+        }, to=student_sid)
+        return
+
+    # Execute the actual extension
+    mm = MeetingManager()
+    success, msg = await mm.extend_meeting(meeting_id, student_user_id, duration_minutes)
+
+    if success:
+        meeting = await mm.get_meeting(meeting_id)
+        end_time = meeting.get("endTime")
+        end_iso = end_time.isoformat() if hasattr(end_time, "isoformat") else str(end_time)
+
+        db = get_database()
+        user = await db.users.find_one({"_id": ObjectId(student_user_id)})
+        new_wallet = user.get("wallet", 0) if user else 0
+
+        await sio.emit("extension_approved", {
+            "meetingId": meeting_id,
+            "newEndTime": end_iso,
+            "newWalletBalance": new_wallet,
+        }, to=student_sid)
+        print(f"Extension approved: meeting={meeting_id} new_end={end_iso}")
+    else:
+        await sio.emit("extension_denied", {
+            "meetingId": meeting_id,
+            "reason": msg,
+        }, to=student_sid)

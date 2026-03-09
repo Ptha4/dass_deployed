@@ -130,7 +130,14 @@ export default function AvailabilitySettings({
         setAvailability((prev) => {
             const dayData = prev[day as keyof Availability];
             const newSlots = [...dayData.slots];
-            newSlots[index] = { ...newSlots[index], [field]: value };
+            const updated = { ...newSlots[index], [field]: value };
+            // Auto-fix: if endTime <= startTime or endTime is 00:00, bump to startTime + 1h
+            if (field === "startTime" && updated.endTime <= updated.startTime) {
+                const [h, m] = updated.startTime.split(":").map(Number);
+                const bumped = Math.min(h + 1, 23);
+                updated.endTime = `${String(bumped).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+            }
+            newSlots[index] = updated;
             return {
                 ...prev,
                 [day]: { ...dayData, slots: newSlots },
@@ -242,6 +249,8 @@ export default function AvailabilitySettings({
                                                 <input
                                                     type="time"
                                                     value={slot.endTime}
+                                                    min={slot.startTime}
+                                                    max="23:59"
                                                     onChange={(e) =>
                                                         updateSlotTime(day, index, "endTime", e.target.value)
                                                     }

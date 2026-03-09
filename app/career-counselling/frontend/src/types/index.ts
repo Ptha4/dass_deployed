@@ -112,6 +112,7 @@ export interface Expert {
   rating: number;
   available: boolean;
   studentsGuided: number;
+  availability?: Record<string, { isAvailable: boolean; slots: { startTime: string; endTime: string }[] }>;
 
   // Metadata
   createdAt: string; // ISO date string

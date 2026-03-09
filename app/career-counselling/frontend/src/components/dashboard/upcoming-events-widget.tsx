@@ -57,7 +57,7 @@ export function UpcomingEventsWidget({ transparent = false }: { transparent?: bo
               topic: "Career Guidance Session",
               date: format(mDate, 'MMM d'),
               time: format(mDate, 'p'),
-              platform: m.meetingLink ? "Daily.co" : "Pending link",
+              platform: m.meetingLink ? "Jitsi Meet" : "Pending link",
               color: colors[idx % colors.length],
             };
           });

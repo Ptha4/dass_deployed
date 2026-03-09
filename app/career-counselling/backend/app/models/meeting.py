@@ -17,8 +17,8 @@ class MeetingBase(BaseModel):
     endTime: datetime
     costInfo: float
     status: MeetingStatus = MeetingStatus.SCHEDULED
-    dailyRoomUrl: Optional[str] = None
-    dailyRoomName: Optional[str] = None
+    jitsiRoomUrl: Optional[str] = None
+    jitsiRoomName: Optional[str] = None
 
 
 class MeetingCreate(MeetingBase):
@@ -35,5 +35,5 @@ class MeetingResponse(Meeting):
 
 class MeetingUpdate(BaseModel):
     status: Optional[MeetingStatus] = None
-    dailyRoomUrl: Optional[str] = None
-    dailyRoomName: Optional[str] = None
+    jitsiRoomUrl: Optional[str] = None
+    jitsiRoomName: Optional[str] = None

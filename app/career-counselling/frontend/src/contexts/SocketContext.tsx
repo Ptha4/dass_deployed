@@ -28,6 +28,10 @@ interface SocketContextType {
     setNotifications: (notifications: Notification[]) => void;
     /** Replace the full batch list (called after REST fetch). */
     setLiveBatches: (batches: NotificationBatch[]) => void;
+    /** Emit a custom socket event. No-op if socket is not connected. */
+    emitEvent: (event: string, data: unknown) => void;
+    /** Subscribe to a custom socket event. Returns cleanup function. */
+    onEvent: (event: string, handler: (...args: any[]) => void) => () => void;
 }
 
 const SocketContext = createContext<SocketContextType>({
@@ -38,6 +42,8 @@ const SocketContext = createContext<SocketContextType>({
     markBatchRead: () => { },
     setNotifications: () => { },
     setLiveBatches: () => { },
+    emitEvent: () => { },
+    onEvent: () => () => { },
 });
 
 export const SocketProvider = ({ children }: { children: ReactNode }) => {
@@ -134,6 +140,24 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
         setLiveBatchesState(batches);
     }, []);
 
+    const emitEvent = useCallback((event: string, data: unknown) => {
+        if (socketRef.current?.connected) {
+            socketRef.current.emit(event, data);
+        }
+    }, []);
+
+    const onEvent = useCallback((event: string, handler: (...args: any[]) => void) => {
+        const socket = socketRef.current;
+        if (socket) {
+            socket.on(event, handler);
+        }
+        return () => {
+            if (socketRef.current) {
+                socketRef.current.off(event, handler);
+            }
+        };
+    }, []);
+
     return (
         <SocketContext.Provider
             value={{
@@ -144,6 +168,8 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
                 markBatchRead,
                 setNotifications,
                 setLiveBatches,
+                emitEvent,
+                onEvent,
             }}
         >
             {children}
