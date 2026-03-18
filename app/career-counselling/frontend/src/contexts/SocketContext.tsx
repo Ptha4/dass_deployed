@@ -60,9 +60,6 @@ export function SocketProvider({ children }: { children: ReactNode }) {
     const [liveBatches, setLiveBatchesState] = useState<NotificationBatch[]>([]);
     const socketRef = useRef<any>(null);
     const [socketReady, setSocketReady] = useState(0);
-=======
-    const socketRef = useRef<any>(null);
->>>>>>> a62b105bfb5f4ded120e650c531418cc575da172
 
     const unreadCount =
         liveNotifications.filter((n) => !n.read).length +
