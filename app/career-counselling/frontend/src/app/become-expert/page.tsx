@@ -132,7 +132,7 @@ export default function BecomeExpertPage() {
             formData.append("meetingCost", values.meetingCost.toString());
             formData.append("proofDocument", values.proofDocument[0]);
 
-            const response = await axios.post("https://your-app.onrender.com/api/experts/apply", formData, {
+            const response = await axios.post("https://dass-deployed.onrender.com/api/experts/apply", formData, {
                 headers: {
                     "Content-Type": "multipart/form-data",
                     Authorization: `Bearer ${token}`,

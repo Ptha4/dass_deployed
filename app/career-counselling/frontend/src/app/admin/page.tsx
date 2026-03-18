@@ -1022,7 +1022,7 @@ function AddUserDialog() {
   const handleSubmit = async () => {
     try {
       const token = localStorage.getItem("token");
-      await axios.post("https://your-app.onrender.com/api/admin/users", formData, {
+      await axios.post("https://dass-deployed.onrender.com/api/admin/users", formData, {
         headers: { Authorization: `Bearer ${token}` },
       });
       toast.success("User created successfully");

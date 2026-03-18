@@ -38,7 +38,7 @@ export default function CreateCommunityModal({ onClose, onCreated }: CreateCommu
         }
         setLoading(true);
         try {
-            const res = await axios.post("https://your-app.onrender.com/api/communities", {
+            const res = await axios.post("https://dass-deployed.onrender.com/api/communities", {
                 name: form.name.toLowerCase().replace(/\s+/g, "-"),
                 displayName: form.displayName,
                 description: form.description,

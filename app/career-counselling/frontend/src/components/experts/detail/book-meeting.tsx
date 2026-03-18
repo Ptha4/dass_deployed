@@ -163,7 +163,7 @@ export default function BookMeeting({
 
       console.log("Sending meeting data:", meetingData);
 
-      const response = await axios.post("https://your-app.onrender.com/api/meetings", meetingData, {
+      const response = await axios.post("https://dass-deployed.onrender.com/api/meetings", meetingData, {
         headers: {
           Authorization: `Bearer ${token}`,
         },

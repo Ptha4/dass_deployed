@@ -16,7 +16,7 @@ _fastapi_app = FastAPI(title="AlumNiti API")
 # CORS configuration
 _fastapi_app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.CORS_ALLOW_ORIGINS.split(","),
+    allow_origins=settings.CORS_ALLOW_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

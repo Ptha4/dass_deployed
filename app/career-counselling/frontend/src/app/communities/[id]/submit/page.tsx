@@ -86,7 +86,7 @@ export default function SubmitPostPage() {
             try {
                 const formData = new FormData();
                 formData.append("file", file);
-                const res = await axios.post("https://your-app.onrender.com/api/communities/upload-media", formData, {
+                const res = await axios.post("https://dass-deployed.onrender.com/api/communities/upload-media", formData, {
                     headers: { "Content-Type": "multipart/form-data" },
                 });
                 setMedia((prev) => [

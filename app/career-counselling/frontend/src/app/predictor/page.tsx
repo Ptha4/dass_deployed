@@ -137,7 +137,7 @@ export default function PredictorPage() {
     };
 
     try {
-      const response = await axios.post("https://your-app.onrender.com/api/colleges/predict", payload, {
+      const response = await axios.post("https://dass-deployed.onrender.com/api/colleges/predict", payload, {
         headers: {
           Authorization: `Bearer ${token}`,
         },

@@ -1,6 +1,15 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  async rewrites() {
+    return [
+      {
+        source: '/api/:path*',
+        destination: 'https://your-actual-backend.onrender.com/api/:path*',
+      },
+    ]
+  },
+  
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "picsum.photos" },
