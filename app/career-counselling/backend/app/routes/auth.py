@@ -6,7 +6,7 @@ from app.managers.user import UserManager
 from app.managers import otp as otp_manager
 from app.core.auth_utils import get_token, require_admin, require_expert, require_user, get_current_user
 
-router = APIRouter()
+router = APIRouter(prefix="/api")
 auth_manager = AuthManager()
 user_manager = UserManager()
 
