@@ -9,8 +9,8 @@ import {
   GraduationCap,
   Sparkles,
   Video,
-  ChevronLeft,
-  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
   MessageSquare,
   Calendar,
   Network,
@@ -150,9 +150,9 @@ export default function Sidebar() {
           aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
         >
           {isCollapsed ? (
-            <ChevronRight className="h-3 w-3" />
+            <ChevronsRight className="h-5 w-5" strokeWidth={3} />
           ) : (
-            <ChevronLeft className="h-3 w-3" />
+            <ChevronsLeft className="h-5 w-5" strokeWidth={3} />
           )}
         </button>
 
@@ -358,5 +358,3 @@ function MobileSidebar({
     </>
   );
 }
-
-

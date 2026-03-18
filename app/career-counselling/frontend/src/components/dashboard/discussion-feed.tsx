@@ -187,9 +187,12 @@ export function DiscussionFeed({ filters }: DiscussionFeedProps = {}) {
     );
   }
 
-  return (
+  const leftPosts = posts.filter((_, index) => index % 2 === 0);
+  const rightPosts = posts.filter((_, index) => index % 2 === 1);
+
+  const renderPostList = (list: Post[]) => (
     <div className="space-y-0">
-      {posts.map((post, index) => (
+      {list.map((post, index) => (
         <div key={post.postId}>
           <div
             className="py-6 hover:bg-gray-50/50 dark:hover:bg-gray-900/50 transition-colors cursor-pointer group"
@@ -329,11 +332,26 @@ export function DiscussionFeed({ filters }: DiscussionFeedProps = {}) {
           </div>
 
           {/* Subtle Divider between posts */}
-          {index < posts.length - 1 && (
+          {index < list.length - 1 && (
             <div className="border-b border-gray-100 dark:border-gray-800" />
           )}
         </div>
       ))}
+    </div>
+  );
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="rounded-2xl border border-gray-100 dark:border-gray-800 bg-white/70 dark:bg-gray-950/30 shadow-sm overflow-hidden">
+        <div className="max-h-[calc(100vh-260px)] overflow-y-auto px-2">
+          {renderPostList(leftPosts)}
+        </div>
+      </div>
+      <div className="rounded-2xl border border-gray-100 dark:border-gray-800 bg-white/70 dark:bg-gray-950/30 shadow-sm overflow-hidden">
+        <div className="max-h-[calc(100vh-260px)] overflow-y-auto px-2">
+          {renderPostList(rightPosts)}
+        </div>
+      </div>
     </div>
   );
 }

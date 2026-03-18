@@ -166,9 +166,9 @@ export default function ForumsPage() {
         </div>
 
         {/* 2-column layout: feed | right sidebar */}
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-6 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-6 items-stretch h-[calc(100vh-13rem)]">
           {/* ── Posts Feed Column ── */}
-          <div className="flex flex-col h-[calc(100vh-13rem)] min-h-0">
+          <div className="flex flex-col h-full min-h-0">
             {/* Sticky toolbar — filter button + create post */}
             <div className="sticky top-0 z-10 bg-gray-50 pt-1 pb-3 flex items-center justify-between gap-3 shrink-0">
               <Button
@@ -315,7 +315,7 @@ export default function ForumsPage() {
             {/* Scrollable posts list (infinite scroll container) */}
             <div className="overflow-y-auto flex-1 pr-1 custom-scrollbar pb-10">
               {loading ? (
-                <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 auto-rows-min">
                   {Array.from({ length: 5 }).map((_, i) => (
                     <div
                       key={i}
@@ -351,7 +351,7 @@ export default function ForumsPage() {
                   </p>
                 </div>
               ) : (
-                <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 auto-rows-min">
                   {posts.map((post, idx) => {
                     // Every 3rd post (after index 2, 5, 8 …), inject a promo card
                     const showPromo = (idx + 1) % 3 === 0;
@@ -407,7 +407,7 @@ export default function ForumsPage() {
           </div>
 
           {/* ── Right Sidebar ── */}
-          <div className="hidden lg:flex flex-col gap-4">
+          <div className="hidden lg:flex flex-col gap-4 h-full">
             <DiscoverCommunitiesWidget />
             <FollowedCommunitiesWidget />
             {/* Side footer replaces bottom footer for infinite-scroll layout */}
@@ -428,4 +428,3 @@ export default function ForumsPage() {
 
   return <ProtectedRoute>{forumsContent}</ProtectedRoute>;
 }
-

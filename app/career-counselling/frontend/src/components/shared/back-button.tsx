@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, usePathname } from "next/navigation";
-import { ChevronLeft } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 // Pages that should not show a back button (top-level nav destinations)
@@ -35,7 +35,7 @@ export function BackButton() {
       onClick={() => router.back()}
       className="flex items-center gap-1 text-gray-600 hover:text-gray-900 mb-2 -ml-2"
     >
-      <ChevronLeft className="h-4 w-4" />
+      <ArrowLeft className="h-10 w-10" strokeWidth={3} />
       Back
     </Button>
   );

@@ -19,6 +19,7 @@ const CREDENTIAL_COLORS: Record<string, string> = {
 
 interface PostItemProps {
     post: Post;
+    className?: string;
     showCommunity?: boolean;
     isModerator?: boolean;
     isAuthorModerator?: boolean;
@@ -30,6 +31,7 @@ interface PostItemProps {
 
 export default function PostItem({
     post,
+    className,
     showCommunity = false,
     isModerator = false,
     isAuthorModerator = false,
@@ -133,7 +135,9 @@ export default function PostItem({
     const credentials = localCredentials ?? post.authorCredentials ?? [];
 
     return (
-        <div className={`group relative bg-white border rounded-2xl shadow-sm hover:shadow-md transition-all duration-200 p-5 ${post.isPinned ? "border-amber-300 bg-amber-50/30" : "border-gray-100 hover:border-indigo-200"}`}>
+        <div
+            className={`group relative bg-white border rounded-2xl shadow-sm hover:shadow-md transition-all duration-200 p-5 ${post.isPinned ? "border-amber-300 bg-amber-50/30" : "border-gray-100 hover:border-indigo-200"} ${className ?? ""}`}
+        >
             {/* Pinned indicator */}
             {post.isPinned && (
                 <div className="flex items-center gap-1 text-xs text-amber-600 font-semibold mb-2">
@@ -142,7 +146,7 @@ export default function PostItem({
             )}
 
             {/* Author row */}
-            <div className="flex items-center gap-2 mb-3 text-xs text-gray-400">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mb-3 text-xs text-gray-400">
                 <Link href={`/profile/${post.authorId}`} onClick={(e) => e.stopPropagation()}>
                     <div
                         className="h-7 w-7 rounded-full flex items-center justify-center text-white font-bold text-xs cursor-pointer hover:opacity-80 transition-opacity"
@@ -187,7 +191,7 @@ export default function PostItem({
                         </Link>
                     </>
                 )}
-                <span className="ml-auto flex items-center gap-1">
+                <span className="ml-auto flex items-center gap-1 whitespace-nowrap">
                     <Clock className="h-3 w-3" />
                     {formatDistanceToNow(utcDate(post.createdAt), { addSuffix: true })}
                 </span>
@@ -393,5 +397,3 @@ export default function PostItem({
         </div>
     );
 }
-
-
