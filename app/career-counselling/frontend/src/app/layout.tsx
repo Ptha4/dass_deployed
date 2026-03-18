@@ -82,8 +82,6 @@ export default function RootLayout({
 
             <OnboardingGate />
             <Toaster />
-            <Analytics />
-            <SpeedInsights />
             <SonnerToaster position="bottom-right" richColors />
           </SocketProvider>
         </AuthProvider>
