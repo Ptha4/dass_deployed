@@ -530,7 +530,6 @@ class NotificationManager:
             poster = await self.user_manager.get_user(poster_id)
             name = f"{poster.firstName} {poster.lastName}".strip() if poster else "Someone"
             now = datetime.utcnow()
-            iso_now = now.isoformat() + "Z"
             notifs = [
                 {
                     "targetUserId": m,
@@ -546,26 +545,7 @@ class NotificationManager:
                 for m in members
             ]
             if notifs:
-                result = await self.collection.insert_many(notifs)
-                # Emit real-time socket notification to each member
-                source_details = {"name": name, "avatar": "/default-avatar.png"}
-                for i, member_id in enumerate(members):
-                    payload = {
-                        "notificationId": str(result.inserted_ids[i]),
-                        "targetUserId": member_id,
-                        "sourceUserId": poster_id,
-                        "type": NotificationType.COMMUNITY_POST.value,
-                        "content": notifs[i]["content"],
-                        "referenceId": post_id,
-                        "referenceType": "post",
-                        "read": False,
-                        "createdAt": iso_now,
-                        "sourceUserDetails": source_details,
-                    }
-                    try:
-                        await sio.emit("notification", payload, room=member_id)
-                    except Exception as emit_err:
-                        print(f"Socket emit error (non-fatal): {emit_err}")
+                await self.collection.insert_many(notifs)
             return len(notifs)
         except Exception as e:
             print(f"create_community_post_for_all_members error (non-fatal): {e}")

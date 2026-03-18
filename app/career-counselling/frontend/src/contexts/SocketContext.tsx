@@ -58,11 +58,8 @@ export function SocketProvider({ children }: { children: ReactNode }) {
     const { isAuthenticated } = useAuth();
     const [liveNotifications, setLiveNotifications] = useState<Notification[]>([]);
     const [liveBatches, setLiveBatchesState] = useState<NotificationBatch[]>([]);
-<<<<<<< HEAD
     const [socketReady, setSocketReady] = useState(0);
-=======
     const socketRef = useRef<any>(null);
->>>>>>> a62b105bfb5f4ded120e650c531418cc575da172
 
     const unreadCount =
         liveNotifications.filter((n) => !n.read).length +
@@ -136,64 +133,8 @@ export function SocketProvider({ children }: { children: ReactNode }) {
                 socketRef.current.disconnect();
                 socketRef.current = null;
             }
-<<<<<<< HEAD
             setLiveNotifications([]);
             setLiveBatchesState([]);
-            return;
-        }
-
-        const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
-        if (!token) return;
-
-        if (socketRef.current?.connected) return;
-
-        const socket = io(
-            process.env.NEXT_PUBLIC_SOCKET_URL ?? "",
-            {
-                auth: { token },
-                transports: ["websocket", "polling"],
-                reconnectionAttempts: 5,
-                reconnectionDelay: 2000,
-            }
-        );
-
-        socketRef.current = socket;
-
-        socket.on("connect", () => {
-            console.log("[Socket] connected:", socket.id);
-            setSocketReady((n) => n + 1);
-        });
-
-        // Individual direct notifications (follow, meeting, refund…)
-        socket.on("notification", (data: Notification) => {
-            setLiveNotifications((prev) => [data, ...prev]);
-        });
-
-        // New batch: a fresh window was opened for this actor+type → show toast
-        socket.on("notification_batch_new", (data: NotificationBatch) => {
-            setLiveBatchesState((prev) => [data, ...prev]);
-        });
-
-        // Updated batch: entity added to an existing window → silently update count
-        socket.on("notification_batch_updated", (data: NotificationBatch) => {
-            setLiveBatchesState((prev) =>
-                prev.map((b) => (b.batchId === data.batchId ? data : b))
-            );
-        });
-
-        socket.on("connect_error", (err) => {
-            console.warn("[Socket] connect error:", err.message);
-        });
-
-        socket.on("disconnect", (reason) => {
-            console.log("[Socket] disconnected:", reason);
-        });
-
-        return () => {
-            socket.disconnect();
-            socketRef.current = null;
-=======
->>>>>>> a62b105bfb5f4ded120e650c531418cc575da172
         };
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isAuthenticated]);

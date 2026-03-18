@@ -2,47 +2,59 @@ import random
 import hashlib
 import secrets
 from datetime import datetime, timedelta
-from typing import Optional
-from twilio.rest import Client
+from fastapi_mail import FastMail, MessageSchema, ConnectionConfig
 from app.core.database import get_database
 from app.config import settings
 
-ACCOUNT_SID = settings.ACCOUNT_SID
-AUTH_TOKEN = settings.AUTH_TOKEN
-SMS_FROM = settings.TWILIO_SMS_FROM
-
 OTP_TTL_MINUTES = 5
 VERIFICATION_TOKEN_TTL_MINUTES = 10
+
+
+# FastAPI-Mail configuration for email OTP delivery
+mail_conf = ConnectionConfig(
+    MAIL_USERNAME=settings.MAIL_USERNAME,
+    MAIL_PASSWORD=settings.MAIL_PASSWORD,
+    MAIL_FROM=settings.MAIL_FROM,
+    MAIL_PORT=settings.MAIL_PORT,
+    MAIL_SERVER=settings.MAIL_SERVER,
+    MAIL_STARTTLS=settings.MAIL_STARTTLS,
+    MAIL_SSL_TLS=settings.MAIL_SSL_TLS,
+    USE_CREDENTIALS=True,
+    VALIDATE_CERTS=True,
+)
 
 
 def _hash_otp(otp: str) -> str:
     return hashlib.sha256(otp.encode()).hexdigest()
 
 
-async def send_otp(phone: str) -> dict:
+async def send_otp(email: str) -> dict:
     """
-    Check for duplicate phone, generate a 6-digit OTP, send via WhatsApp,
+    Check for duplicate email, generate a 6-digit OTP, send via email,
     and store the hashed OTP in the otp_verifications collection.
 
     Returns {"ok": True} on success or raises ValueError.
     """
     db = get_database()
 
-    # Block duplicate phone numbers already in use by a registered user
-    existing = await db.users.find_one({"mobileNo": phone})
+    # Block duplicate emails already in use by a registered user
+    existing = await db.users.find_one({"email": email})
     if existing:
-        raise ValueError("phone_taken")
+        raise ValueError("email_taken")
 
     otp = str(random.randint(100000, 999999))
     otp_hash = _hash_otp(otp)
     expires_at = datetime.utcnow() + timedelta(minutes=OTP_TTL_MINUTES)
 
-    # Upsert so re-sends overwrite the old OTP for that phone
+    # DEBUG: Print OTP to console for development
+    print(f"🔐 OTP for {email}: {otp} (expires in {OTP_TTL_MINUTES} minutes)")
+
+    # Upsert so re-sends overwrite the old OTP for that email
     await db.otp_verifications.update_one(
-        {"phone": phone},
+        {"email": email},
         {
             "$set": {
-                "phone": phone,
+                "email": email,
                 "otp_hash": otp_hash,
                 "expires_at": expires_at,
                 "verified": False,
@@ -54,28 +66,32 @@ async def send_otp(phone: str) -> dict:
     )
 
     try:
-        client = Client(ACCOUNT_SID, AUTH_TOKEN)
-        client.messages.create(
-            from_=SMS_FROM,
-            to=phone,
-            body=f"Your AlumNiti verification code is: {otp}. It expires in {OTP_TTL_MINUTES} minutes.",
+        # Send email with OTP
+        message = MessageSchema(
+            subject="AlumNiti Verification Code",
+            recipients=[email],
+            body=f"Your AlumNiti verification code is: {otp}\n\nThis code expires in {OTP_TTL_MINUTES} minutes.",
+            subtype="plain",
         )
+        fm = FastMail(mail_conf)
+        await fm.send_message(message)
     except Exception as e:
         # Clean up the record so users can retry
-        await db.otp_verifications.delete_one({"phone": phone})
-        raise RuntimeError(f"Failed to send OTP: {e}")
+        await db.otp_verifications.delete_one({"email": email})
+        raise RuntimeError(f"Failed to send OTP email: {e}")
 
-    return {"ok": True}
+    # DEBUG: Return OTP for development/testing (remove in production)
+    return {"ok": True, "debug_otp": otp}
 
 
-async def verify_otp(phone: str, otp: str) -> str:
+async def verify_otp(email: str, otp: str) -> str:
     """
-    Verify the OTP for a given phone number.
+    Verify the OTP for a given email address.
 
     Returns a one-time verification_token on success, raises ValueError otherwise.
     """
     db = get_database()
-    record = await db.otp_verifications.find_one({"phone": phone})
+    record = await db.otp_verifications.find_one({"email": email})
 
     if not record:
         raise ValueError("no_otp")
@@ -93,7 +109,7 @@ async def verify_otp(phone: str, otp: str) -> str:
     token_expires_at = datetime.utcnow() + timedelta(minutes=VERIFICATION_TOKEN_TTL_MINUTES)
 
     await db.otp_verifications.update_one(
-        {"phone": phone},
+        {"email": email},
         {
             "$set": {
                 "verified": True,
@@ -106,14 +122,14 @@ async def verify_otp(phone: str, otp: str) -> str:
     return verification_token
 
 
-async def consume_verification_token(phone: str, token: str) -> bool:
+async def consume_verification_token(email: str, token: str) -> bool:
     """
     Validate and consume a verification token during signup.
     Returns True if valid, False otherwise.
     Deletes the record after successful consumption.
     """
     db = get_database()
-    record = await db.otp_verifications.find_one({"phone": phone})
+    record = await db.otp_verifications.find_one({"email": email})
 
     if not record:
         return False
@@ -128,5 +144,5 @@ async def consume_verification_token(phone: str, token: str) -> bool:
         return False
 
     # One-time use — delete after successful consumption
-    await db.otp_verifications.delete_one({"phone": phone})
+    await db.otp_verifications.delete_one({"email": email})
     return True

@@ -19,18 +19,18 @@ class AuthManager:
 
         Args:
             user_data (UserSignUp): User object with email, password, first name, last name,
-                                    middle name, phone, and verification_token.
+                                    and verification_token.
 
         Returns:
             Optional[str]: JWT token if successful, None otherwise.
         """
         try:
-            # Validate the phone verification token before creating the account
+            # Validate the email verification token before creating the account
             token_valid = await otp_manager.consume_verification_token(
-                user_data.phone, user_data.verification_token
+                user_data.email, user_data.verification_token
             )
             if not token_valid:
-                print("Invalid or expired phone verification token")
+                print("Invalid or expired email verification token")
                 return None
 
             # Hash password before storing
@@ -45,7 +45,7 @@ class AuthManager:
                 "middleName": user_data.middleName,
                 "gender": "",
                 "category": "",
-                "mobileNo": user_data.phone,
+                "mobileNo": "",
                 "home_state": "",
                 "type": "free",
                 "isExpert": False,

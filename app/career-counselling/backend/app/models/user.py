@@ -101,7 +101,6 @@ class UserSignUp(BaseModel):
     firstName: str
     lastName: str
     middleName: Optional[str] = None
-    phone: str
     verification_token: str
 
 
