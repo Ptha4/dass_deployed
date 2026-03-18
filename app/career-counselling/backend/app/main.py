@@ -69,7 +69,7 @@ async def startup_db_client():
     await community_manager.seed_default_communities()
 
 
-@_fastapi_app.get("/api/health")
+@_fastapi_app.get("https://dass-deployed.onrender.com/api/health")
 async def health_check():
     return {"status": "healthy"}
 

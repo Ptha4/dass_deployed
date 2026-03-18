@@ -10,8 +10,6 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { SocketProvider } from "@/contexts/SocketContext";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as SonnerToaster } from "sonner";
-import { Analytics } from "@vercel/analytics/react";
-import { SpeedInsights } from "@vercel/speed-insights/next";
 import { BackButton } from "@/components/shared/back-button";
 import OnboardingGate from "@/components/shared/onboarding-gate";
 
