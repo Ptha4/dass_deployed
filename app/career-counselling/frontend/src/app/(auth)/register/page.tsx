@@ -84,7 +84,7 @@ export default function RegisterPage() {
     }
     setSendingOtp(true);
     try {
-      const response = await axios.post("/api/send-otp", { email: trimmedEmail });
+      const response = await axios.post("https://your-app.onrender.com/api/send-otp", { email: trimmedEmail });
       setOtpSent(true);
       setOtpVerified(false);
       setVerificationToken("");
@@ -113,7 +113,7 @@ export default function RegisterPage() {
     }
     setVerifyingOtp(true);
     try {
-      const res = await axios.post("/api/verify-otp", { email: email.trim(), otp: otp.trim() });
+      const res = await axios.post("https://your-app.onrender.com/api/verify-otp", { email: email.trim(), otp: otp.trim() });
       setVerificationToken(res.data.verification_token);
       setOtpVerified(true);
       toast.success("Email verified!");
@@ -166,7 +166,7 @@ export default function RegisterPage() {
     };
 
     try {
-      const response = await axios.post("/api/signup", payload);
+      const response = await axios.post("https://your-app.onrender.com/api/signup", payload);
       localStorage.setItem("token", response.data.token); // Set token in local storage
       window.dispatchEvent(new Event("user-authenticated")); // Dispatch custom event
 

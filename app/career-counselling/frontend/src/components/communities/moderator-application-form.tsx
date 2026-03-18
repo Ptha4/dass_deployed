@@ -39,7 +39,7 @@ export default function ModeratorApplicationForm({ community }: Props) {
     setLoading(true);
     setError(null);
     try {
-      await axios.post("/api/moderator-applications", formData);
+      await axios.post("https://your-app.onrender.com/api/moderator-applications", formData);
       setSuccess(true);
     } catch (err: any) {
       setError(err?.response?.data?.detail || "Failed to submit application");

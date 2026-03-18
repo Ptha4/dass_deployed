@@ -227,7 +227,7 @@ export default function ProfilePage() {
       const formData = new FormData();
       formData.append("file", file);
 
-      const response = await axios.post("/api/profile/picture", formData, {
+      const response = await axios.post("https://your-app.onrender.com/api/profile/picture", formData, {
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "multipart/form-data",

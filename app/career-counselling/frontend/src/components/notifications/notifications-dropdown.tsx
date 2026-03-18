@@ -252,8 +252,8 @@ export default function NotificationsDropdown() {
     const headers = { Authorization: `Bearer ${token}` };
     try {
       await Promise.all([
-        axios.post("/api/notifications/read-all", {}, { headers }),
-        axios.post("/api/notifications/batches/read-all", {}, { headers }),
+        axios.post("https://your-app.onrender.com/api/notifications/read-all", {}, { headers }),
+        axios.post("https://your-app.onrender.com/api/notifications/batches/read-all", {}, { headers }),
       ]);
       setNotifications(liveNotifications.map((n) => ({ ...n, read: true })));
       setLiveBatches(liveBatches.map((b) => ({ ...b, isRead: true })));

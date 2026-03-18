@@ -61,7 +61,7 @@ export default function LoginPage() {
         password: values.password,
       };
 
-      const response = await axios.post("/api/login", payload);
+      const response = await axios.post("https://your-app.onrender.com/api/login", payload);
       localStorage.setItem("token", response.data.token); // Set token in local storage
       window.dispatchEvent(new Event("user-authenticated")); // Dispatch custom event
 

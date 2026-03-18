@@ -182,7 +182,7 @@ export default function CollegesPage() {
       limit: 30,
     };
     try {
-      const response = await axios.post("/api/colleges/predict", payload, {
+      const response = await axios.post("https://your-app.onrender.com/api/colleges/predict", payload, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setPredictions(response.data);

@@ -85,7 +85,7 @@ export default function RegisterPage() {
     }
     setSendingOtp(true);
     try {
-      await axios.post("/api/send-otp", { phone: trimmedPhone });
+      await axios.post("https://your-app.onrender.com/api/send-otp", { phone: trimmedPhone });
       setOtpSent(true);
       setOtpVerified(false);
       setVerificationToken("");
@@ -110,7 +110,7 @@ export default function RegisterPage() {
     }
     setVerifyingOtp(true);
     try {
-      const res = await axios.post("/api/verify-otp", { phone: phone.trim(), otp: otp.trim() });
+      const res = await axios.post("https://your-app.onrender.com/api/verify-otp", { phone: phone.trim(), otp: otp.trim() });
       setVerificationToken(res.data.verification_token);
       setOtpVerified(true);
       toast.success("Phone number verified!");
@@ -164,7 +164,7 @@ export default function RegisterPage() {
     };
 
     try {
-      const response = await axios.post("/api/signup", payload);
+      const response = await axios.post("https://your-app.onrender.com/api/signup", payload);
       localStorage.setItem("token", response.data.token); // Set token in local storage
       window.dispatchEvent(new Event("user-authenticated")); // Dispatch custom event
 
@@ -585,7 +585,7 @@ export default function RegisterPage() {
     };
 
     try {
-      const response = await axios.post("/api/signup", payload);
+      const response = await axios.post("https://your-app.onrender.com/api/signup", payload);
       localStorage.setItem("token", response.data.token); // Set token in local storage
       window.dispatchEvent(new Event("user-authenticated")); // Dispatch custom event
 
