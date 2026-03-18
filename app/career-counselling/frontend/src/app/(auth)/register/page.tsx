@@ -47,7 +47,6 @@ export default function RegisterPage() {
   const router = useRouter();
 
   // OTP state
-  const [phone, setPhone] = useState("");
   const [otp, setOtp] = useState("");
   const [otpSent, setOtpSent] = useState(false);
   const [otpVerified, setOtpVerified] = useState(false);
@@ -72,29 +71,33 @@ export default function RegisterPage() {
     },
   });
 
-  async function handleSendOtp() {
-    const trimmedPhone = phone.trim();
-    if (!trimmedPhone) {
-      toast.error("Please enter your phone number");
+  async function handleSendOtp(email: string) {
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail) {
+      toast.error("Please enter your email address");
       return;
     }
-    // Basic E.164 check: starts with + and 7-15 digits
-    if (!/^\+\d{7,15}$/.test(trimmedPhone)) {
-      toast.error("Use E.164 format, e.g. +919876543210");
+    // Basic email validation
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+      toast.error("Please enter a valid email address");
       return;
     }
     setSendingOtp(true);
     try {
-      await axios.post("/api/send-otp", { phone: trimmedPhone });
+      const response = await axios.post("/api/send-otp", { email: trimmedEmail });
       setOtpSent(true);
       setOtpVerified(false);
       setVerificationToken("");
       setOtp("");
-      toast.success("OTP sent via SMS!");
+      toast.success("OTP sent to your email!");
+      // DEBUG: Log OTP to browser console for development
+      if (response.data.debug_otp) {
+        console.log(`🔐 OTP for ${trimmedEmail}: ${response.data.debug_otp}`);
+      }
     } catch (error: unknown) {
       const detail = (error as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
       if (detail?.includes("already registered")) {
-        toast.error("This phone number is already registered");
+        toast.error("This email is already registered");
       } else {
         toast.error(detail || "Failed to send OTP. Please try again.");
       }
@@ -103,17 +106,17 @@ export default function RegisterPage() {
     }
   }
 
-  async function handleVerifyOtp() {
+  async function handleVerifyOtp(email: string) {
     if (!otp.trim()) {
       toast.error("Please enter the OTP");
       return;
     }
     setVerifyingOtp(true);
     try {
-      const res = await axios.post("/api/verify-otp", { phone: phone.trim(), otp: otp.trim() });
+      const res = await axios.post("/api/verify-otp", { email: email.trim(), otp: otp.trim() });
       setVerificationToken(res.data.verification_token);
       setOtpVerified(true);
-      toast.success("Phone number verified!");
+      toast.success("Email verified!");
     } catch (error: unknown) {
       const detail = (error as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
       toast.error(detail || "OTP verification failed. Please try again.");
@@ -124,7 +127,7 @@ export default function RegisterPage() {
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     if (!otpVerified) {
-      toast.error("Please verify your phone number first");
+      toast.error("Please verify your email first");
       return;
     }
 
@@ -159,7 +162,6 @@ export default function RegisterPage() {
       lastName,
       email: values.email,
       password: values.password,
-      phone: phone.trim(),
       verification_token: verificationToken,
     };
 
@@ -189,8 +191,8 @@ export default function RegisterPage() {
 
       if (errorDetail?.includes("email already exists")) {
         toast.error("An account with this email already exists");
-      } else if (errorDetail?.includes("phone verification")) {
-        toast.error("Phone verification expired. Please verify your phone again.");
+      } else if (errorDetail?.includes("email verification")) {
+        toast.error("Email verification expired. Please verify your email again.");
         setOtpVerified(false);
         setVerificationToken("");
       } else if (errorDetail?.includes("lastName")) {
@@ -323,30 +325,23 @@ export default function RegisterPage() {
                   )}
                 />
 
-                {/* Phone verification section */}
+                {/* Email verification section */}
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-gray-700">
-                    Phone Number{" "}
-                    <span className="text-xs text-gray-400">(E.164 format, e.g. +919876543210)</span>
+                    Email Verification
                   </label>
                   <div className="flex gap-2">
                     <Input
-                      placeholder="+919876543210"
-                      value={phone}
-                      onChange={(e) => {
-                        setPhone(e.target.value);
-                        setOtpVerified(false);
-                        setOtpSent(false);
-                        setVerificationToken("");
-                      }}
-                      disabled={otpVerified}
-                      className="border-gray-300 focus:border-primary-blue focus:ring focus:ring-primary-blue/20"
+                      placeholder="Email verification code will be sent here"
+                      value={form.watch("email")}
+                      disabled={true}
+                      className="border-gray-300 bg-gray-50 text-gray-600"
                     />
                     <Button
                       type="button"
                       variant="outline"
-                      onClick={handleSendOtp}
-                      disabled={sendingOtp || otpVerified}
+                      onClick={() => handleSendOtp(form.watch("email"))}
+                      disabled={sendingOtp || otpVerified || !form.watch("email")}
                       className="shrink-0"
                     >
                       {sendingOtp ? (
@@ -370,7 +365,7 @@ export default function RegisterPage() {
                       />
                       <Button
                         type="button"
-                        onClick={handleVerifyOtp}
+                        onClick={() => handleVerifyOtp(form.watch("email"))}
                         disabled={verifyingOtp}
                         className="shrink-0 bg-primary-blue hover:bg-primary-blue/90 text-white"
                       >
@@ -386,7 +381,7 @@ export default function RegisterPage() {
                   {otpVerified && (
                     <p className="flex items-center gap-1 text-sm text-green-600">
                       <CheckCircle2 className="h-4 w-4" />
-                      Phone verified
+                      Email verified
                     </p>
                   )}
                 </div>

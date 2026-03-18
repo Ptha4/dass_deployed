@@ -12,23 +12,23 @@ user_manager = UserManager()
 
 
 class SendOTPRequest(BaseModel):
-    phone: str  # E.164 format, e.g. +919876543210
+    email: str
 
 
 class VerifyOTPRequest(BaseModel):
-    phone: str
+    email: str
     otp: str
 
 
 @router.post("/send-otp")
 async def send_otp(payload: SendOTPRequest):
-    """Send a 6-digit OTP via WhatsApp to the given phone number."""
+    """Send a 6-digit OTP via email to the given address."""
     try:
-        await otp_manager.send_otp(payload.phone)
-        return {"message": "OTP sent successfully"}
+        result = await otp_manager.send_otp(payload.email)
+        return {"message": "OTP sent successfully", "debug_otp": result.get("debug_otp")}
     except ValueError as e:
-        if str(e) == "phone_taken":
-            raise HTTPException(status_code=409, detail="Phone number already registered")
+        if str(e) == "email_taken":
+            raise HTTPException(status_code=409, detail="Email already registered")
         raise HTTPException(status_code=400, detail=str(e))
     except RuntimeError as e:
         raise HTTPException(status_code=502, detail=str(e))
@@ -38,11 +38,11 @@ async def send_otp(payload: SendOTPRequest):
 async def verify_otp(payload: VerifyOTPRequest):
     """Verify the OTP and return a one-time verification_token for signup."""
     try:
-        token = await otp_manager.verify_otp(payload.phone, payload.otp)
+        token = await otp_manager.verify_otp(payload.email, payload.otp)
         return {"verification_token": token}
     except ValueError as e:
         msg_map = {
-            "no_otp": "No OTP found for this phone number. Please request a new one.",
+            "no_otp": "No OTP found for this email. Please request a new one.",
             "already_verified": "This OTP has already been used.",
             "otp_expired": "OTP has expired. Please request a new one.",
             "invalid_otp": "Invalid OTP.",
@@ -54,7 +54,7 @@ async def verify_otp(payload: VerifyOTPRequest):
 async def signup(user_data: UserSignUp):
     """
     Register a new user, hash their password, and return a JWT token.
-    Requires email, password, first name, last name, phone, and verification_token.
+    Requires email, password, first name, last name, and verification_token.
     """
     existing_user = await user_manager.get_user_by_email(user_data.email)
     if existing_user:
@@ -63,7 +63,7 @@ async def signup(user_data: UserSignUp):
 
     token = await auth_manager.signup(user_data)
     if not token:
-        raise HTTPException(status_code=400, detail="Invalid or expired phone verification. Please verify your phone again.")
+        raise HTTPException(status_code=400, detail="Invalid or expired email verification. Please verify your email again.")
         
     # Log new user registration
     new_user = await user_manager.get_user_by_email(user_data.email)
