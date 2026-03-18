@@ -191,8 +191,6 @@ export function SocketProvider({ children }: { children: ReactNode }) {
         return () => {
             socket.disconnect();
             socketRef.current = null;
-=======
->>>>>>> a62b105bfb5f4ded120e650c531418cc575da172
         };
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isAuthenticated]);
