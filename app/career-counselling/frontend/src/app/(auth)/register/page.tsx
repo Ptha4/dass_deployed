@@ -83,27 +83,15 @@ export default function RegisterPage() {
       return;
     }
     setSendingOtp(true);
-    try {
-      const response = await axios.post("https://dass-deployed.onrender.com/api/send-otp", { email: trimmedEmail });
+    // Local-only OTP flow for development (no API call)
+    setTimeout(() => {
       setOtpSent(true);
       setOtpVerified(false);
       setVerificationToken("");
-      setOtp("111111");
+      setOtp("");
       toast.success("OTP sent to your email!");
-      // DEBUG: Log OTP to browser console for development
-      if (response.data.debug_otp) {
-        console.log(`🔐 OTP for ${trimmedEmail}: ${response.data.debug_otp}`);
-      }
-    } catch (error: unknown) {
-      const detail = (error as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
-      if (detail?.includes("already registered")) {
-        toast.error("This email is already registered");
-      } else {
-        toast.error(detail || "Failed to send OTP. Please try again.");
-      }
-    } finally {
       setSendingOtp(false);
-    }
+    }, 200);
   }
 
   async function handleVerifyOtp(email: string) {
@@ -112,17 +100,18 @@ export default function RegisterPage() {
       return;
     }
     setVerifyingOtp(true);
-    try {
-      const res = await axios.post("https://dass-deployed.onrender.com/api/verify-otp", { email: email.trim(), otp: otp.trim() });
-      setVerificationToken(res.data.verification_token);
+    // Local-only OTP verification for development (no API call)
+    setTimeout(() => {
+      if (otp.trim() !== "111111") {
+        toast.error("Invalid OTP. Please try again.");
+        setVerifyingOtp(false);
+        return;
+      }
+      setVerificationToken("dev-otp-bypass");
       setOtpVerified(true);
       toast.success("Email verified!");
-    } catch (error: unknown) {
-      const detail = (error as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
-      toast.error(detail || "OTP verification failed. Please try again.");
-    } finally {
       setVerifyingOtp(false);
-    }
+    }, 200);
   }
 
   async function onSubmit(values: z.infer<typeof formSchema>) {

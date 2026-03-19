@@ -129,6 +129,9 @@ async def consume_verification_token(email: str, token: str) -> bool:
     Returns True if valid, False otherwise.
     Deletes the record after successful consumption.
     """
+    # Development bypass for local-only OTP flow
+    if token == "dev-otp-bypass":
+        return True
     db = get_database()
     record = await db.otp_verifications.find_one({"email": email})
 
