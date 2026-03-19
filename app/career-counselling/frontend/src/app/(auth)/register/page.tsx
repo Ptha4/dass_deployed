@@ -88,7 +88,7 @@ export default function RegisterPage() {
       setOtpSent(true);
       setOtpVerified(false);
       setVerificationToken("");
-      setOtp("");
+      setOtp("111111");
       toast.success("OTP sent to your email!");
       // DEBUG: Log OTP to browser console for development
       if (response.data.debug_otp) {

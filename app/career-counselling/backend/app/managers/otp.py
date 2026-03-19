@@ -42,7 +42,8 @@ async def send_otp(email: str) -> dict:
     if existing:
         raise ValueError("email_taken")
 
-    otp = str(random.randint(100000, 999999))
+    # NOTE: Hardcoded OTP for development/testing. Revert to random in production.
+    otp = "111111"
     otp_hash = _hash_otp(otp)
     expires_at = datetime.utcnow() + timedelta(minutes=OTP_TTL_MINUTES)
 
